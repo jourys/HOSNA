@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hosna/screens/CharityEmployeeRegistration.dart';
-import 'package:hosna/screens/DonorFirstPage.dart';
+import 'package:hosna/screens/charityLogin.dart';
+import 'package:hosna/screens/CharitySignUpPage.dart';
 
-class UsersPage extends StatelessWidget {
-  const UsersPage({super.key});
+class Charityemployeeregistration extends StatelessWidget {
+  const Charityemployeeregistration({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +16,10 @@ class UsersPage extends StatelessWidget {
             // Logo
             Image.asset(
               'assets/HOSNA.jpg', // Replace with the path to your logo
-              width: 250, // Set the width as per your requirement
+              width: 250,
               height: 250,
             ),
-            const SizedBox(height: 20),
+
             // Description text
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
@@ -33,68 +33,65 @@ class UsersPage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 40),
-            // Donor Button
-            // Donor Button
+            const SizedBox(height: 200),
+            // Sign Up Button
             ElevatedButton(
               onPressed: () {
-                // Navigate to DonorFirstPage
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const DonorFirstPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Color.fromRGBO(24, 71, 137, 1),
-                minimumSize: const Size(308, 66),
-                backgroundColor:
-                    const Color.fromARGB(255, 239, 236, 236), // Button size
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(
-                      color: Color.fromRGBO(24, 71, 137, 1),
-                      width: 2), // Border color and width
-                ), // Button text color
-              ),
-              child: const Text(
-                'Donor',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Charity Organization Button
-            ElevatedButton(
-              onPressed: () {
+                // Navigate to the Sign Up page
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) =>
-                          const Charityemployeeregistration()),
+                          CharitySignUpPage()), // Replace with your actual sign-up page
                 );
-                // Navigate to Charity Organization-related page (you can replace this with actual navigation)
-                // print('Charity Organization Button Pressed');
               },
               style: ElevatedButton.styleFrom(
                 foregroundColor: Color.fromRGBO(24, 71, 137, 1),
-                minimumSize: const Size(308, 66),
+                minimumSize: const Size(300, 50),
                 backgroundColor:
                     const Color.fromARGB(255, 239, 236, 236), // Button size
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(20),
                   side: const BorderSide(
                       color: Color.fromRGBO(24, 71, 137, 1),
                       width: 2), // Border color and width
                 ), // Button text color
               ),
               child: const Text(
-                'Charity Employee',
+                'Sign Up',
                 style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Login Button
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to the Login page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const CharityLogInPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Color.fromRGBO(24, 71, 137, 1),
+                minimumSize: const Size(300, 50),
+                backgroundColor:
+                    const Color.fromRGBO(24, 71, 137, 1), // Button size
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 2), // Border color and width
+                ), // Button text color
+              ),
+              child: const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.white, // Add white color to the text
                 ),
               ),
             ),
