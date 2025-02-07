@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:web3dart/web3dart.dart';
 
 class DonorSignUpPage extends StatefulWidget {
   const DonorSignUpPage({super.key});
@@ -24,6 +25,10 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   final FocusNode _phoneFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
+  late Web3Client _web3Client;
+  late String _privateKey;
+  late EthereumAddress _contractAddress;
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +37,9 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     _emailFocus.addListener(() => setState(() {}));
     _phoneFocus.addListener(() => setState(() {}));
     _passwordFocus.addListener(() => setState(() {}));
+
+    // Initialize Web3Client, contract address, and private key
+    _initializeWeb3();
   }
 
   @override
@@ -42,6 +50,93 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     _phoneFocus.dispose();
     _passwordFocus.dispose();
     super.dispose();
+  }
+
+  // Initialize Web3 client and set up the contract interaction
+  void _initializeWeb3() {
+    final String rpcUrl =
+        'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // E.g., Infura, Alchemy, or local node
+    _web3Client = Web3Client(rpcUrl, http.Client());
+
+    // Example private key and contract address
+    _privateKey =
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+    _contractAddress =
+        EthereumAddress.fromHex("0x091BdA2a6Abc8cbf95512ace8C8608dE8755E914");
+    print("Web3 initialized with contract address: $_contractAddress");
+  }
+
+  // Register donor function that interacts with the smart contract
+  Future<void> _registerDonor() async {
+    print("Registering donor...");
+
+    final credentials =
+        await _web3Client.credentialsFromPrivateKey(_privateKey);
+    print("Credentials obtained: $credentials");
+
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[{
+          "constant": false,
+          "inputs": [
+            {"name": "_firstName", "type": "string"},
+            {"name": "_lastName", "type": "string"},
+            {"name": "_email", "type": "string"},
+            {"name": "_phone", "type": "string"},
+            {"name": "_password", "type": "string"},
+            {"name": "_wallet", "type": "address"}
+          ],
+          "name": "registerDonor",
+          "outputs": [],
+          "payable": false,
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }]''',
+        'DonorRegistry', // Contract name
+      ),
+      _contractAddress,
+    );
+    print("Contract instantiated: $contract");
+
+    final registerDonor = contract.function('registerDonor');
+    print("Function reference obtained: $registerDonor");
+
+    // Prepare parameters
+    final firstName = _firstNameController.text;
+    final lastName = _lastNameController.text;
+    final email = _emailController.text;
+    final phone = _phoneController.text;
+    final password = _passwordController.text;
+
+    print("Form inputs: $firstName, $lastName, $email, $phone, $password");
+
+    final wallet = await _web3Client
+        .credentialsFromPrivateKey(_privateKey)
+        .then((credentials) => credentials.address);
+    print("Wallet address: $wallet");
+
+    // Send the transaction to register the donor
+    try {
+      final result = await _web3Client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: contract,
+          function: registerDonor,
+          parameters: [
+            firstName,
+            lastName,
+            email,
+            phone,
+            password,
+            wallet,
+          ],
+        ),
+        chainId: 11155111, // Replace with your network chain ID
+      );
+      print("Transaction result: $result");
+    } catch (e) {
+      print("Error registering donor: $e");
+    }
   }
 
   @override
@@ -130,6 +225,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Signing up...')),
                               );
+                              _registerDonor(); // Register donor on the blockchain
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -152,46 +248,28 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                             ),
                           ),
                         ),
+                        child: const Text('Sign Up'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacementNamed(
+                              context, '/donor_login');
+                        },
                         child: const Text(
-                          'Sign Up',
+                          'Already have an account? Log in',
                           style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromRGBO(24, 71, 137, 1),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20), // Space between button and text
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Have an account? ",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color.fromARGB(255, 102, 100, 100),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            // TODO: Replace with actual navigation to login page
-                            print("Navigate to Log in page");
-                          },
-                          child: const Text(
-                            "Log in",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              fontWeight: FontWeight.bold,
-                              decoration:
-                                  TextDecoration.underline, // Hyperlink effect
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -200,72 +278,58 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      FocusNode focusNode, int maxLength,
-      {bool obscureText = false,
-      bool isEmail = false,
-      bool isPhone = false,
-      bool isName = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hintText,
+    FocusNode focusNode,
+    int maxLength, {
+    bool isEmail = false,
+    bool isPhone = false,
+    bool isName = false,
+    bool obscureText = false,
+  }) {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: focusNode.hasFocus
-              ? const Color.fromRGBO(24, 71, 137, 1)
-              : Colors.grey,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-      ),
       maxLength: maxLength,
-      buildCounter: (_,
-          {required currentLength, required isFocused, maxLength}) {
-        return null; // Remove counter
-      },
-      validator: (value) {
-        if (value == null || value.isEmpty || value.trim().isEmpty) {
-          return 'Please enter your $label';
-        }
-        if (isEmail &&
-            !RegExp(r'^[a-zA-Z0-9]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
-                .hasMatch(value)) {
-          return 'Please enter a valid email';
-        }
-        if (isPhone && !value.startsWith('05')) {
-          return 'Phone number must start with "05"';
-        }
-        if (isPhone && value.length != 10) {
-          return 'Phone number must be 10 digits';
-        }
-        return null;
-      },
+      obscureText: obscureText,
       keyboardType: isEmail
           ? TextInputType.emailAddress
           : isPhone
               ? TextInputType.phone
               : TextInputType.text,
-      inputFormatters: [
-        FilteringTextInputFormatter.deny(
-            RegExp(r'\s')), // Deny whitespace input
-        if (isName)
-          FilteringTextInputFormatter.allow(
-              RegExp(r'[a-zA-Z]')) // Allow only letters for name fields
-      ],
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: focusNode.hasFocus
+                ? const Color.fromRGBO(24, 71, 137, 1)
+                : Colors.grey,
+          ),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1),
+            width: 2,
+          ),
+        ),
+        errorBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'This field cannot be empty';
+        }
+        if (isEmail && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+          return 'Please enter a valid email';
+        }
+        if (isPhone && value.length != 10) {
+          return 'Please enter a valid phone number';
+        }
+        return null;
+      },
     );
   }
 }
