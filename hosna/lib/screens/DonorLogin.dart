@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hosna/screens/DonorSignup.dart';
+import 'package:http/http.dart'; // For connecting to Ethereum
+import 'package:web3dart/web3dart.dart';
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -17,11 +20,59 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
+  late Web3Client _web3Client;
+  final String _rpcUrl =
+      "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
+  final String _contractAddress = "0xCD2c3a4377e6A1A03ee25eC64Ae6e64A45197b35";
+  final String _privateKey =
+      "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+
   @override
   void initState() {
     super.initState();
     _emailFocus.addListener(() => setState(() {}));
     _passwordFocus.addListener(() => setState(() {}));
+    _web3Client = Web3Client(_rpcUrl, Client());
+    print('Web3Client initialized');
+  }
+
+  Future<void> _authenticateUser() async {
+    print('Authentication started');
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+          '[{"constant":true,"inputs":[{"name":"email","type":"string"},{"name":"password","type":"string"}],"name":"authenticateUser","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
+          'AuthContract'),
+      EthereumAddress.fromHex(_contractAddress),
+    );
+
+    final authenticateFunction = contract.function('authenticateUser');
+    final credentials = EthPrivateKey.fromHex(_privateKey);
+
+    try {
+      print('Calling the contract function...');
+      final result = await _web3Client.call(
+        contract: contract,
+        function: authenticateFunction,
+        params: [_emailController.text, _passwordController.text],
+      );
+
+      if (result.isNotEmpty && result[0] == true) {
+        print('Login successful');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login successful!')),
+        );
+      } else {
+        print('Invalid credentials');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid credentials!')),
+        );
+      }
+    } catch (e) {
+      print('Error in authentication: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An error occurred!')),
+      );
+    }
   }
 
   @override
@@ -33,6 +84,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
 
   @override
   Widget build(BuildContext context) {
+    print('Building DonorLogInPage UI');
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -47,7 +99,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(
-          color: Color.fromRGBO(24, 71, 137, 1), // Updated arrow color
+          color: Color.fromRGBO(24, 71, 137, 1),
         ),
       ),
       body: Padding(
@@ -74,14 +126,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                 _buildTextField(
                     _passwordController, 'Password', _passwordFocus, 250,
                     obscureText: true),
-                const SizedBox(height: 20), // Space for the link
+                const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.end, // Align to the right
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // TODO: Replace with actual navigation to reset password page
                         print("Navigate to Reset Password page");
                       },
                       child: const Text(
@@ -89,23 +139,21 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         style: TextStyle(
                           fontSize: 14,
                           color: Color.fromRGBO(24, 71, 137, 1),
-                          decoration: TextDecoration.underline, // Link style
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 300),
                 Column(
                   children: [
                     Center(
                       child: ElevatedButton(
                         onPressed: () {
+                          print('Login button pressed');
                           if (_formKey.currentState?.validate() ?? false) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Logging in...')),
-                            );
+                            _authenticateUser();
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -142,8 +190,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            // TODO: Replace with actual navigation to sign up page
-                            print("Navigate to Sign Up page");
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DonorSignUpPage(),
+                              ),
+                            );
                           },
                           child: const Text(
                             "Sign Up",
@@ -151,7 +203,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                               fontSize: 16,
                               color: Color.fromRGBO(24, 71, 137, 1),
                               fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),

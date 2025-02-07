@@ -1,4 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hosna/screens/DonorLogin.dart';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
 
@@ -248,7 +251,13 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                             ),
                           ),
                         ),
-                        child: const Text('Sign Up'),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -258,12 +267,35 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                           Navigator.pushReplacementNamed(
                               context, '/donor_login');
                         },
-                        child: const Text(
-                          'Already have an account? Log in',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color.fromRGBO(24, 71, 137, 1),
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Already have an account? ',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey, // Gray color for this part
+                            ),
+                            children: [
+                              TextSpan(
+                                text: 'Log in',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color.fromRGBO(
+                                      24, 71, 137, 1), // Blue color
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const DonorLogInPage(),
+                                      ),
+                                    );
+                                  },
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -278,58 +310,66 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String hintText,
-    FocusNode focusNode,
-    int maxLength, {
-    bool isEmail = false,
-    bool isPhone = false,
-    bool isName = false,
-    bool obscureText = false,
-  }) {
+  Widget _buildTextField(TextEditingController controller, String label,
+      FocusNode focusNode, int maxLength,
+      {bool isName = false,
+      bool isEmail = false,
+      bool isPhone = false,
+      bool obscureText = false}) {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      maxLength: maxLength,
       obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: focusNode.hasFocus
+              ? const Color.fromRGBO(24, 71, 137, 1)
+              : Colors.grey,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+      ),
+      maxLength: maxLength,
+      buildCounter: (_,
+          {required currentLength, required isFocused, maxLength}) {
+        return null; // Remove counter
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty || value.trim().isEmpty) {
+          return 'Please enter your $label';
+        }
+        if (isEmail &&
+            !RegExp(r'^[a-zA-Z0-9]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
+                .hasMatch(value)) {
+          return 'Please enter a valid email';
+        }
+        return null;
+      },
       keyboardType: isEmail
           ? TextInputType.emailAddress
           : isPhone
               ? TextInputType.phone
               : TextInputType.text,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: focusNode.hasFocus
-                ? const Color.fromRGBO(24, 71, 137, 1)
-                : Colors.grey,
-          ),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1),
-            width: 2,
-          ),
-        ),
-        errorBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.red, width: 2),
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'This field cannot be empty';
-        }
-        if (isEmail && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-          return 'Please enter a valid email';
-        }
-        if (isPhone && value.length != 10) {
-          return 'Please enter a valid phone number';
-        }
-        return null;
-      },
+      inputFormatters: [
+        FilteringTextInputFormatter.deny(
+            RegExp(r'\s')), // Deny whitespace input
+        if (isName)
+          FilteringTextInputFormatter.allow(
+              RegExp(r'[a-zA-Z]')), // Allow only letters for name fields
+      ],
     );
   }
 }
