@@ -23,7 +23,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0xCD2c3a4377e6A1A03ee25eC64Ae6e64A45197b35";
+  final String _contractAddress = "0x1a37c4C9F6e4AC510a4A5A579cb4723DEcbCEF92";
   final String _privateKey =
       "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
@@ -56,13 +56,14 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         params: [_emailController.text, _passwordController.text],
       );
 
+      print('Contract call result: $result');
       if (result.isNotEmpty && result[0] == true) {
         print('Login successful');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
       } else {
-        print('Invalid credentials');
+        print('Invalid credentials: result is empty or false');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid credentials!')),
         );
@@ -153,7 +154,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         onPressed: () {
                           print('Login button pressed');
                           if (_formKey.currentState?.validate() ?? false) {
+                            print('Form validation successful');
                             _authenticateUser();
+                          } else {
+                            print('Form validation failed');
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -190,6 +194,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         ),
                         GestureDetector(
                           onTap: () {
+                            print('Navigating to Sign Up page');
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -224,6 +229,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
       bool isEmail = false,
       bool isPhone = false,
       bool isName = false}) {
+    print('Building TextField for $label');
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
@@ -256,6 +262,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         return null; // Remove counter
       },
       validator: (value) {
+        print('Validating $label field');
         if (value == null || value.isEmpty || value.trim().isEmpty) {
           return 'Please enter your $label';
         }

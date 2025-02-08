@@ -65,7 +65,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     _privateKey =
         "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
     _contractAddress =
-        EthereumAddress.fromHex("0x091BdA2a6Abc8cbf95512ace8C8608dE8755E914");
+        EthereumAddress.fromHex("0x68b7597046062c1f37f7c3ed503d7ebbf8034260");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
