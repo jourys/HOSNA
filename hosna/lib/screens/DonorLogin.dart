@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hosna/screens/DonorSignup.dart';
+import 'package:http/http.dart';
+import 'package:web3dart/web3dart.dart';
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -17,7 +20,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
-<<<<<<< HEAD
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
@@ -25,14 +27,11 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   final String _privateKey =
       "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
-=======
->>>>>>> parent of bb1fb80 (sign up page)
   @override
   void initState() {
     super.initState();
     _emailFocus.addListener(() => setState(() {}));
     _passwordFocus.addListener(() => setState(() {}));
-<<<<<<< HEAD
     _web3Client = Web3Client(_rpcUrl, Client());
     print('Web3Client initialized');
   }
@@ -75,8 +74,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         const SnackBar(content: Text('An error occurred!')),
       );
     }
-=======
->>>>>>> parent of bb1fb80 (sign up page)
   }
 
   @override
@@ -88,6 +85,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
 
   @override
   Widget build(BuildContext context) {
+    print('Building DonorLogInPage UI');
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -102,7 +100,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(
-          color: Color.fromRGBO(24, 71, 137, 1), // Updated arrow color
+          color: Color.fromRGBO(24, 71, 137, 1),
         ),
       ),
       body: Padding(
@@ -129,14 +127,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                 _buildTextField(
                     _passwordController, 'Password', _passwordFocus, 250,
                     obscureText: true),
-                const SizedBox(height: 20), // Space for the link
+                const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.end, // Align to the right
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // TODO: Replace with actual navigation to reset password page
                         print("Navigate to Reset Password page");
                       },
                       child: const Text(
@@ -144,30 +140,24 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         style: TextStyle(
                           fontSize: 14,
                           color: Color.fromRGBO(24, 71, 137, 1),
-                          decoration: TextDecoration.underline, // Link style
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 300),
                 Column(
                   children: [
                     Center(
                       child: ElevatedButton(
                         onPressed: () {
+                          print('Login button pressed');
                           if (_formKey.currentState?.validate() ?? false) {
-<<<<<<< HEAD
                             print('Form validation successful');
                             _authenticateUser();
                           } else {
                             print('Form validation failed');
-=======
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Logging in...')),
-                            );
->>>>>>> parent of bb1fb80 (sign up page)
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -204,7 +194,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                         ),
                         GestureDetector(
                           onTap: () {
-<<<<<<< HEAD
                             print('Navigating to Sign Up page');
                             Navigator.push(
                               context,
@@ -212,10 +201,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                                 builder: (context) => const DonorSignUpPage(),
                               ),
                             );
-=======
-                            // TODO: Replace with actual navigation to sign up page
-                            print("Navigate to Sign Up page");
->>>>>>> parent of bb1fb80 (sign up page)
                           },
                           child: const Text(
                             "Sign Up",
@@ -223,7 +208,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                               fontSize: 16,
                               color: Color.fromRGBO(24, 71, 137, 1),
                               fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
