@@ -23,7 +23,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0x1a37c4C9F6e4AC510a4A5A579cb4723DEcbCEF92";
+  final String _contractAddress = "0x8E38de2E7Ccb8fEA17E261aBE3de59588F70Cd2a";
   final String _privateKey =
       "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
@@ -40,12 +40,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     print('Authentication started');
     final contract = DeployedContract(
       ContractAbi.fromJson(
-          '[{"constant":true,"inputs":[{"name":"email","type":"string"},{"name":"password","type":"string"}],"name":"authenticateUser","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
-          'AuthContract'),
+          '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
+          'DonorAuth'),
       EthereumAddress.fromHex(_contractAddress),
     );
 
-    final authenticateFunction = contract.function('authenticateUser');
+    final authenticateFunction = contract.function('loginDonor');
     final credentials = EthPrivateKey.fromHex(_privateKey);
 
     try {
