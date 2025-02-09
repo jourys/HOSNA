@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hosna/screens/DonorResetPassword.dart';
 import 'package:hosna/screens/DonorSignup.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
@@ -23,7 +24,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0xda77Af2492CeB077398A17869c7e7012c0d1fD67";
+  final String _contractAddress = "0x79FB556a6A12568B9DceA18EE474d05437Dc5987";
 
   @override
   void initState() {
@@ -134,7 +135,14 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        print("Navigate to Reset Password page");
+                        // Navigate to the Reset Password page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                DonorResetPasswordPage(), // Your Reset Password page widget
+                          ),
+                        );
                       },
                       child: const Text(
                         'Forgot your password?',
@@ -154,6 +162,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                       child: ElevatedButton(
                         onPressed: () {
                           print('Login button pressed');
+
                           if (_formKey.currentState?.validate() ?? false) {
                             print('Form validation successful');
                             _authenticateUser();
@@ -268,7 +277,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           return 'Please enter your $label';
         }
         if (isEmail &&
-            !RegExp(r'^[a-zA-Z0-9]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
+            !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
                 .hasMatch(value)) {
           return 'Please enter a valid email';
         }

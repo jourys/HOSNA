@@ -64,7 +64,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
 
     // Example contract address
     _contractAddress =
-        EthereumAddress.fromHex("0x4cCFC74C2EA48248c81be7A89dCFC54cDDa381bA");
+        EthereumAddress.fromHex("0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -353,7 +353,9 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
         if (value == null || value.isEmpty) {
           return 'Please enter $label';
         }
-        if (isEmail && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+        if (isEmail &&
+            !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
+                .hasMatch(value)) {
           return 'Please enter a valid email';
         }
         if (isPhone && value.length != 10) {
