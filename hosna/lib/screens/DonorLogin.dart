@@ -23,9 +23,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0x8E38de2E7Ccb8fEA17E261aBE3de59588F70Cd2a";
-  final String _privateKey =
-      "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+  final String _contractAddress = "0xda77Af2492CeB077398A17869c7e7012c0d1fD67";
 
   @override
   void initState() {
@@ -46,7 +44,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     );
 
     final authenticateFunction = contract.function('loginDonor');
-    final credentials = EthPrivateKey.fromHex(_privateKey);
 
     try {
       print('Calling the contract function...');
@@ -57,11 +54,14 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
       );
 
       print('Contract call result: $result');
+
+      // Checking the result of the contract call (boolean)
       if (result.isNotEmpty && result[0] == true) {
         print('Login successful');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
+        // Navigate to the donor's dashboard or home page here if needed
       } else {
         print('Invalid credentials: result is empty or false');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -80,6 +80,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   void dispose() {
     _emailFocus.dispose();
     _passwordFocus.dispose();
+    _web3Client.dispose(); // Dispose Web3Client when done
     super.dispose();
   }
 
