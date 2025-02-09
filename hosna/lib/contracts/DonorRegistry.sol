@@ -101,4 +101,11 @@ contract DonorRegistry {
             donor.registered
         );
     }
+
+    // Add this function to get the password hash for a donor
+    function getPasswordHash(address _wallet) public view returns (bytes32) {
+        Donor memory donor = donors[_wallet];
+        require(donor.registered, "Donor not found");
+        return donor.passwordHash;
+    }
 }
