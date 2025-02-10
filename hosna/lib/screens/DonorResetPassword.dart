@@ -185,7 +185,7 @@ class _DonorResetPasswordPageState extends State<DonorResetPasswordPage> {
         }
         if (isEmail &&
             !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
-                .hasMatch(value)) {
+                .hasMatch(value.toLowerCase())) {
           return 'Please enter a valid email';
         }
         return null;

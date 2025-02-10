@@ -72,6 +72,8 @@ flutter:
 
   assets:
     - assets/HOSNA.jpg
+    - assets/Projects.png
+    - assets/BlueProjects.png
 
 flutter_native_splash:
   color: "#ffffff"  # White background

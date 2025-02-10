@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorLogin.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
@@ -21,6 +22,8 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isAgreedToTerms = false;
+  bool _isPasswordVisible = false; // Track password visibility
+  bool _isPasswordFocused = false; // Track if password field is focused
 
   // Focus nodes for text fields
   final FocusNode _firstNameFocus = FocusNode();
@@ -28,6 +31,13 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _phoneFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
+
+// Toggle the password visibility
+  void _togglePasswordVisibility() {
+    setState(() {
+      _isPasswordVisible = !_isPasswordVisible;
+    });
+  }
 
   late Web3Client _web3Client;
   late String _privateKey;
@@ -40,7 +50,9 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     _lastNameFocus.addListener(() => setState(() {}));
     _emailFocus.addListener(() => setState(() {}));
     _phoneFocus.addListener(() => setState(() {}));
-    _passwordFocus.addListener(() => setState(() {}));
+    _passwordFocus.addListener(() => setState(() {
+          _isPasswordFocused = _passwordFocus.hasFocus;
+        }));
 
     // Initialize Web3Client, contract address, and private key
     _initializeWeb3();
@@ -135,7 +147,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     // Prepare parameters
     final firstName = _firstNameController.text;
     final lastName = _lastNameController.text;
-    final email = _emailController.text;
+    final email = _emailController.text.toLowerCase();
     final phone = _phoneController.text;
     final password = _passwordController.text;
 
@@ -233,7 +245,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                 const SizedBox(height: 30),
                 _buildTextField(
                     _passwordController, 'Password', _passwordFocus, 250,
-                    obscureText: true),
+                    obscureText: !_isPasswordVisible, isPassword: true),
                 const SizedBox(height: 40),
                 CheckboxListTile(
                   title: Text(
@@ -284,7 +296,13 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('Sign Up'),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 25),
@@ -297,15 +315,28 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                                 builder: (context) => const DonorLogInPage()),
                           );
                         },
-                        child: Text(
-                          'Already have an account? Log In',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: const Color.fromRGBO(24, 71, 137, 1),
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Already have an account? ',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color.fromARGB(255, 102, 100, 100),
+                            ),
+                            children: <TextSpan>[
+                              TextSpan(
+                                text: 'Log In',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: const Color.fromRGBO(24, 71, 137, 1),
+                                  fontWeight: FontWeight
+                                      .bold, // Blue color for "Log In"
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
+                    )
                   ],
                 ),
               ],
@@ -316,7 +347,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     );
   }
 
-  // Helper function to build a text field with validation and focus
+// Helper function to build a text field with validation and focus
   Widget _buildTextField(
     TextEditingController controller,
     String label,
@@ -326,41 +357,82 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     bool isName = false,
     bool isEmail = false,
     bool isPhone = false,
+    bool isPassword = false, // Add a flag to check if it's a password field
   }) {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
+      obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
-          fontSize: 16,
           color: focusNode.hasFocus
               ? const Color.fromRGBO(24, 71, 137, 1)
-              : const Color.fromARGB(255, 102, 100, 100),
+              : Colors.grey,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: _isPasswordFocused
+                      ? Color.fromRGBO(24, 71, 137, 1) // Color when focused
+                      : Colors.grey, // Gray when not focused
+                ),
+                onPressed: () {
+                  // Toggle the password visibility when the icon is pressed
+                  _togglePasswordVisibility();
+                },
+              )
+            : null,
       ),
-      obscureText: obscureText,
-      keyboardType: isEmail
-          ? TextInputType.emailAddress
-          : isPhone
-              ? TextInputType.phone
-              : TextInputType.text,
-      maxLength: maxLength,
+      keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(maxLength), // Limit input to maxLength
+        FilteringTextInputFormatter.deny(
+            RegExp(r'\s')), // Deny whitespace characters
+        if (isPhone)
+          FilteringTextInputFormatter.allow(
+              RegExp(r'^[0-9]*$')), // Allow only numbers for phone
+      ],
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter $label';
         }
+
+        // Deny fields starting with whitespace
+        if (value.startsWith(' ')) {
+          return 'Input cannot start with whitespace';
+        }
+
         if (isEmail &&
             !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
                 .hasMatch(value)) {
           return 'Please enter a valid email';
         }
-        if (isPhone && value.length != 10) {
-          return 'Please enter a valid phone number';
+        // Ensure phone number starts with "05" and is 10 digits long
+        if (isPhone) {
+          if (value.length != 10) {
+            return 'Please enter a valid phone number (10 digits)';
+          }
+          if (!value.startsWith('05')) {
+            return 'Phone number must start with 05';
+          }
         }
+
         return null;
       },
     );

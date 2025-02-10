@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorResetPassword.dart';
 import 'package:hosna/screens/DonorSignup.dart';
+import 'package:hosna/screens/navigation_bar.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
 
@@ -16,6 +17,14 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscureText = true; // Initially password is hidden
+
+  // Toggle password visibility
+  void _togglePasswordVisibility() {
+    setState(() {
+      _obscureText = !_obscureText;
+    });
+  }
 
   // Focus nodes for text fields
   final FocusNode _emailFocus = FocusNode();
@@ -45,13 +54,15 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     );
 
     final authenticateFunction = contract.function('loginDonor');
+// Convert email to lowercase before passing it to the smart contract
+    final email = _emailController.text.toLowerCase();
 
     try {
       print('Calling the contract function...');
       final result = await _web3Client.call(
         contract: contract,
         function: authenticateFunction,
-        params: [_emailController.text, _passwordController.text],
+        params: [email, _passwordController.text],
       );
 
       print('Contract call result: $result');
@@ -62,6 +73,13 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
+        Future.delayed(Duration(seconds: 2), () {
+          // Navigate to MainScreen after successful login
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => MainScreen()),
+          );
+        });
         // Navigate to the donor's dashboard or home page here if needed
       } else {
         print('Invalid credentials: result is empty or false');
@@ -127,8 +145,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                     isEmail: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _passwordController, 'Password', _passwordFocus, 250,
-                    obscureText: true),
+                  _passwordController,
+                  'Password',
+                  _passwordFocus,
+                  250,
+                  obscureText: _obscureText,
+                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -147,9 +169,9 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                       child: const Text(
                         'Forgot your password?',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 15,
                           color: Color.fromRGBO(24, 71, 137, 1),
-                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -265,6 +287,17 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.grey),
         ),
+        suffixIcon: label == 'Password'
+            ? IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: focusNode.hasFocus
+                      ? const Color.fromRGBO(24, 71, 137, 1)
+                      : Colors.grey,
+                ),
+                onPressed: _togglePasswordVisibility,
+              )
+            : null, // Show eye icon only for password field
       ),
       maxLength: maxLength,
       buildCounter: (_,
@@ -278,9 +311,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         }
         if (isEmail &&
             !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
-                .hasMatch(value)) {
+                .hasMatch(value.toLowerCase())) {
           return 'Please enter a valid email';
         }
+
         return null;
       },
       keyboardType: isEmail
