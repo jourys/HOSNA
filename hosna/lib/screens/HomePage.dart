@@ -1,27 +1,45 @@
 import 'package:flutter/material.dart';
+import 'profile_screen_two.dart'; 
 
 class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
+      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(100), // Increases app bar height
+        preferredSize: Size.fromHeight(100),
         child: AppBar(
           backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-          elevation: 0, // Remove shadow
-          automaticallyImplyLeading: false, // Remove back arrow
+          elevation: 0, 
+          automaticallyImplyLeading: false,
           flexibleSpace: Padding(
-            padding: EdgeInsets.only(left: 20, bottom: 20), // Move text down
+            padding: EdgeInsets.only(left: 20, bottom: 20),
             child: Align(
-              alignment: Alignment.bottomLeft, // Align text to the left
-              child: Text(
-                "Good Day, ",
-                style: TextStyle(
-                  color: Colors.white, // Make text white
-                  fontSize: 28, // Increase font size
-                  fontWeight: FontWeight.bold,
-                ),
+              alignment: Alignment.bottomLeft,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Good Day, ",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28, 
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(right: 20, bottom: 10),
+                    child: IconButton(
+                      icon: Icon(Icons.account_circle, size: 40, color: Colors.white), // profile icon
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ProfileScreenTwo()), // moving to profle page
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
