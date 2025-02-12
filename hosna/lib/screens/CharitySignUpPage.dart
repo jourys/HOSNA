@@ -57,7 +57,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     print("✅ Web3 initialized with contract address: $_contractAddress");
   }
 
-  /// 🔐 Generates a valid Ethereum private key
   String _generatePrivateKey() {
     final rng = Random.secure();
     EthPrivateKey key = EthPrivateKey.createRandom(rng);
@@ -66,7 +65,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
 
   Uint8List hashPassword(String password) {
     Uint8List fullHash = keccak256(utf8.encode(password.trim()));
-    return fullHash.sublist(0, 32); // ✅ Ensure it's exactly bytes32
+    return fullHash.sublist(0, 32); // Ensure it's exactly bytes32
   }
 
   Future<void> _registerCharity() async {
@@ -78,7 +77,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
 
-    // 🔹 Generate a new Ethereum wallet for the charity
     final String charityPrivateKey = _generatePrivateKey();
     final charityCredentials = EthPrivateKey.fromHex(charityPrivateKey);
     final charityWallet = await charityCredentials.extractAddress();
@@ -112,7 +110,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
 
     final registerCharity = contract.function('registerCharity');
 
-    // 🔍 Check if the email is already registered
+    //  Check if the email is already registered
     try {
       final existingCharity = await _web3Client.call(
         contract: contract,

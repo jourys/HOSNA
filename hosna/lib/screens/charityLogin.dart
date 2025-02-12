@@ -47,21 +47,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   }
 
   Uint8List hashEmail(String email) {
-    return keccak256(utf8.encode(email.trim())); // ❌ Removed .toLowerCase()
+    return keccak256(utf8.encode(email.trim()));
   }
 
   Uint8List hashToBytes32(String input) {
-    return keccak256(
-        utf8.encode(input.trim().toLowerCase())); // ✅ Fix for case sensitivity
+    return keccak256(utf8.encode(input.trim().toLowerCase()));
   }
 
-  /// ✅ Hash Password Before Sending to Solidity
+  /// Hash Password Before Sending to Solidity
   Uint8List hashPassword(String password) {
     return keccak256(utf8.encode(password.trim()));
   }
 
-  /// ✅ Authenticate Charity Using Web3
-  /// ✅ Authenticate Charity Using Web3
   Future<void> _authenticateCharity() async {
     print("🟢 Charity Login Button Pressed!");
 
@@ -72,7 +69,6 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     print("📌 Raw Password: $password");
 
     try {
-      // 🔹 Corrected hashing to match Solidity's keccak256(abi.encodePacked(...))
       final Uint8List hashedEmail =
           keccak256(Uint8List.fromList(utf8.encode(email)));
       final Uint8List hashedPassword =
@@ -82,7 +78,6 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       print(
           "📌 Hashed Password: ${bytesToHex(hashedPassword, include0x: true)}");
 
-      // 🔹 Deploy contract
       final contract = DeployedContract(
         ContractAbi.fromJson(
           '''[{
@@ -106,14 +101,10 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
       print("🔎 Calling smart contract for authentication...");
 
-      // 🔹 Call the smart contract function with hashed values
       final result = await _web3Client.call(
         contract: contract,
         function: loginCharityFunction,
-        params: [
-          hashedEmail,
-          hashedPassword
-        ], // ✅ Sending correct hashed values
+        params: [hashedEmail, hashedPassword], // Sending correct hashed values
       );
 
       print("📌 Contract call result: $result");
