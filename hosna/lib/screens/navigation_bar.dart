@@ -18,13 +18,17 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   String? walletAddress; // Initialize the wallet address
+  String? firstName; // Add firstName variable
+  // Pass the wallet address to all pages
+  List<Widget> get _pages {
+    return [
+      HomePage(), // Pass firstName
+      ProjectsPage(walletAddress: walletAddress ?? ''),
+      NotificationsPage(walletAddress: walletAddress ?? ''),
+      OrganizationsPage(walletAddress: walletAddress ?? ''),
+    ];
+  }
 
-  final List<Widget> _pages = [
-    HomePage(),
-    ProjectsPage(),
-    NotificationsPage(),
-    OrganizationsPage(),
-  ];
   @override
   void initState() {
     super.initState();
@@ -39,9 +43,12 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       walletAddress = savedWalletAddress ??
           widget.walletAddress; // Use saved address if available
+      firstName = prefs.getString('firstName') ??
+          "User"; // Default to "User" if not found
     });
     print(
         "Loaded Wallet Address: $walletAddress"); // Debugging the wallet address
+    print("Loaded First Name: $firstName");
   }
 
   void _onItemTapped(int index) {

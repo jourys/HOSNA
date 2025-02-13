@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class NotificationsPage extends StatelessWidget {
+  final String walletAddress;
+  const NotificationsPage({super.key, required this.walletAddress});
   @override
   Widget build(BuildContext context) {
     return Scaffold(

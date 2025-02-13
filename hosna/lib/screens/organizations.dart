@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 class OrganizationsPage extends StatelessWidget {
+  final String walletAddress;
+  const OrganizationsPage({super.key, required this.walletAddress});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

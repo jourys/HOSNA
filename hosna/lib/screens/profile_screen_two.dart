@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart'; // To make HTTP requests
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
@@ -166,7 +167,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                 child:
                     Icon(Icons.account_circle, size: 100, color: Colors.grey),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 30),
               Text('$_firstName $_lastName',
                   style: TextStyle(
                       color: Colors.blue[900],
@@ -186,7 +187,21 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Log out logic here
+                                // For example, clear user data or reset authentication state
+                                print('User logged out');
+
+                                // Set the wallet address to "none"
+                                String walletAddress = 'none';
+                                print('Wallet Address: $walletAddress');
+                                // Navigate to UsersPage after log out
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const UsersPage()),
+                                );
+                              },
                               child: Text(
                                 'Log out',
                                 style: TextStyle(
