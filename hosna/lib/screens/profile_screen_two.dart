@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/users.dart';
+import 'package:http/http.dart'; // To make HTTP requests
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart'; // لاستخدام http requests
-import 'package:flutter/services.dart';
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -11,16 +12,16 @@ class ProfileScreenTwo extends StatefulWidget {
 }
 
 class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
-  late Web3Client _web3Client;  // لتهيئة الاتصال بالبلوكشين
-  late String _donorAddress;    // عنوان المحفظة الخاصة بالمتبرع
+  late Web3Client _web3Client; // For blockchain connection
+  late String _donorAddress; // Wallet address of the donor
   String _firstName = '';
   String _lastName = '';
   String _email = '';
   String _phone = '';
-  
-  // تغيير rpcUrl والعنوان الخاص بالعقد
-  final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x79FB556a6A12568B9DceA18EE474d05437Dc5987';
+
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
+  final String contractAddress = '0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809';
 
   @override
   void initState() {
@@ -28,46 +29,102 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
     _initializeWeb3();
   }
 
-  // تهيئة الاتصال بالبلوكشين
   Future<void> _initializeWeb3() async {
     _web3Client = Web3Client(rpcUrl, Client());
-    // هنا يمكن إضافة عنوان المحفظة الخاصة بك أو أي عنوان آخر
-    _donorAddress = '0x6d910d38827AF569011b4a5AeCC0AC9a15Ff85A3';
-    await _getDonorData();
+
+    // Retrieve wallet address from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    _donorAddress = prefs.getString('walletAddress') ?? '';
+
+    if (_donorAddress.isNotEmpty) {
+      await _getDonorData();
+    } else {
+      print("No wallet address found in SharedPreferences");
+    }
   }
 
-  // استرجاع بيانات المتبرع من العقد الذكي
-  Future<void> _getDonorData() async {
-    final contract = await _loadContract();
-    final firstName = await _callGetDonorMethod(contract, 'firstName');
-    final lastName = await _callGetDonorMethod(contract, 'lastName');
-    final email = await _callGetDonorMethod(contract, 'email');
-    final phone = await _callGetDonorMethod(contract, 'phone');
-
-    setState(() {
-      _firstName = firstName;
-      _lastName = lastName;
-      _email = email;
-      _phone = phone;
-    });
-  }
-
-  // تحميل العقد الذكي
   Future<DeployedContract> _loadContract() async {
-    final abiJson = await rootBundle.loadString('assets/DonorRegistry.json');
-    final abi = ContractAbi.fromJson(abiJson, 'DonorRegistry');
-    return DeployedContract(abi, EthereumAddress.fromHex(contractAddress));
+    // Contract ABI (must match your Solidity contract)
+    final contractAbi = '''[
+      {
+        "constant": false,
+        "inputs": [
+          {"name": "_firstName", "type": "string"},
+          {"name": "_lastName", "type": "string"},
+          {"name": "_email", "type": "string"},
+          {"name": "_phone", "type": "string"},
+          {"name": "_password", "type": "string"},
+          {"name": "_wallet", "type": "address"}
+        ],
+        "name": "registerDonor",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [{"name": "_wallet", "type": "address"}],
+        "name": "getDonor",
+        "outputs": [
+          {"name": "firstName", "type": "string"},
+          {"name": "lastName", "type": "string"},
+          {"name": "email", "type": "string"},
+          {"name": "phone", "type": "string"},
+          {"name": "walletAddress", "type": "address"},
+          {"name": "registered", "type": "bool"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ]''';
+
+    final contract = DeployedContract(
+      ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
+      EthereumAddress.fromHex(contractAddress),
+    );
+
+    return contract;
   }
 
-  // استدعاء دالة من العقد الذكي للحصول على البيانات
-  Future<String> _callGetDonorMethod(DeployedContract contract, String methodName) async {
-    final function = contract.function(methodName);
-    final result = await _web3Client.call(
-      contract: contract,
-      function: function,
-      params: [EthereumAddress.fromHex(_donorAddress)],
-    );
-    return result[0] as String;
+  Future<void> _getDonorData() async {
+    try {
+      final contract = await _loadContract();
+
+      final result = await _callGetDonorMethod(contract, 'getDonor', [
+        EthereumAddress.fromHex(_donorAddress),
+      ]);
+
+      if (result != null && result.isNotEmpty) {
+        setState(() {
+          _firstName = result[0];
+          _lastName = result[1];
+          _email = result[2];
+          _phone = result[3];
+        });
+      } else {
+        print("No donor data found for wallet: $_donorAddress");
+      }
+    } catch (e) {
+      print("Error fetching donor data: $e");
+    }
+  }
+
+  Future<List<dynamic>> _callGetDonorMethod(DeployedContract contract,
+      String methodName, List<dynamic> params) async {
+    try {
+      final function = contract.function(methodName);
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: params,
+      );
+      return result;
+    } catch (e) {
+      print("Error calling contract method: $e");
+      return [];
+    }
   }
 
   @override
@@ -80,16 +137,16 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
           icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: Text('Profile',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
             onPressed: () {},
           ),
         ],
+        // Setting the height of the AppBar using preferredSize
+        toolbarHeight: 80, // Adjust the height here
       ),
       body: Container(
         color: Colors.blue[900],
@@ -97,57 +154,60 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.all(50),
           child: Column(
-            mainAxisSize: MainAxisSize.min, 
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
                 radius: 38,
-                backgroundColor: Colors.grey[200],
-                child: Icon(
-                  Icons.person_2_outlined,
-                  size: 75,
-                  color: Colors.grey,
-                ),
+                backgroundColor:
+                    Colors.transparent, // Removes the background color
+                child:
+                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
               ),
+              SizedBox(height: 30),
+              Text('$_firstName $_lastName',
+                  style: TextStyle(
+                      color: Colors.blue[900],
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
-              Text(
-                '$_firstName $_lastName',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                _email,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
-              ),
               SizedBox(height: 50),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      infoRow('Phone Number :', _phone),
-                      infoRow('Email :', _email),
+                      infoRow('Phone Number : ', _phone),
+                      infoRow('Email : ', _email),
                       SizedBox(height: 200),
                       Center(
                         child: SizedBox(
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Log out logic here
+                                // For example, clear user data or reset authentication state
+                                print('User logged out');
+
+                                // Set the wallet address to "none"
+                                String walletAddress = 'none';
+                                print('Wallet Address: $walletAddress');
+                                // Navigate to UsersPage after log out
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const UsersPage()),
+                                );
+                              },
                               child: Text(
                                 'Log out',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
@@ -169,7 +229,10 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                               onPressed: () {},
                               child: Text(
                                 'Delete Account',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20, // Increase the font size here
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red[800],
@@ -202,7 +265,10 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
           Text(
             title,
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w500, color: Colors.blue),
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.blue[900],
+            ),
           ),
           Flexible(
             child: Text(
