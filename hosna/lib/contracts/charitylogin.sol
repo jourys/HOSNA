@@ -10,31 +10,26 @@ contract CharityAuth {
         charityRegistry = CharityRegistration(_charityRegistryAddress);
     }
 
-    function loginCharity(
-        string memory _email,
-        string memory _password
-    ) external view returns (bool) {
-        // 🔹 Convert email to lowercase before hashing
-        bytes32 hashedEmail = keccak256(abi.encodePacked(_toLowerCase(_email)));
+  function loginCharity(
+    string memory _email,
+    string memory _password
+) external view returns (bool) {
+    bytes32 hashedEmail = keccak256(abi.encodePacked(_toLowerCase(_email)));
+    address charityAddress = charityRegistry.getCharityAddressByEmail(hashedEmail);
+    require(charityAddress != address(0), "Charity email not found!");
 
-        // 🔹 Retrieve stored charity address using hashed email
-        address charityAddress = charityRegistry.getCharityAddressByEmail(
-            hashedEmail
-        );
-        require(charityAddress != address(0), "Charity email not found!");
+    // ✅ Retrieve the stored hash from registration
+    bytes32 storedPasswordHash = charityRegistry.getPasswordHash(charityAddress);
+    require(storedPasswordHash != bytes32(0), "Password not set!");
 
-        // 🔹 Retrieve stored password hash
-        bytes32 storedPasswordHash = charityRegistry.getPasswordHash(
-            charityAddress
-        );
-        require(storedPasswordHash != bytes32(0), "Password not set!");
+    // ✅ Hash the provided password ONCE (No need to hash it twice!)
+    if (storedPasswordHash == keccak256(abi.encodePacked(_password))) {
+        return true;
+    } else {
+        revert("Invalid password!");
+    }
 
-        // 🔹 Hash the provided password and compare
-        bytes32 providedPasswordHash = keccak256(abi.encodePacked(_password));
-        require(
-            storedPasswordHash == providedPasswordHash,
-            "Invalid password!"
-        );
+
 
         return true;
     }
@@ -46,7 +41,7 @@ contract CharityAuth {
         return keccak256(abi.encodePacked(_toLowerCase(_email)));
     }
 
-    // Debug function to verify stored password hash
+    // ✅ Debug function to verify stored password hash
     function debugCharityPasswordHash(
         address _wallet
     ) external view returns (bytes32) {
