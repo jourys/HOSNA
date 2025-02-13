@@ -3,14 +3,21 @@ import 'package:hosna/screens/HomePage.dart';
 import 'package:hosna/screens/notificationsCenter.dart';
 import 'package:hosna/screens/organizations.dart';
 import 'package:hosna/screens/projects.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
+  final String? walletAddress; // Wallet address is now nullable
+
+  // Constructor to receive the wallet address
+  const MainScreen({super.key, this.walletAddress});
+
   @override
   _MainScreenState createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  String? walletAddress; // Initialize the wallet address
 
   final List<Widget> _pages = [
     HomePage(),
@@ -18,6 +25,24 @@ class _MainScreenState extends State<MainScreen> {
     NotificationsPage(),
     OrganizationsPage(),
   ];
+  @override
+  void initState() {
+    super.initState();
+    _loadWalletAddress(); // Load the wallet address from SharedPreferences
+  }
+
+  // Load wallet address from SharedPreferences
+  Future<void> _loadWalletAddress() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedWalletAddress =
+        prefs.getString('walletAddress'); // Retrieve saved wallet address
+    setState(() {
+      walletAddress = savedWalletAddress ??
+          widget.walletAddress; // Use saved address if available
+    });
+    print(
+        "Loaded Wallet Address: $walletAddress"); // Debugging the wallet address
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -27,6 +52,16 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (walletAddress == null) {
+      // If walletAddress is null, show a loading screen
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    print(
+        "Wallet Address: $walletAddress"); // This will print the wallet address
+
     return Scaffold(
       body: _pages[_selectedIndex], // Display the selected page
       bottomNavigationBar: BottomNavigationBar(

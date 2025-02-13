@@ -4,6 +4,7 @@ import 'package:hosna/screens/DonorResetPassword.dart';
 import 'package:hosna/screens/DonorSignup.dart';
 import 'package:hosna/screens/navigation_bar.dart';
 import 'package:http/http.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 
 class DonorLogInPage extends StatefulWidget {
@@ -33,7 +34,9 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0x79FB556a6A12568B9DceA18EE474d05437Dc5987";
+  final String _contractAddress = "0xb2351f19d785E1E7FDe3ba355e301738E0C45911";
+  final String _lookupContractAddress =
+      "0x969E1a0BB173d2eC1eABaBb1e3e651AA046fac75";
 
   @override
   void initState() {
@@ -45,54 +48,134 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   }
 
   Future<void> _authenticateUser() async {
-    print('Authentication started');
-    final contract = DeployedContract(
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email and password')),
+      );
+      return;
+    }
+
+    final email = _emailController.text.toLowerCase();
+    final password = _passwordController.text;
+
+    print(
+        'Attempting to authenticate user with email: $email and password: $password');
+
+    // Contract for donor authentication
+    final authContract = DeployedContract(
       ContractAbi.fromJson(
-          '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
-          'DonorAuth'),
-      EthereumAddress.fromHex(_contractAddress),
+        '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
+        'DonorAuth',
+      ),
+      EthereumAddress.fromHex(_contractAddress.toString()),
     );
 
-    final authenticateFunction = contract.function('loginDonor');
-// Convert email to lowercase before passing it to the smart contract
-    final email = _emailController.text.toLowerCase();
+    final authFunction = authContract.function('loginDonor');
 
     try {
-      print('Calling the contract function...');
-      final result = await _web3Client.call(
-        contract: contract,
-        function: authenticateFunction,
-        params: [email, _passwordController.text],
+      print('Calling the loginDonor function on the contract...');
+      final authResult = await _web3Client.call(
+        contract: authContract,
+        function: authFunction,
+        params: [email, password],
       );
 
-      print('Contract call result: $result');
+      print('Auth result: $authResult');
 
-      // Checking the result of the contract call (boolean)
-      if (result.isNotEmpty && result[0] == true) {
-        print('Login successful');
+      if (authResult.isNotEmpty && authResult[0] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
-        Future.delayed(Duration(seconds: 2), () {
-          // Navigate to MainScreen after successful login
+        print('login successfully');
+        // Second contract for wallet lookup
+        final lookupContract = DeployedContract(
+          ContractAbi.fromJson(
+            '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
+            'DonorLookup',
+          ),
+          EthereumAddress.fromHex(_lookupContractAddress.toString()),
+        );
+
+        final lookupFunction =
+            lookupContract.function('getWalletAddressByEmail');
+
+        print('Calling the getWalletAddressByEmail function...');
+        final walletResult = await _web3Client.call(
+          contract: lookupContract,
+          function: lookupFunction,
+          params: [email],
+        );
+
+        print('Wallet result: $walletResult');
+
+        if (walletResult.isNotEmpty &&
+            walletResult[0] !=
+                EthereumAddress.fromHex(
+                    '0x0000000000000000000000000000000000000000')) {
+          final walletAddress = walletResult[0].toString();
+          print('Wallet address found: $walletAddress');
+          if (walletAddress != null && walletAddress.isNotEmpty) {
+            try {
+              // Save the wallet address to SharedPreferences
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+
+              bool isSaved =
+                  await prefs.setString('walletAddress', walletAddress);
+
+              if (isSaved) {
+                print('Wallet address saved to SharedPreferences');
+              } else {
+                print('Failed to save wallet address to SharedPreferences');
+              }
+            } catch (e) {
+              print('Error saving wallet address: $e');
+            }
+          } else {
+            print('Wallet address is null or empty');
+          }
+
+          // Navigate to MainScreen with the wallet address
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => MainScreen()),
+            MaterialPageRoute(
+              builder: (context) => MainScreen(walletAddress: walletAddress),
+            ),
           );
-        });
-        // Navigate to the donor's dashboard or home page here if needed
+        } else {
+          print('Wallet address not found or invalid address');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Wallet address not found!')),
+          );
+        }
       } else {
-        print('Invalid credentials: result is empty or false');
+        print('Invalid credentials');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid credentials!')),
         );
       }
     } catch (e) {
-      print('Error in authentication: $e');
+      print('Error during authentication: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An error occurred!')),
+        SnackBar(content: Text('An error occurred: $e')),
       );
     }
+  }
+
+// Sample method to get Ethereum address (replace with actual logic)
+  Future<String> _getEthereumAddressForEmail(String email) async {
+    // If the email-to-wallet mapping is stored in a smart contract or database,
+    // you can fetch the corresponding Ethereum address for the given email.
+
+    // Assuming you fetch it from a database or API:
+    String ethereumAddress =
+        ''; // Replace with actual logic to fetch the address
+
+    if (email == 'z@z.com') {
+      ethereumAddress =
+          '0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809'; // Example address
+    }
+
+    return ethereumAddress;
   }
 
   @override
@@ -330,5 +413,58 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
               RegExp(r'[a-zA-Z]')) // Allow only letters for name fields
       ],
     );
+  }
+}
+
+class DonorService {
+  final Web3Client _client;
+  final DeployedContract _contract;
+
+  DonorService(String rpcUrl, String contractAddress)
+      : _client = Web3Client(rpcUrl, Client()),
+        _contract = DeployedContract(
+          ContractAbi.fromJson(
+            '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_wallet","type":"address"}],"name":"getDonor","outputs":[{"name":"firstName","type":"string"},{"name":"lastName","type":"string"},{"name":"email","type":"string"},{"name":"phone","type":"string"},{"name":"walletAddress","type":"address"},{"name":"registered","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_wallet","type":"address"}],"name":"getPasswordHash","outputs":[{"name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"}]',
+            'DonorAuth',
+          ),
+          EthereumAddress.fromHex(contractAddress),
+        );
+
+  // Method to authenticate donor
+  Future<bool> authenticateDonor(String email, String password) async {
+    final loginFunction = _contract.function('loginDonor');
+
+    try {
+      final result = await _client.call(
+        contract: _contract,
+        function: loginFunction,
+        params: [email, password],
+      );
+
+      return result.isNotEmpty && result[0] == true;
+    } catch (e) {
+      print('Error in authentication: $e');
+      return false;
+    }
+  }
+
+  // Method to get the donor's wallet address
+  Future<String> getDonorWalletAddress(String email) async {
+    final getDonorFunction = _contract.function('getDonor');
+
+    try {
+      final result = await _client.call(
+        contract: _contract,
+        function: getDonorFunction,
+        params: [email],
+      );
+
+      // Extract wallet address from the result
+      String walletAddress = result[4] as String;
+      return walletAddress.toString();
+    } catch (e) {
+      print('Error fetching donor wallet address: $e');
+      return '';
+    }
   }
 }
