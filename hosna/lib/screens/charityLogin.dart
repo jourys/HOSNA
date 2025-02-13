@@ -23,7 +23,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
-  final String _contractAddress = "0xDebd2Ef9D86297d7dA4923AB7A92487B56E5b566";
+  final String _contractAddress = "0x84FC01428c17B3367A2c7E100Bd6C34760621Ad5";
 
   @override
   void initState() {
@@ -69,29 +69,20 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     print("📌 Raw Password: $password");
 
     try {
-      final Uint8List hashedEmail =
-          keccak256(Uint8List.fromList(utf8.encode(email)));
-      final Uint8List hashedPassword =
-          keccak256(Uint8List.fromList(utf8.encode(password)));
-
-      print("📌 Hashed Email: ${bytesToHex(hashedEmail, include0x: true)}");
-      print(
-          "📌 Hashed Password: ${bytesToHex(hashedPassword, include0x: true)}");
-
       final contract = DeployedContract(
         ContractAbi.fromJson(
           '''[{
-          "constant": true,
-          "inputs": [
-            {"name": "_email", "type": "bytes32"}, 
-            {"name": "_password", "type": "bytes32"}
-          ],
-          "name": "loginCharity",
-          "outputs": [{"name": "", "type": "bool"}],
-          "payable": false,
-          "stateMutability": "view",
-          "type": "function"
-        }]''',
+      "constant": true,
+      "inputs": [
+        {"name": "_email", "type": "string"},  
+        {"name": "_password", "type": "string"}  
+      ],
+      "name": "loginCharity",
+      "outputs": [{"name": "", "type": "bool"}],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }]''',
           'CharityAuth',
         ),
         EthereumAddress.fromHex(_contractAddress),
@@ -99,12 +90,10 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
       final loginCharityFunction = contract.function('loginCharity');
 
-      print("🔎 Calling smart contract for authentication...");
-
       final result = await _web3Client.call(
         contract: contract,
         function: loginCharityFunction,
-        params: [hashedEmail, hashedPassword], // Sending correct hashed values
+        params: [email.toLowerCase(), password], // ✅ Send as plain text
       );
 
       print("📌 Contract call result: $result");

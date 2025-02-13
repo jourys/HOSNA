@@ -81,6 +81,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final charityCredentials = EthPrivateKey.fromHex(charityPrivateKey);
     final charityWallet = await charityCredentials.extractAddress();
     print("🔹 Charity Wallet Address: $charityWallet");
+    print("🔹 Charity Wallet private Address: $charityPrivateKey");
 
     final contract = DeployedContract(
       ContractAbi.fromJson(
