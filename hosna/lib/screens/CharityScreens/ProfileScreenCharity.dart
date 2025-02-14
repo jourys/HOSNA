@@ -91,9 +91,9 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
           _phone = result[2];
           _licenseNumber = result[3];
           _organizationCity = result[4];
-          _organizationURL = result[5];
-          _establishmentDate = result[6];
-          _description = result[7];
+          _description = result[5]; //_description
+          _organizationURL = result[6]; //_organizationURL
+          _establishmentDate = result[7]; //_establishmentDate
         });
       } else {
         print("No charity data found for wallet: $_charityAddress");
