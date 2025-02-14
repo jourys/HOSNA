@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/CharityScreens/ProfileScreenCharity.dart';
 
 class CharityEmployeeHomePage extends StatefulWidget {
   const CharityEmployeeHomePage({super.key});
@@ -66,11 +67,12 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                         icon: const Icon(Icons.account_circle,
                             size: 85, color: Colors.white),
                         onPressed: () {
-                          // Navigator.push(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //       builder: (context) => EmployeeProfileScreen()),
-                          // );
+                      
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ProfileScreenCharity()),
+                          );
                         },
                       ),
                     ),
