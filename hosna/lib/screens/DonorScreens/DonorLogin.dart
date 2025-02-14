@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hosna/screens/DonorResetPassword.dart';
-import 'package:hosna/screens/DonorSignup.dart';
-import 'package:hosna/screens/navigation_bar.dart';
+import 'package:hosna/screens/DonorScreens/DonorNavBar.dart';
+import 'package:hosna/screens/DonorScreens/DonorResetPassword.dart';
+import 'package:hosna/screens/DonorScreens/DonorSignup.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';

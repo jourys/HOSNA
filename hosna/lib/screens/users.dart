@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityEmployeeRegistration.dart';
-import 'package:hosna/screens/DonorFirstPage.dart';
+import 'package:hosna/screens/DonorScreens/DonorFirstPage.dart';
 
 class UsersPage extends StatelessWidget {
   const UsersPage({super.key});

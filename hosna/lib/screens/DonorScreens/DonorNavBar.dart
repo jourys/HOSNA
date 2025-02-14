@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hosna/screens/HomePage.dart';
-import 'package:hosna/screens/notificationsCenter.dart';
+import 'package:hosna/screens/DonorScreens/DonorHomePage.dart';
+import 'package:hosna/screens/DonorScreens/DonorNotificationsCenter.dart';
 import 'package:hosna/screens/organizations.dart';
 import 'package:hosna/screens/projects.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hosna/screens/charityLogin.dart';
-import 'package:hosna/screens/CharitySignUpPage.dart';
+import 'package:hosna/screens/CharityScreens/CharitySignUpPage.dart';
+import 'package:hosna/screens/CharityScreens/charityLogin.dart';
 
 class Charityemployeeregistration extends StatelessWidget {
   const Charityemployeeregistration({super.key});

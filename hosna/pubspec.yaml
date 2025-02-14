@@ -76,6 +76,7 @@ flutter:
   assets:
     - assets/HOSNA.jpg
     - assets/Projects.png
+    - assets/BlueProjects.png
     - assets/api.json   
 
 flutter_native_splash:

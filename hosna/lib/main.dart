@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+
+import 'screens/CharityScreens/CharitySignUpPage.dart'; // Import the missing CharityHome screen
+import 'screens/CharityScreens/charityHome.dart'; // Import the Charity Sign-Up screen
 import 'screens/splash.dart';
-import 'screens/CharitySignUpPage.dart'; // Import the missing CharityHome screen
-import 'screens/charityHome.dart'; // Import the Charity Sign-Up screen
 
 void main() {
   runApp(const MyApp());
