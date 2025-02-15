@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CharitySignUpPage extends StatefulWidget {
   const CharitySignUpPage({super.key});
@@ -63,6 +64,15 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     return bytesToHex(key.privateKey);
   }
 
+  Future<void> saveCharityCredentials(
+      String walletAddress, String privateKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('walletAddress', walletAddress);
+    await prefs.setString('privateKey', privateKey);
+    print('✅ Saved walletAddress: $walletAddress');
+    print('✅ Saved privateKey: $privateKey');
+  }
+
   Uint8List hashPassword(String password) {
     Uint8List fullHash = keccak256(utf8.encode(password.trim()));
     return fullHash.sublist(0, 32); // Ensure it's exactly bytes32
@@ -82,6 +92,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final charityWallet = await charityCredentials.extractAddress();
     print("🔹 Charity Wallet Address: $charityWallet");
     print("🔹 Charity Wallet private Address: $charityPrivateKey");
+    await saveCharityCredentials(charityWallet.toString(), charityPrivateKey);
 
     final contract = DeployedContract(
       ContractAbi.fromJson(

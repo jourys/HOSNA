@@ -3,7 +3,7 @@ import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
 import 'package:hosna/screens/CharityScreens/PostProject.dart';
 import 'package:hosna/screens/organizations.dart';
-import 'package:hosna/screens/projects.dart';
+import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CharityMainScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
   List<Widget> get _pages {
     return [
       CharityEmployeeHomePage(),
-      ProjectsPage(walletAddress: walletAddress ?? ''),
+      BrowseProjects(walletAddress: walletAddress ?? ''),
       CharityNotificationsPage(),
       OrganizationsPage(walletAddress: walletAddress ?? ''),
     ];
@@ -54,7 +54,7 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
       context,
       MaterialPageRoute(
           builder: (context) =>
-              PostProjectPage()), // Navigate to PostProjectPage
+              PostProject()), // Navigate to PostProjectPage
     );
   }
 

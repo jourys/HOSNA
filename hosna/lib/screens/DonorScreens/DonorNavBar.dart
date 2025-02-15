@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hosna/screens/DonorScreens/DonorHomePage.dart';
 import 'package:hosna/screens/DonorScreens/DonorNotificationsCenter.dart';
 import 'package:hosna/screens/organizations.dart';
-import 'package:hosna/screens/projects.dart';
+import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   List<Widget> get _pages {
     return [
       HomePage(), // Pass firstName
-      ProjectsPage(walletAddress: walletAddress ?? ''),
+      BrowseProjects(walletAddress: walletAddress ?? ''),
       NotificationsPage(walletAddress: walletAddress ?? ''),
       OrganizationsPage(walletAddress: walletAddress ?? ''),
     ];

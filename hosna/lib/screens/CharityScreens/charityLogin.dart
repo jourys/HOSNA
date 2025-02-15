@@ -7,6 +7,7 @@ import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 
 class CharityLogInPage extends StatefulWidget {
   const CharityLogInPage({super.key});
@@ -130,13 +131,21 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
             if (walletAddress.isNotEmpty) {
               try {
-                // Save the wallet address to SharedPreferences
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                bool isSaved =
-                    await prefs.setString('walletAddress', walletAddress);
+                final blockchainService = BlockchainService();
+                final credentials =
+                    await blockchainService.getCharityCredentials();
+                final privateKey = credentials['privateKey'];
+                if (privateKey != null) {
+                  // Save the wallet address to SharedPreferences
+                  SharedPreferences prefs =
+                      await SharedPreferences.getInstance();
+                  // bool isSaved =
+                  await prefs.setString('walletAddress', walletAddress);
+                  await prefs.setString('privatekey', privateKey);
 
-                if (isSaved) {
-                  print('Wallet address saved to SharedPreferences');
+                  // if (isSaved) {
+                  print(
+                      'Wallet address and private key saved to SharedPreferences');
                 } else {
                   print('Failed to save wallet address to SharedPreferences');
                 }
