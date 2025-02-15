@@ -1,6 +1,3 @@
 {
-    "cmake.ignoreCMakeListsMissing": true,
-    "cSpell.words": [
-        "walletconnect"
-    ]
+    "cmake.ignoreCMakeListsMissing": true
 }

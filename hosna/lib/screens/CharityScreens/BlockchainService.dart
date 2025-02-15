@@ -1,12 +1,13 @@
+import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:walletconnect_flutter_v2';
-import 'package:web3dart/web3dart.dart';
+import 'dart:convert';
 
 class BlockchainService {
   final String rpcUrl =
-      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x25f30375f43dce255c8261ab6baf64f4ab62a87c';
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac'; 
+  final String contractAddress =
+      '0x25f30375f43dce255c8261ab6baf64f4ab62a87c'; 
 
   late Web3Client _web3Client;
   late EthPrivateKey _credentials;
