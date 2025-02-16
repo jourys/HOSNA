@@ -39,7 +39,9 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose(); // Dispose of the email focus node
     super.dispose();
+    _passwordFocus.dispose();
   }
 
   /// ✅ Converts Uint8List to Hex String (For Solidity)
@@ -193,29 +195,128 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     }
   }
 
+  bool _obscureText = true; // Add this variable at the top of your class
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _obscureText = !_obscureText;
+    });
+  }
+
+  final FocusNode _passwordFocus = FocusNode();
+
+  final FocusNode _emailFocus = FocusNode();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Charity Login')),
+      appBar: AppBar(
+        title: const Text(
+          'Log In',
+          style: TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(24, 71, 137, 1),
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(
+          color: Color.fromRGBO(24, 71, 137, 1),
+        ),
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start, // Align content to the left
+
             children: [
+              Text(
+                'Welcome Back',
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(24, 71, 137, 1),
+                ),
+              ),
+              SizedBox(height: 80), // Space after title
+
               TextFormField(
                 controller: _emailController,
-                decoration: InputDecoration(labelText: "Email"),
+                focusNode: _emailFocus,
+                decoration: InputDecoration(
+                  labelText: 'Email Address',
+                  labelStyle: TextStyle(
+                    color: _emailFocus.hasFocus
+                        ? Color.fromRGBO(24, 71, 137, 1)
+                        : Colors.grey,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+                  ),
+                ),
               ),
+              SizedBox(height: 30), // Space between fields
+
               TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(labelText: "Password"),
-                obscureText: true,
+                focusNode: _passwordFocus,
+                obscureText: _obscureText,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: TextStyle(
+                    color: _passwordFocus.hasFocus
+                        ? Color.fromRGBO(24, 71, 137, 1)
+                        : Colors.grey,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: _passwordFocus.hasFocus
+                          ? Color.fromRGBO(24, 71, 137, 1)
+                          : Colors.grey,
+                    ),
+                    onPressed: _togglePasswordVisibility,
+                  ),
+                ),
               ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => _authenticateCharity(),
-                child: Text('Log In'),
+              SizedBox(height: 300), // Large space before the button
+
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => _authenticateCharity(),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(300, 50),
+                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+                    ),
+                  ),
+                  child: Text('Log In',
+                      style: TextStyle(fontSize: 20, color: Colors.white)),
+                ),
               ),
             ],
           ),

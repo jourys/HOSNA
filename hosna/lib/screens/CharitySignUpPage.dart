@@ -3,12 +3,9 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
-import 'package:hosna/screens/CharityScreens/charityLogin.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class CharitySignUpPage extends StatefulWidget {
   const CharitySignUpPage({super.key});
@@ -66,15 +63,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     return bytesToHex(key.privateKey);
   }
 
-  Future<void> saveCharityCredentials(
-      String walletAddress, String privateKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('walletAddress', walletAddress);
-    await prefs.setString('privateKey', privateKey);
-    print('✅ Saved walletAddress: $walletAddress');
-    print('✅ Saved privateKey: $privateKey');
-  }
-
   Uint8List hashPassword(String password) {
     Uint8List fullHash = keccak256(utf8.encode(password.trim()));
     return fullHash.sublist(0, 32); // Ensure it's exactly bytes32
@@ -94,7 +82,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final charityWallet = await charityCredentials.extractAddress();
     print("🔹 Charity Wallet Address: $charityWallet");
     print("🔹 Charity Wallet private Address: $charityPrivateKey");
-    await saveCharityCredentials(charityWallet.toString(), charityPrivateKey);
 
     final contract = DeployedContract(
       ContractAbi.fromJson(
@@ -173,15 +160,10 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       print("✅ Transaction successful! Hash: $result");
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 Account created successfully!')),
+        const SnackBar(content: Text('🎉 Charity registered successfully!')),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const CharityLogInPage(),
-        ),
-      );
+      Navigator.pushReplacementNamed(context, '/charityHome');
     } catch (e) {
       print("❌ Error registering charity: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -237,20 +219,10 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Sign Up',
-          style: TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.bold,
-            color: Color.fromRGBO(24, 71, 137, 1),
-          ),
-        ),
+        title: const Text('Sign Up'),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Color.fromRGBO(24, 71, 137, 1), // Updated arrow color
-        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -258,17 +230,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome to us',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromRGBO(24, 71, 137, 1),
-                  ),
-                ),
-                const SizedBox(height: 50),
                 _buildTextField(
                     _organizationNameController, 'Organization Name',
                     isRequired: true),
@@ -299,7 +261,8 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                     _organizationDescriptionController, 'Description',
                     isRequired: true, isDescription: true),
                 const SizedBox(height: 30),
-                _buildTextField(_organizationURLController, 'Website'),
+                _buildTextField(_organizationURLController, 'Website',
+                    isRequired: true),
                 const SizedBox(height: 30),
                 TextFormField(
                   controller: _establishmentDateController,
@@ -329,88 +292,28 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                   },
                 ),
                 CheckboxListTile(
-                  title: Text(
-                    'By creating an account, you agree to our Terms and Conditions',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _isAgreedToTerms
-                          ? const Color.fromRGBO(24, 71, 137, 1)
-                          : const Color.fromARGB(255, 102, 100, 100),
-                    ),
-                  ),
+                  title: const Text('Agree to Terms and Conditions'),
                   value: _isAgreedToTerms,
                   onChanged: (bool? value) {
                     setState(() {
                       _isAgreedToTerms = value ?? false;
                     });
                   },
-                  controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: const Color.fromRGBO(24, 71, 137, 1),
                 ),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState?.validate() ?? false) {
-                        if (_isAgreedToTerms) {
-                          _registerCharity();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Please agree to the terms and conditions')),
-                          );
-                        }
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState?.validate() ?? false) {
+                      if (_isAgreedToTerms) {
+                        _registerCharity();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Agree to Terms')),
+                        );
                       }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(300, 50),
-                      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Sign Up',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                    }
+                  },
+                  child: const Text('Sign Up'),
                 ),
-                const SizedBox(height: 25),
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const CharityLogInPage()),
-                      );
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Already have an account? ',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color.fromARGB(255, 102, 100, 100),
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text: 'Log In',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: const Color.fromRGBO(24, 71, 137, 1),
-                              fontWeight:
-                                  FontWeight.bold, // Blue color for "Log In"
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
               ],
             ),
           ),
@@ -419,84 +322,100 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     );
   }
 
-  bool _isConfirmPasswordVisible =
-      false; // New variable for confirm password visibility
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    bool obscureText = false,
+    bool isEmail = false,
+    bool isPhone = false,
+    bool isRequired = false,
+    bool isPassword = false,
+    bool isConfirmPassword = false,
+    bool isCity = false,
+    bool isDescription = false,
+    String? hintText,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          vertical: 15.0), // Add spacing between fields
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color:
+                const Color.fromRGBO(24, 71, 137, 1), // Consistent label color
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.grey),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.grey),
+          ),
+          hintText: hintText,
+          suffixIcon: isPassword || isConfirmPassword
+              ? IconButton(
+                  icon: Icon(
+                    obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscureText = !obscureText;
+                    });
+                  },
+                )
+              : null,
+        ),
+        keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(250),
+          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+          if (isPhone) FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*$')),
+        ],
+        validator: (value) {
+          if (isRequired && (value == null || value.isEmpty)) {
+            return 'Required';
+          }
+          if (isEmail &&
+              !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
+            return 'Enter a valid email';
+          }
+          if (isPhone && !RegExp(r'^05\d{8}$').hasMatch(value!)) {
+            return 'Invalid phone number';
+          }
+          if (isPassword &&
+              !RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$')
+                  .hasMatch(value!)) {
+            return 'Password must be at least 8 characters, include an uppercase letter, lowercase, a number, and a special character';
+          }
+          if (isConfirmPassword && value != _passwordController.text) {
+            return 'Passwords do not match';
+          }
+          if (isCity && !RegExp(r'^[a-zA-Z ]{1,20}$').hasMatch(value!)) {
+            return 'City must contain only letters';
+          }
 
-  bool _isPasswordVisible = false;
-  Widget _buildTextField(TextEditingController controller, String label,
-      {bool obscureText = false,
-      bool isEmail = false,
-      bool isPhone = false,
-      bool isRequired = false,
-      bool isPassword = false,
-      bool isConfirmPassword = false,
-      bool isCity = false,
-      bool isDescription = false,
-      String? hintText}) {
-    return TextFormField(
-      controller: controller,
-      obscureText: (isPassword && !_isPasswordVisible) ||
-          (isConfirmPassword && !_isConfirmPasswordVisible),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        border: OutlineInputBorder(),
-        suffixIcon: (isPassword ||
-                isConfirmPassword) // Show icon for both fields
-            ? IconButton(
-                icon: Icon(
-                  (isPassword && _isPasswordVisible) ||
-                          (isConfirmPassword && _isConfirmPasswordVisible)
-                      ? Icons.visibility
-                      : Icons.visibility_off,
-                  color: Colors.grey,
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (isPassword) {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    } else if (isConfirmPassword) {
-                      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                    }
-                  });
-                },
-              )
-            : null,
+          if (isDescription && value!.length < 30) {
+            return 'Description must be at least 30 characters';
+          }
+          if (label == 'Website' &&
+              !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
+                  .hasMatch(value!)) {
+            return 'Enter a valid website URL';
+          }
+          return null;
+        },
       ),
-      validator: (value) {
-        if (isRequired && (value == null || value.isEmpty)) {
-          return 'Required';
-        }
-        if (isEmail &&
-            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
-          return 'Enter a valid email';
-        }
-        if (isPhone && !RegExp(r'^05\d{8}$').hasMatch(value!)) {
-          return 'Invalid phone number';
-        }
-        if (isPassword &&
-            !RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$')
-                .hasMatch(value!)) {
-          return 'Password must be at least 8 characters, include an uppercase letter, lowercase, a number, and a special character';
-        }
-        if (isConfirmPassword && value != _passwordController.text) {
-          return 'Passwords do not match';
-        }
-        if (isCity && !RegExp(r'^[a-zA-Z ]{1,20}$').hasMatch(value!)) {
-          return 'City must contain only letters';
-        }
-
-        if (isDescription && value!.length < 30) {
-          return 'Description must be at least 30 characters';
-        }
-        if (label == 'Website' &&
-            value!.isNotEmpty && // ✅ Check if not empty
-            !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
-                .hasMatch(value!)) {
-          return 'Enter a valid website URL';
-        }
-        return null;
-      },
     );
   }
 }
