@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/CharityScreens/_EditProfileScreenState.dart';
 import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,8 +24,9 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   String _establishmentDate = '';
   String _description = '';
 
-  final String rpcUrl = 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xc5A97194e3A6c4524D74D8872C91BbacfBd198E1';
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
+  final String contractAddress = '0xAf1Cf3e12cB23e54a043Dd829bf45Df8acC8Fc9f';
 
   @override
   void initState() {
@@ -35,15 +37,17 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   Future<void> _initializeWeb3() async {
     _web3Client = Web3Client(rpcUrl, Client());
 
-    // Retrieve wallet address from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     _charityAddress = prefs.getString('walletAddress') ?? '';
+    print(
+        "🟢 Retrieved Wallet Address from SharedPreferences: $_charityAddress");
 
-    if (_charityAddress.isNotEmpty) {
-      await _getCharityData();
-    } else {
-      print("No wallet address found for the charity.");
+    if (_charityAddress.isEmpty || _charityAddress == "none") {
+      print("❌ Wallet address is invalid or missing. Please log in again.");
+      return;
     }
+
+    await _getCharityData();
   }
 
   Future<DeployedContract> _loadContract() async {
@@ -80,31 +84,35 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     try {
       final contract = await _loadContract();
 
+      print("🔹 Fetching data for wallet: $_charityAddress");
+
       final result = await _callGetCharityMethod(contract, 'getCharity', [
         EthereumAddress.fromHex(_charityAddress),
       ]);
 
+      print("📌 Raw Result: $result");
+
       if (result != null && result.isNotEmpty) {
         setState(() {
-          _organizationName = result[0];
-          _email = result[1];
-          _phone = result[2];
-          _licenseNumber = result[3];
-          _organizationCity = result[4];
-          _description = result[5]; //_description
-          _organizationURL = result[6]; //_organizationURL
-          _establishmentDate = result[7]; //_establishmentDate
+          _organizationName = result[0].toString();
+          _email = result[1].toString();
+          _phone = result[2].toString();
+          _licenseNumber = result[3].toString();
+          _organizationCity = result[4].toString();
+          _description = result[5].toString();
+          _organizationURL = result[6].toString();
+          _establishmentDate = result[7].toString();
         });
       } else {
-        print("No charity data found for wallet: $_charityAddress");
+        print("❌ No charity data found for wallet: $_charityAddress");
       }
     } catch (e) {
-      print("Error fetching charity data: $e");
+      print("❌ Error fetching charity data: $e");
     }
   }
 
-  Future<List<dynamic>> _callGetCharityMethod(
-      DeployedContract contract, String methodName, List<dynamic> params) async {
+  Future<List<dynamic>> _callGetCharityMethod(DeployedContract contract,
+      String methodName, List<dynamic> params) async {
     try {
       final function = contract.function(methodName);
       final result = await _web3Client.call(
@@ -134,7 +142,28 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
-            onPressed: () {},
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(
+                    organizationName: _organizationName,
+                    email: _email,
+                    phone: _phone,
+                    licenseNumber: _licenseNumber,
+                    organizationCity: _organizationCity,
+                    organizationURL: _organizationURL,
+                    establishmentDate: _establishmentDate,
+                    description: _description,
+                  ),
+                ),
+              );
+
+              if (result == true) {
+                print("🔄 Refreshing profile after edit...");
+                _getCharityData(); // Reload the updated data
+              }
+            },
           ),
         ],
       ),
@@ -153,7 +182,8 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
               CircleAvatar(
                 radius: 38,
                 backgroundColor: Colors.transparent,
-                child: Icon(Icons.account_circle, size: 100, color: Colors.grey),
+                child:
+                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
               ),
               SizedBox(height: 30),
               Text(_organizationName,
@@ -203,9 +233,10 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                   backgroundColor: Colors.white,
                                   foregroundColor: Colors.blue[900],
                                   shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        color: Colors.blue[900]!),
-                                      borderRadius: BorderRadius.all(Radius.circular(24)))),
+                                      side:
+                                          BorderSide(color: Colors.blue[900]!),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(24)))),
                             )),
                       ),
                       SizedBox(height: 20),
@@ -226,9 +257,9 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                   backgroundColor: Colors.red[800],
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        color: Colors.red[900]!),
-                                      borderRadius: BorderRadius.all(Radius.circular(24)))),
+                                      side: BorderSide(color: Colors.red[900]!),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(24)))),
                             )),
                       )
                     ],

@@ -2,12 +2,12 @@ import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:web3dart/credentials.dart';
 
 class BlockchainService {
   final String rpcUrl =
-      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac'; 
-  final String contractAddress =
-      '0x25f30375f43dce255c8261ab6baf64f4ab62a87c'; 
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
+  final String contractAddress = '0x25f30375f43dce255c8261ab6baf64f4ab62a87c';
 
   late Web3Client _web3Client;
   late EthPrivateKey _credentials;
@@ -268,11 +268,59 @@ class BlockchainService {
     _web3Client = Web3Client(rpcUrl, http.Client());
   }
 
+  Future<void> verifyWalletBalance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress = prefs.getString('walletAddress');
+
+    if (walletAddress == null || walletAddress.isEmpty) {
+      print("❌ No wallet address found!");
+      return;
+    }
+
+    try {
+      EthereumAddress address = EthereumAddress.fromHex(walletAddress);
+      EtherAmount balance = await _web3Client.getBalance(address);
+      print(
+          "💰 Wallet Balance Verified: ${balance.getValueInUnit(EtherUnit.ether)} ETH");
+    } catch (e) {
+      print("❌ Error fetching balance: $e");
+    }
+  }
+
+  Future<void> checkBalance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress = prefs.getString('walletAddress');
+
+    if (walletAddress == null || walletAddress.isEmpty) {
+      print("❌ No wallet address found!");
+      return;
+    }
+
+    try {
+      EthereumAddress address = EthereumAddress.fromHex(walletAddress);
+      EtherAmount balance = await _web3Client.getBalance(address);
+      print(
+          "💰 Wallet Balance: ${balance.getValueInUnit(EtherUnit.ether)} ETH");
+    } catch (e) {
+      print("❌ Error fetching balance: $e");
+    }
+  }
+
   Future<Map<String, String?>> getCharityCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    final privateKey = prefs.getString('privateKey');
+    final walletAddress = prefs.getString('walletAddress');
+
+    if (privateKey == null || walletAddress == null) {
+      print("❌ Private Key or Wallet Address Not Found in SharedPreferences!");
+    } else {
+      print("✅ Retrieved Private Key: $privateKey");
+      print("✅ Retrieved Wallet Address: $walletAddress");
+    }
+
     return {
-      'privateKey': prefs.getString('privateKey'),
-      'walletAddress': prefs.getString('walletAddress'),
+      'privateKey': privateKey,
+      'walletAddress': walletAddress,
     };
   }
 
@@ -336,6 +384,26 @@ class BlockchainService {
       print("✅ Transaction sent. Hash: $transactionHash");
     } catch (e) {
       print("❌ Error posting project: $e");
+    }
+  }
+
+  Future<String> getWalletAddressFromPrivateKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final privateKey = prefs.getString('privateKey');
+
+    if (privateKey == null || privateKey.isEmpty) {
+      print("❌ Private key not found in SharedPreferences.");
+      return "";
+    }
+
+    try {
+      final credentials = EthPrivateKey.fromHex(privateKey);
+      final walletAddress = credentials.address.hex;
+      print("✅ Wallet derived from private key: $walletAddress");
+      return walletAddress;
+    } catch (e) {
+      print("❌ Error deriving wallet address: $e");
+      return "";
     }
   }
 

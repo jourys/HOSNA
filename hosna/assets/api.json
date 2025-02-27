@@ -1,36 +1,18 @@
-[{"inputs":[{"internalType":"address","name":"_adminWallet","type":"address"}],
-"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[
-    {"indexed":true,"internalType":"address","name":"wallet","type":"address"},
-    {"indexed":false,"internalType":"string","name":"name","type":"string"},
-    {"indexed":false,"internalType":"string","name":"email","type":"string"}],
-    "name":"CharityRegistered","type":"event"},{"inputs":[],"name":"adminWallet","outputs":[
-    {"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[
-    {"internalType":"address","name":"","type":"address"}],"name":"charities","outputs":[
-    {"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"email","type":"string"},
-    {"internalType":"string","name":"phone","type":"string"},
-    {"internalType":"string","name":"licenseNumber","type":"string"},
-    {"internalType":"string","name":"city","type":"string"},
-    {"internalType":"string","name":"description","type":"string"},
-    {"internalType":"string","name":"website","type":"string"},
-    {"internalType":"string","name":"establishmentDate","type":"string"},
-    {"internalType":"address","name":"wallet","type":"address"},
-    {"internalType":"bool","name":"registered","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[
-    {"internalType":"string","name":"","type":"string"}],"name":"emailToAddress","outputs":[
-    {"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[
-    {"internalType":"address","name":"_wallet","type":"address"}], "name":"getCharity","outputs":[
-    {"components":[{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"email","type":"string"},
-    {"internalType":"string","name":"phone","type":"string"},{"internalType":"string","name":"licenseNumber","type":"string"},
-{"internalType":"string","name":"city","type":"string"},
-{"internalType":"string","name":"description","type":"string"},
-{"internalType":"string","name":"website","type":"string"},
-{"internalType":"string","name":"establishmentDate","type":"string"},{"internalType":"address","name":"wallet","type":"address"},
-{"internalType":"bool","name":"registered","type":"bool"}],
-"internalType":"struct CharityRegistration.Charity","name":"","type":"tuple"}],
-"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"","type":"string"}],
-"name":"phoneToAddress","outputs":[{"internalType":"address","name":"","type":"address"}],
-"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"_name","type":"string"},
-{"internalType":"string","name":"_email","type":"string"},{"internalType":"string","name":"_phone","type":"string"},
-{"internalType":"string","name":"_licenseNumber","type":"string"},{"internalType":"string","name":"_city","type":"string"},
-{"internalType":"string","name":"_description","type":"string"},{"internalType":"string","name":"_website","type":"string"},
-{"internalType":"string","name":"_establishmentDate","type":"string"},{"internalType":"address","name":"_wallet","type":"address"}
-],"name":"registerCharity","outputs":[],"stateMutability":"nonpayable","type":"function"}]
+{
+    "inputs": [
+      { "internalType": "address", "name": "_wallet", "type": "address" },
+      { "internalType": "string", "name": "_name", "type": "string" },
+      { "internalType": "string", "name": "_email", "type": "string" },
+      { "internalType": "string", "name": "_phone", "type": "string" },
+      { "internalType": "string", "name": "_licenseNumber", "type": "string" },
+      { "internalType": "string", "name": "_city", "type": "string" },
+      { "internalType": "string", "name": "_description", "type": "string" },
+      { "internalType": "string", "name": "_website", "type": "string" },
+      { "internalType": "string", "name": "_establishmentDate", "type": "string" }
+    ],
+    "name": "updateCharity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+  

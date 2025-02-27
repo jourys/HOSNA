@@ -24,9 +24,9 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
-  final String _contractAddress = "0xD3d7bBa269c92cb694ca27B2E7C3b6FF26b1178E";
+  final String _contractAddress = "0x318793324B8852a376c0E6e718eDB247B4616cF2";
   final String _lookupContractAddress =
-      "0x798746E48755909Df18C7Fbb9486290871FB054d";
+      "0xfb3eE062D7623882433c8c734b04Eee070495Cdb";
 
   @override
   void initState() {
@@ -39,32 +39,8 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _emailFocus.dispose(); // Dispose of the email focus node
     super.dispose();
-    _passwordFocus.dispose();
   }
-
-  /// ✅ Converts Uint8List to Hex String (For Solidity)
-  String bytesToHex(Uint8List bytes, {bool include0x = false}) {
-    final hex =
-        bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-    return include0x ? '0x$hex' : hex;
-  }
-
-  // Uint8List hashEmail(String email) {
-  //   return keccak256(utf8.encode(email.trim()));
-  // }
-
-  Uint8List hashToBytes32(String input) {
-    return keccak256(utf8.encode(input.trim().toLowerCase()));
-  }
-
-  /// Hash Password Before Sending to Solidity
-  Uint8List hashPassword(String password) {
-    return keccak256(utf8.encode(password.trim()));
-  }
-
-// For utf8.encode()
 
   Future<void> _authenticateCharity() async {
     print("🟢 Charity Login Button Pressed!");
@@ -100,85 +76,26 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         );
 
         // Perform wallet lookup
-        try {
-          final lookupContract = DeployedContract(
-            ContractAbi.fromJson(
-              '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getCharityWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
-              'CharityEmailFetcher',
-            ),
-            EthereumAddress.fromHex(_lookupContractAddress.toString()),
-          );
+        String walletAddress = await _getWalletAddressByEmail(email);
 
-          final lookupFunction =
-              lookupContract.function('getCharityWalletAddressByEmail');
+        if (walletAddress.isNotEmpty) {
+          // Save wallet address and private key to SharedPreferences
+          await _saveWalletDetails(walletAddress);
 
-          print('Calling the getCharityWalletAddressByEmail function...');
-
-          // Send the plain email without hashing to the contract
-          final walletResult = await _web3Client.call(
-            contract: lookupContract,
-            function: lookupFunction,
-            params: [email],
-          );
-
-          print('Wallet result: $walletResult');
-
-          // Check if the result is not empty and the wallet address is valid
-          if (walletResult.isNotEmpty &&
-              walletResult[0] !=
-                  EthereumAddress.fromHex(
-                      '0x0000000000000000000000000000000000000000')) {
-            final walletAddress = walletResult[0].toString();
-            print('Wallet address found: $walletAddress');
-
-            if (walletAddress.isNotEmpty) {
-              try {
-                final blockchainService = BlockchainService();
-                final credentials =
-                    await blockchainService.getCharityCredentials();
-                final privateKey = credentials['privateKey'];
-                if (privateKey != null) {
-                  // Save the wallet address to SharedPreferences
-                  SharedPreferences prefs =
-                      await SharedPreferences.getInstance();
-                  // bool isSaved =
-                  await prefs.setString('walletAddress', walletAddress);
-                  await prefs.setString('privatekey', privateKey);
-
-                  // if (isSaved) {
-                  print(
-                      'Wallet address and private key saved to SharedPreferences');
-                } else {
-                  print('Failed to save wallet address to SharedPreferences');
-                }
-              } catch (e) {
-                print('Error saving wallet address: $e');
-              }
-            } else {
-              print('Wallet address is null or empty');
-            }
-
-            // Navigate to the next screen with the wallet address
-            Future.delayed(const Duration(seconds: 1), () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      CharityMainScreen(walletAddress: walletAddress),
-                ),
-              );
-            });
-          } else {
-            print('No wallet address found or invalid address');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('No wallet address found or invalid address')),
+          // Navigate to main screen
+          Future.delayed(const Duration(seconds: 1), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    CharityMainScreen(walletAddress: walletAddress),
+              ),
             );
-          }
-        } catch (e) {
-          print('❌ Error in wallet lookup: $e');
+          });
+        } else {
+          print("❌ No wallet address found!");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error in wallet lookup: $e')),
+            const SnackBar(content: Text('No wallet address found!')),
           );
         }
       } else {
@@ -195,17 +112,66 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     }
   }
 
-  bool _obscureText = true; // Add this variable at the top of your class
+  /// Fetch wallet address from contract using email
+  Future<String> _getWalletAddressByEmail(String email) async {
+    try {
+      final lookupContract = DeployedContract(
+        ContractAbi.fromJson(
+          '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getCharityWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
+          'CharityEmailFetcher',
+        ),
+        EthereumAddress.fromHex(_lookupContractAddress),
+      );
 
-  void _togglePasswordVisibility() {
-    setState(() {
-      _obscureText = !_obscureText;
-    });
+      final lookupFunction =
+          lookupContract.function('getCharityWalletAddressByEmail');
+      final walletResult = await _web3Client.call(
+        contract: lookupContract,
+        function: lookupFunction,
+        params: [email],
+      );
+
+      if (walletResult.isNotEmpty &&
+          walletResult[0] !=
+              EthereumAddress.fromHex(
+                  "0x0000000000000000000000000000000000000000")) {
+        print("✅ Wallet Address Found: ${walletResult[0].hex}");
+        return walletResult[0].hex;
+      } else {
+        print("❌ No valid wallet address found!");
+        return "";
+      }
+    } catch (e) {
+      print('❌ Error in wallet lookup: $e');
+      return "";
+    }
   }
 
-  final FocusNode _passwordFocus = FocusNode();
+  /// Save wallet address and private key to SharedPreferences
+  Future<void> _saveWalletDetails(String walletAddress) async {
+    try {
+      final blockchainService = BlockchainService();
+      final credentials = await blockchainService.getCharityCredentials();
+      final privateKey = credentials['privateKey'];
 
-  final FocusNode _emailFocus = FocusNode();
+      if (privateKey != null && privateKey.isNotEmpty) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('walletAddress', walletAddress);
+        await prefs.setString('privateKey', privateKey);
+
+        // ✅ Debug Logs
+        print("✅ Private Key Successfully Saved: $privateKey");
+
+        // 🔍 Immediately check if it is accessible
+        String? storedKey = prefs.getString('privateKey');
+        print("🔍 Retrieved Private Key After Saving: $storedKey");
+      } else {
+        print("❌ Private Key is null or empty! Check login process.");
+      }
+    } catch (e) {
+      print("❌ Error saving wallet details: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,89 +197,33 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start, // Align content to the left
-
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Welcome Back',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
-                  color: Color.fromRGBO(24, 71, 137, 1),
-                ),
-              ),
-              SizedBox(height: 80), // Space after title
-
+              Text('Welcome Back',
+                  style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromRGBO(24, 71, 137, 1))),
+              SizedBox(height: 80),
               TextFormField(
                 controller: _emailController,
-                focusNode: _emailFocus,
                 decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  labelStyle: TextStyle(
-                    color: _emailFocus.hasFocus
-                        ? Color.fromRGBO(24, 71, 137, 1)
-                        : Colors.grey,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
-                  ),
-                ),
+                    labelText: 'Email Address', border: OutlineInputBorder()),
               ),
-              SizedBox(height: 30), // Space between fields
-
+              SizedBox(height: 30),
               TextFormField(
                 controller: _passwordController,
-                focusNode: _passwordFocus,
-                obscureText: _obscureText,
+                obscureText: true,
                 decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: TextStyle(
-                    color: _passwordFocus.hasFocus
-                        ? Color.fromRGBO(24, 71, 137, 1)
-                        : Colors.grey,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: _passwordFocus.hasFocus
-                          ? Color.fromRGBO(24, 71, 137, 1)
-                          : Colors.grey,
-                    ),
-                    onPressed: _togglePasswordVisibility,
-                  ),
-                ),
+                    labelText: 'Password', border: OutlineInputBorder()),
               ),
-              SizedBox(height: 300), // Large space before the button
-
+              SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
                   onPressed: () => _authenticateCharity(),
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(300, 50),
-                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                          color: Color.fromRGBO(24, 71, 137, 1), width: 2),
-                    ),
-                  ),
+                      minimumSize: Size(300, 50),
+                      backgroundColor: Color.fromRGBO(24, 71, 137, 1)),
                   child: Text('Log In',
                       style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),

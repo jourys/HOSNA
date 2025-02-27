@@ -56,7 +56,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
     _web3Client = Web3Client(rpcUrl, Client());
     _contractAddress =
-        EthereumAddress.fromHex("0xc5A97194e3A6c4524D74D8872C91BbacfBd198E1");
+        EthereumAddress.fromHex("0xAf1Cf3e12cB23e54a043Dd829bf45Df8acC8Fc9f");
     print("✅ Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -218,13 +218,22 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     );
 
     final getCharity = contract.function('getCharity');
+    final prefs = await SharedPreferences.getInstance();
+    final storedWallet = prefs.getString('walletAddress');
+
+    if (storedWallet == null || storedWallet.isEmpty) {
+      print("❌ Error: No wallet address found in storage!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('No wallet address found! Please log in again.')),
+      );
+      return;
+    }
 
     final result = await _web3Client.call(
       contract: contract,
       function: getCharity,
-      params: [
-        EthereumAddress.fromHex("0x6AaebB1a5653fF9bF938E1365922362b6d8C2E0b")
-      ],
+      params: [EthereumAddress.fromHex(storedWallet)], // ✅ Use stored wallet
     );
 
     print("📌 Charity Details:");
