@@ -280,7 +280,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       print("✅ Transaction sent successfully!");
       print("⏳ Waiting for blockchain to update...");
-      await Future.delayed(Duration(seconds: 10)); // Wait for blockchain update
+    //  await Future.delayed(Duration(seconds: 10)); // Wait for blockchain update
 
       print("🔍 Fetching updated data...");
       print("⏳ Waiting for blockchain to update...");
