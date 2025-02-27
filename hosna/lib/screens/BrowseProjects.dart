@@ -228,7 +228,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) =>
-                                                projectDetails(
+                                                ProjectDetails(
                                               projectName: project['name'],
                                               description:
                                                   project['description'],

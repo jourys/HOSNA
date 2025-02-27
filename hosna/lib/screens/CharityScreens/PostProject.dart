@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
-import 'package:hosna/screens/BrowseProjects.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PostProject extends StatefulWidget {
   final String? walletAddress;
@@ -231,7 +230,7 @@ class _PostProjectScreenState extends State<PostProject> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => projectDetails(
+            builder: (context) => ProjectDetails(
               projectName: _projectNameController.text,
               description: _descriptionController.text,
               startDate: _startDateController.text,
