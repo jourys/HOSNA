@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/ProfileScreenCharity.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CharityEmployeeHomePage extends StatefulWidget {
   const CharityEmployeeHomePage({super.key});
@@ -16,8 +17,23 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
   void initState() {
     super.initState();
     // _loadEmployeeData();
+    printUserType();
   }
 
+  Future<void> printUserType() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? userType = prefs.getInt('userType'); // 0 = Donor, 1 = Charity
+
+    if (userType != null) {
+      if (userType == 0) {
+        print("User Type: Donor");
+      } else if (userType == 1) {
+        print("User Type: Charity Employee");
+      }
+    } else {
+      print("No user type found in SharedPreferences");
+    }
+  }
   // Future<void> _loadEmployeeData() async {
   //   final prefs = await SharedPreferences.getInstance();
   //   setState(() {
@@ -67,7 +83,6 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                         icon: const Icon(Icons.account_circle,
                             size: 85, color: Colors.white),
                         onPressed: () {
-                      
                           Navigator.push(
                             context,
                             MaterialPageRoute(

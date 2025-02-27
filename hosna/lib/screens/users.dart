@@ -1,9 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityEmployeeRegistration.dart';
 import 'package:hosna/screens/DonorScreens/DonorFirstPage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class UsersPage extends StatelessWidget {
+class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
+
+  @override
+  _UsersPageState createState() => _UsersPageState();
+}
+
+class _UsersPageState extends State<UsersPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkUserSession();
+  }
+
+  Future<void> _checkUserSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? userType = prefs.getInt('userType'); // 0 = Donor, 1 = Charity
+
+    if (userType != null) {
+      // Redirect to the respective page
+      if (userType == 0) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DonorFirstPage()),
+        );
+      } else if (userType == 1) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const Charityemployeeregistration()),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +71,7 @@ class UsersPage extends StatelessWidget {
             // Donor Button
             ElevatedButton(
               onPressed: () {
+                _setUserType(0);
                 // Navigate to DonorFirstPage
                 Navigator.push(
                   context,
@@ -69,6 +103,7 @@ class UsersPage extends StatelessWidget {
             // Charity Organization Button
             ElevatedButton(
               onPressed: () {
+                _setUserType(1);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -102,5 +137,10 @@ class UsersPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _setUserType(int userType) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('userType', userType);
   }
 }
