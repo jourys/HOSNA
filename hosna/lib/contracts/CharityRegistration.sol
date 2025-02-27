@@ -16,9 +16,9 @@ contract CharityRegistration {
     }
 
     mapping(address => Charity) private charities;
-    mapping(bytes32 => address) private emailToAddress; // Hash emails for security
-    mapping(bytes32 => address) private phoneToAddress; // Hash phone numbers for security
-    mapping(address => bytes32) private passwordHashes; // Store hashed passwords
+    mapping(bytes32 => address) private emailToAddress;
+    mapping(bytes32 => address) private phoneToAddress;
+    mapping(address => bytes32) private passwordHashes;
 
     event CharityRegistered(
         address indexed wallet,
@@ -26,35 +26,13 @@ contract CharityRegistration {
         string email,
         string phone
     );
-
+    event CharityUpdated(
+        address indexed wallet,
+        string name,
+        string email,
+        string phone
+    );
     event Debug(string message);
-
-    modifier uniqueEmail(string memory _email) {
-        require(
-            emailToAddress[keccak256(abi.encodePacked(_email))] == address(0),
-            "Email already registered"
-        );
-        _;
-    }
-
-    modifier uniquePhone(string memory _phone) {
-        require(
-            phoneToAddress[keccak256(abi.encodePacked(_phone))] == address(0),
-            "Phone number already registered"
-        );
-        _;
-    }
-
-    function isEmailRegistered(
-        string memory _email
-    ) public view returns (bool) {
-        address charityAddress = emailToAddress[
-            keccak256(abi.encodePacked(_email))
-        ];
-        return
-            charityAddress != address(0) &&
-            charities[charityAddress].registered;
-    }
 
     function registerCharity(
         string memory _name,
@@ -67,11 +45,11 @@ contract CharityRegistration {
         string memory _establishmentDate,
         address _wallet,
         string memory _password
-    ) public uniqueEmail(_email) uniquePhone(_phone) {
+    ) public {
         require(_wallet != address(0), "Invalid wallet address");
-        require(bytes(_password).length > 0, "Password cannot be empty");
-        require(bytes(_email).length > 0, "Email cannot be empty");
-        require(bytes(_phone).length > 0, "Phone number cannot be empty");
+
+        // 🔍 Hash email and store correctly
+        bytes32 emailHash = keccak256(abi.encodePacked(_toLowerCase(_email)));
 
         charities[_wallet] = Charity(
             _name,
@@ -86,13 +64,35 @@ contract CharityRegistration {
             true
         );
 
+        emailToAddress[emailHash] = _wallet;
         passwordHashes[_wallet] = keccak256(abi.encodePacked(_password));
 
-        // ✅ Convert email to lowercase before hashing it
-        emailToAddress[
-            keccak256(abi.encodePacked(_toLowerCase(_email)))
-        ] = _wallet;
-        phoneToAddress[keccak256(abi.encodePacked(_phone))] = _wallet;
+        emit CharityRegistered(_wallet, _name, _email, _phone);
+    }
+
+    // ✅ **Force Link Email to Wallet (Fix for your issue)**
+    function forceLinkEmailToWallet(
+        string memory _email,
+        address _wallet
+    ) public {
+        require(_wallet != address(0), "Invalid wallet address");
+        require(charities[_wallet].registered, "Charity not registered");
+
+        bytes32 emailHash = keccak256(abi.encodePacked(_toLowerCase(_email)));
+        emailToAddress[emailHash] = _wallet;
+    }
+
+    function getCharityAddressByEmail(
+        bytes32 _hashedEmail
+    ) public view returns (address) {
+        return emailToAddress[_hashedEmail];
+    }
+
+    function debugStoredEmailHash(
+        string memory _email
+    ) public view returns (address) {
+        return
+            emailToAddress[keccak256(abi.encodePacked(_toLowerCase(_email)))];
     }
 
     function _toLowerCase(
@@ -110,62 +110,105 @@ contract CharityRegistration {
         return string(bLower);
     }
 
-    function getCharity(
-        address _wallet
-    )
-        public
-        view
-        returns (
-            string memory name,
-            string memory email,
-            string memory phone,
-            string memory licenseNumber,
-            string memory city,
-            string memory description,
-            string memory website,
-            string memory establishmentDate,
-            address wallet,
-            bool registered
-        )
-    {
-        require(charities[_wallet].registered, "Charity not found");
-        Charity memory c = charities[_wallet];
-        return (
-            c.name,
-            c.email,
-            c.phone,
-            c.licenseNumber,
-            c.city,
-            c.description,
-            c.website,
-            c.establishmentDate,
-            c.wallet,
-            c.registered
-        );
-    }
-
-    function getCharityAddressByEmail(
-        bytes32 _hashedEmail
-    ) public view returns (address) {
-        return emailToAddress[_hashedEmail];
-    }
-
-    function getPasswordHash(address _wallet) external view returns (bytes32) {
-        require(charities[_wallet].registered, "Charity not found");
-        return passwordHashes[_wallet];
-    }
-
-    function debugPasswordHash(
-        address _wallet
-    ) external view returns (bytes32) {
-        require(charities[_wallet].registered, "Charity not found");
-        return passwordHashes[_wallet];
-    }
-
     function checkCharityExists(
         string memory _email
     ) external view returns (bool) {
         return
-            emailToAddress[keccak256(abi.encodePacked(_email))] != address(0);
+            emailToAddress[keccak256(abi.encodePacked(_toLowerCase(_email)))] !=
+            address(0);
     }
+
+    // ✅ **Fixed `updateCharity` Placement (Now Inside the Contract)**
+    function updateCharity(
+        address _wallet,
+        string memory _name,
+        string memory _email,
+        string memory _phone,
+        string memory _licenseNumber,
+        string memory _city,
+        string memory _description,
+        string memory _website,
+        string memory _establishmentDate
+    ) public {
+        require(charities[_wallet].registered, "Charity not registered");
+
+        Charity storage charity = charities[_wallet];
+
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(bytes(_email).length > 0, "Email cannot be empty");
+        require(bytes(_phone).length > 0, "Phone cannot be empty");
+
+        charity.name = _name;
+        charity.email = _email;
+        charity.phone = _phone;
+        charity.licenseNumber = _licenseNumber;
+        charity.city = _city;
+        charity.description = _description;
+        charity.website = _website;
+        charity.establishmentDate = _establishmentDate;
+
+        emit CharityUpdated(_wallet, _name, _email, _phone);
+    }
+
+    function getPasswordHash(address _wallet) public view returns (bytes32) {
+        require(charities[_wallet].registered, "Charity not found");
+        return passwordHashes[_wallet];
+    }
+
+    function debugEmailMapping(
+        string memory _email
+    ) public view returns (address) {
+        bytes32 emailHash = keccak256(abi.encodePacked(_toLowerCase(_email)));
+        return emailToAddress[emailHash];
+    }
+    function debugCharityMapping(address _wallet) public view returns (
+    string memory name,
+    string memory email,
+    string memory phone,
+    string memory licenseNumber,
+    string memory city,
+    string memory description,
+    string memory website,
+    string memory establishmentDate,
+    bool registered
+) {
+    require(charities[_wallet].registered, "Charity not found");
+    Charity storage charity = charities[_wallet];
+    return (
+        charity.name,
+        charity.email,
+        charity.phone,
+        charity.licenseNumber,
+        charity.city,
+        charity.description,
+        charity.website,
+        charity.establishmentDate,
+        charity.registered
+    );
+}
+function getCharity(address _wallet) public view returns (
+    string memory name,
+    string memory email,
+    string memory phone,
+    string memory licenseNumber,
+    string memory city,
+    string memory description,
+    string memory website,
+    string memory establishmentDate
+) {
+    require(charities[_wallet].registered, "Charity not found");
+    Charity storage charity = charities[_wallet];
+    return (
+        charity.name,
+        charity.email,
+        charity.phone,
+        charity.licenseNumber,
+        charity.city,
+        charity.description,
+        charity.website,
+        charity.establishmentDate
+    );
+}
+
+
 }
