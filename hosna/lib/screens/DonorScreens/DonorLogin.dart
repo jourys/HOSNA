@@ -46,8 +46,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     _web3Client = Web3Client(_rpcUrl, Client());
     print('Web3Client initialized');
   }
-
-  Future<void> _authenticateUser() async {
+Future<void> _authenticateUser() async {
   if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Please enter your email and password')),
@@ -119,13 +118,20 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           print('Wallet address saved to SharedPreferences');
 
           // Retrieve private key
-         String? privateKey = await _getPrivateKey(walletAddress);
+          String? privateKey = await _getPrivateKey(walletAddress);
 
-if (privateKey != null) {
-  print("✅ Loaded Private Key: $privateKey");
-} else {
-  print("❌ No private key found for this wallet.");
-}
+          if (privateKey != null) {
+            print("✅ Loaded Private Key: $privateKey");
+          } else {
+            print("❌ No private key found for this wallet.");
+          }
+
+          // Save private key if not found
+          if (privateKey == null) {
+            String newPrivateKey = "new_private_key_example"; // Retrieve this securely
+            await prefs.setString('privateKey_$walletAddress', newPrivateKey);
+            print('✅ New private key saved for wallet $walletAddress');
+          }
 
         } catch (e) {
           print('Error saving wallet address or retrieving private key: $e');
@@ -138,7 +144,6 @@ if (privateKey != null) {
             builder: (context) => MainScreen(walletAddress: walletAddress),
           ),
         );
-
       } else {
         print('❌ Wallet address not found or invalid address');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,6 +164,7 @@ if (privateKey != null) {
   }
 }
 
+// Function to retrieve the private key from SharedPreferences
 Future<String?> _getPrivateKey(String walletAddress) async {
   try {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -181,6 +187,7 @@ Future<String?> _getPrivateKey(String walletAddress) async {
 }
 
 
+  
 
 // Sample method to get Ethereum address (replace with actual logic)
   Future<String> _getEthereumAddressForEmail(String email) async {

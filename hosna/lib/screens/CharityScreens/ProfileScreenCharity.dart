@@ -210,20 +210,18 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                            onPressed: () async {
+                             onPressed: () async {
+  // Clear all user session data from SharedPreferences
   SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.clear(); // Clears all the stored keys and values
 
-  // Clear all previous wallet addresses (if any)
-  await prefs.remove('walletAddress');
+  print('User logged out and session cleared');
+  
+  // Optionally, you can also set any default values here if needed
+  String walletAddress = 'none';
+  print('Wallet Address: $walletAddress');
 
-  // Save the new wallet address
-  String newWalletAddress = '0xff9095920975432f16e24313b903dfbdeb65270f';  // The wallet address you want to keep
-  await prefs.setString('walletAddress', newWalletAddress);
-
-  // Print the saved wallet address
-  print('✅ New Wallet Address Saved: $newWalletAddress');
-
-  // Navigate to UsersPage or wherever appropriate
+  // Navigate to the desired page (UsersPage in this case)
   Navigator.pushReplacement(
     context,
     MaterialPageRoute(builder: (context) => const UsersPage()),

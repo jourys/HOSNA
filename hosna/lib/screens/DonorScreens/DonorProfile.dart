@@ -187,18 +187,14 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-           onPressed: () async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+           onPressed: () async {SharedPreferences prefs = await SharedPreferences.getInstance();
 
   // Retrieve private key and wallet address before clearing session data
   String? privateKey = prefs.getString('privateKey');
   String? walletAddress = prefs.getString('walletAddress');
 
   // Clear all session-related data (but keep the private key and wallet address)
-  // We should only remove non-critical data such as login tokens, etc.
   await prefs.remove('userSession'); // Remove any session data you want cleared
-  // Alternatively, if you want to clear all non-key data:
-  // await prefs.clear(); // Uncomment to clear all
 
   // If we have the private key and wallet address, restore them
   if (privateKey != null) {
@@ -209,7 +205,6 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   }
 
   print('✅ User logged out. Session cleared but private key and wallet address retained.');
-  print('🔹 Restored Wallet Address: $walletAddress');
 
   // Navigate to UsersPage
   Navigator.pushReplacement(
