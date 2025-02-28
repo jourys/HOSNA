@@ -237,6 +237,7 @@ class _PostProjectScreenState extends State<PostProject> {
               deadline: _deadlineController.text,
               totalAmount: _totalAmountController.text,
               projectType: _selectedProjectType ?? 'Other',
+              projectCreatorWallet: walletAddress.toString(),
             ),
           ),
         );

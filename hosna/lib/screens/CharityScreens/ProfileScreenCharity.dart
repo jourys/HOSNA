@@ -210,17 +210,27 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Log out logic
-                                SharedPreferences.getInstance().then((prefs) {
-                                  prefs.setString('walletAddress', 'none');
-                                });
+                            onPressed: () async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
 
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
+  // Clear all previous wallet addresses (if any)
+  await prefs.remove('walletAddress');
+
+  // Save the new wallet address
+  String newWalletAddress = '0xff9095920975432f16e24313b903dfbdeb65270f';  // The wallet address you want to keep
+  await prefs.setString('walletAddress', newWalletAddress);
+
+  // Print the saved wallet address
+  print('✅ New Wallet Address Saved: $newWalletAddress');
+
+  // Navigate to UsersPage or wherever appropriate
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => const UsersPage()),
+  );
+
+
+
                               },
                               child: Text(
                                 'Log out',

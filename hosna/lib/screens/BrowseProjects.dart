@@ -241,6 +241,9 @@ class _BrowseProjectsState extends State<BrowseProjects> {
                                                       .toString(),
                                               projectType:
                                                   project['projectType'],
+                                              projectCreatorWallet:
+                                                  project['organization'] ??
+                                                      '',
                                             ),
                                           ),
                                         );

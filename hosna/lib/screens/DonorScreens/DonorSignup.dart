@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorLogin.dart';
 import 'package:http/http.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 
 class DonorSignUpPage extends StatefulWidget {
@@ -177,6 +178,8 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signup successful!')),
       );
+      _storePrivateKey(walletAddress.toString(), _privateKey);
+      print("private key stoooored in shared pref.");
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
@@ -190,6 +193,27 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       );
     }
   }
+
+  Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Use a unique key format for storing the private key
+    String privateKeyKey = 'privateKey_$walletAddress';
+
+    // Save the private key
+    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+    if (isSaved) {
+      print('✅ Private key for wallet $walletAddress saved successfully!');
+    } else {
+      print('❌ Failed to save private key for wallet $walletAddress');
+    }
+  } catch (e) {
+    print('⚠️ Error saving private key: $e');
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

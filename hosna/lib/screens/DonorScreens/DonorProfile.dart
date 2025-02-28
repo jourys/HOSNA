@@ -187,22 +187,39 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Log out logic here
-                                // For example, clear user data or reset authentication state
-                                print('User logged out');
+           onPressed: () async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
 
-                                // Set the wallet address to "none"
-                                String walletAddress = 'none';
-                                print('Wallet Address: $walletAddress');
-                                // Navigate to UsersPage after log out
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
-                              },
-                              child: Text(
+  // Retrieve private key and wallet address before clearing session data
+  String? privateKey = prefs.getString('privateKey');
+  String? walletAddress = prefs.getString('walletAddress');
+
+  // Clear all session-related data (but keep the private key and wallet address)
+  // We should only remove non-critical data such as login tokens, etc.
+  await prefs.remove('userSession'); // Remove any session data you want cleared
+  // Alternatively, if you want to clear all non-key data:
+  // await prefs.clear(); // Uncomment to clear all
+
+  // If we have the private key and wallet address, restore them
+  if (privateKey != null) {
+    await prefs.setString('privateKey', privateKey);
+  }
+  if (walletAddress != null) {
+    await prefs.setString('walletAddress', walletAddress);
+  }
+
+  print('✅ User logged out. Session cleared but private key and wallet address retained.');
+  print('🔹 Restored Wallet Address: $walletAddress');
+
+  // Navigate to UsersPage
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => const UsersPage()),
+  );
+},
+
+
+                              child: const Text(
                                 'Log out',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
