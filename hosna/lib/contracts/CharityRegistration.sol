@@ -19,6 +19,7 @@ contract CharityRegistration {
     mapping(bytes32 => address) private emailToAddress;
     mapping(bytes32 => address) private phoneToAddress;
     mapping(address => bytes32) private passwordHashes;
+    address[] private registeredCharities; // Stores addresses of registered charities
 
     event CharityRegistered(
         address indexed wallet,
@@ -66,8 +67,40 @@ contract CharityRegistration {
 
         emailToAddress[emailHash] = _wallet;
         passwordHashes[_wallet] = keccak256(abi.encodePacked(_password));
+        registeredCharities.push(_wallet); // Store registered charity wallet
 
         emit CharityRegistered(_wallet, _name, _email, _phone);
+    }
+    function getAllCharities() public view returns (
+        address[] memory wallets,
+        string[] memory names,
+        string[] memory emails,
+        string[] memory phones,
+        string[] memory cities,
+        string[] memory websites
+    ) {
+        uint count = registeredCharities.length;
+        
+        wallets = new address[](count);
+        names = new string[](count);
+        emails = new string[](count);
+        phones = new string[](count);
+        cities = new string[](count);
+        websites = new string[](count);
+
+        for (uint i = 0; i < count; i++) {
+            address charityWallet = registeredCharities[i];
+            Charity storage charity = charities[charityWallet];
+
+            wallets[i] = charity.wallet;
+            names[i] = charity.name;
+            emails[i] = charity.email;
+            phones[i] = charity.phone;
+            cities[i] = charity.city;
+            websites[i] = charity.website;
+        }
+
+        return (wallets, names, emails, phones, cities, websites);
     }
 
     // ✅ **Force Link Email to Wallet (Fix for your issue)**
@@ -161,54 +194,66 @@ contract CharityRegistration {
         bytes32 emailHash = keccak256(abi.encodePacked(_toLowerCase(_email)));
         return emailToAddress[emailHash];
     }
-    function debugCharityMapping(address _wallet) public view returns (
-    string memory name,
-    string memory email,
-    string memory phone,
-    string memory licenseNumber,
-    string memory city,
-    string memory description,
-    string memory website,
-    string memory establishmentDate,
-    bool registered
-) {
-    require(charities[_wallet].registered, "Charity not found");
-    Charity storage charity = charities[_wallet];
-    return (
-        charity.name,
-        charity.email,
-        charity.phone,
-        charity.licenseNumber,
-        charity.city,
-        charity.description,
-        charity.website,
-        charity.establishmentDate,
-        charity.registered
-    );
-}
-function getCharity(address _wallet) public view returns (
-    string memory name,
-    string memory email,
-    string memory phone,
-    string memory licenseNumber,
-    string memory city,
-    string memory description,
-    string memory website,
-    string memory establishmentDate
-) {
-    require(charities[_wallet].registered, "Charity not found");
-    Charity storage charity = charities[_wallet];
-    return (
-        charity.name,
-        charity.email,
-        charity.phone,
-        charity.licenseNumber,
-        charity.city,
-        charity.description,
-        charity.website,
-        charity.establishmentDate
-    );
-}
 
+    function debugCharityMapping(
+        address _wallet
+    )
+        public
+        view
+        returns (
+            string memory name,
+            string memory email,
+            string memory phone,
+            string memory licenseNumber,
+            string memory city,
+            string memory description,
+            string memory website,
+            string memory establishmentDate,
+            bool registered
+        )
+    {
+        require(charities[_wallet].registered, "Charity not found");
+        Charity storage charity = charities[_wallet];
+        return (
+            charity.name,
+            charity.email,
+            charity.phone,
+            charity.licenseNumber,
+            charity.city,
+            charity.description,
+            charity.website,
+            charity.establishmentDate,
+            charity.registered
+        );
+    }
 
+    function getCharity(
+        address _wallet
+    )
+        public
+        view
+        returns (
+            string memory name,
+            string memory email,
+            string memory phone,
+            string memory licenseNumber,
+            string memory city,
+            string memory description,
+            string memory website,
+            string memory establishmentDate
+        )
+    {
+        require(charities[_wallet].registered, "Charity not found");
+        Charity storage charity = charities[_wallet];
+        return (
+            charity.name,
+            charity.email,
+            charity.phone,
+            charity.licenseNumber,
+            charity.city,
+            charity.description,
+            charity.website,
+            charity.establishmentDate
+        );
+    }
 }

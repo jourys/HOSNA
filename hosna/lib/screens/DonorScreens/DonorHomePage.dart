@@ -19,7 +19,7 @@ class _HomePageState extends State<HomePage> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809';
+  final String contractAddress = '0xC16cB636f27bAC0E27d3E14CEfCadd0f2D526b75';
 
   @override
   void initState() {
