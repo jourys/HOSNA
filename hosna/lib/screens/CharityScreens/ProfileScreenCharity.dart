@@ -210,22 +210,31 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                             onPressed: () async {
-  // Clear all user session data from SharedPreferences
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.clear(); // Clears all the stored keys and values
+                             onPressed: () async {SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  print('User logged out and session cleared');
-  
-  // Optionally, you can also set any default values here if needed
-  String walletAddress = 'none';
-  print('Wallet Address: $walletAddress');
+  // Retrieve private key and wallet address before clearing session data
+  String? privateKey = prefs.getString('privateKey');
+  String? walletAddress = prefs.getString('walletAddress');
 
-  // Navigate to the desired page (UsersPage in this case)
+  // Clear all session-related data (but keep the private key and wallet address)
+  await prefs.remove('userSession'); // Remove any session data you want cleared
+
+  // If we have the private key and wallet address, restore them
+  if (privateKey != null) {
+    await prefs.setString('privateKey', privateKey);
+  }
+  if (walletAddress != null) {
+    await prefs.setString('walletAddress', walletAddress);
+  }
+
+  print('✅ User logged out. Session cleared but private key and wallet address retained.');
+
+  // Navigate to UsersPage
   Navigator.pushReplacement(
     context,
     MaterialPageRoute(builder: (context) => const UsersPage()),
   );
+
 
 
 
