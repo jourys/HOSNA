@@ -26,7 +26,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xAf1Cf3e12cB23e54a043Dd829bf45Df8acC8Fc9f';
+  final String contractAddress = '0xdCa2F9A0040A0eD1eE2Df11bA027bf6270910eBF';
 
   @override
   void initState() {
@@ -210,34 +210,39 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                             onPressed: () async {SharedPreferences prefs = await SharedPreferences.getInstance();
+                              onPressed: () async {
+                                SharedPreferences prefs =
+                                    await SharedPreferences.getInstance();
 
-  // Retrieve private key and wallet address before clearing session data
-  String? privateKey = prefs.getString('privateKey');
-  String? walletAddress = prefs.getString('walletAddress');
+                                // Retrieve private key and wallet address before clearing session data
+                                String? privateKey =
+                                    prefs.getString('privateKey');
+                                String? walletAddress =
+                                    prefs.getString('walletAddress');
 
-  // Clear all session-related data (but keep the private key and wallet address)
-  await prefs.remove('userSession'); // Remove any session data you want cleared
+                                // Clear all session-related data (but keep the private key and wallet address)
+                                await prefs.remove(
+                                    'userSession'); // Remove any session data you want cleared
 
-  // If we have the private key and wallet address, restore them
-  if (privateKey != null) {
-    await prefs.setString('privateKey', privateKey);
-  }
-  if (walletAddress != null) {
-    await prefs.setString('walletAddress', walletAddress);
-  }
+                                // If we have the private key and wallet address, restore them
+                                if (privateKey != null) {
+                                  await prefs.setString(
+                                      'privateKey', privateKey);
+                                }
+                                if (walletAddress != null) {
+                                  await prefs.setString(
+                                      'walletAddress', walletAddress);
+                                }
 
-  print('✅ User logged out. Session cleared but private key and wallet address retained.');
+                                print(
+                                    '✅ User logged out. Session cleared but private key and wallet address retained.');
 
-  // Navigate to UsersPage
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => const UsersPage()),
-  );
-
-
-
-
+                                // Navigate to UsersPage
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const UsersPage()),
+                                );
                               },
                               child: Text(
                                 'Log out',
