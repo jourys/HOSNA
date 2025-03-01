@@ -3,6 +3,7 @@ import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart'; // To make HTTP requests
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/DonorScreens/EditDonorProfile.dart';
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -21,7 +22,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809';
+  final String contractAddress = '0xC16cB636f27bAC0E27d3E14CEfCadd0f2D526b75';
 
   @override
   void initState() {
@@ -44,70 +45,72 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   }
 
   Future<DeployedContract> _loadContract() async {
-    // Contract ABI (must match your Solidity contract)
     final contractAbi = '''[
-      {
-        "constant": false,
-        "inputs": [
-          {"name": "_firstName", "type": "string"},
-          {"name": "_lastName", "type": "string"},
-          {"name": "_email", "type": "string"},
-          {"name": "_phone", "type": "string"},
-          {"name": "_password", "type": "string"},
-          {"name": "_wallet", "type": "address"}
-        ],
-        "name": "registerDonor",
-        "outputs": [],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "constant": true,
-        "inputs": [{"name": "_wallet", "type": "address"}],
-        "name": "getDonor",
-        "outputs": [
-          {"name": "firstName", "type": "string"},
-          {"name": "lastName", "type": "string"},
-          {"name": "email", "type": "string"},
-          {"name": "phone", "type": "string"},
-          {"name": "walletAddress", "type": "address"},
-          {"name": "registered", "type": "bool"}
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ]''';
+    {
+      "constant": true,
+      "inputs": [{"name": "_wallet", "type": "address"}],
+      "name": "getDonor",
+      "outputs": [
+        {"name": "firstName", "type": "string"},
+        {"name": "lastName", "type": "string"},
+        {"name": "email", "type": "string"},
+        {"name": "phone", "type": "string"},
+        {"name": "walletAddress", "type": "address"},
+        {"name": "registered", "type": "bool"}
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]''';
 
-    final contract = DeployedContract(
+    return DeployedContract(
       ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
       EthereumAddress.fromHex(contractAddress),
     );
-
-    return contract;
   }
 
   Future<void> _getDonorData() async {
+    if (_donorAddress.isEmpty) {
+      print("⚠️ No donor wallet address found.");
+      return;
+    }
+
     try {
       final contract = await _loadContract();
+      final function = contract.function('getDonor');
 
-      final result = await _callGetDonorMethod(contract, 'getDonor', [
-        EthereumAddress.fromHex(_donorAddress),
-      ]);
+      print("📡 Fetching donor data for $_donorAddress...");
 
-      if (result != null && result.isNotEmpty) {
-        setState(() {
-          _firstName = result[0];
-          _lastName = result[1];
-          _email = result[2];
-          _phone = result[3];
-        });
-      } else {
-        print("No donor data found for wallet: $_donorAddress");
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [EthereumAddress.fromHex(_donorAddress)],
+      );
+
+      print("🟢 Raw Result: $result"); // ✅ Debugging the response
+
+      if (result.isEmpty) {
+        print("❌ Donor data is empty! Wallet: $_donorAddress");
+        return;
       }
+
+      bool isRegistered = result[5] as bool;
+      if (!isRegistered) {
+        print("❌ Donor is not registered in the blockchain!");
+        return;
+      }
+
+      setState(() {
+        _firstName = result[0] as String;
+        _lastName = result[1] as String;
+        _email = result[2] as String;
+        _phone = result[3] as String;
+      });
+
+      print("✅ Donor data retrieved successfully!");
     } catch (e) {
-      print("Error fetching donor data: $e");
+      print("❌ Error fetching donor data: $e");
     }
   }
 
@@ -142,7 +145,25 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
-            onPressed: () {},
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditDonorProfileScreen(
+                    firstName: _firstName,
+                    lastName: _lastName,
+                    email: _email,
+                    phone: _phone,
+                  ),
+                ),
+              );
+
+              if (result == true) {
+                // ✅ Check if Edit Screen returned success
+                print("🔄 Refreshing profile after edit...");
+                _getDonorData();
+              }
+            },
           ),
         ],
         // Setting the height of the AppBar using preferredSize
@@ -187,33 +208,40 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-           onPressed: () async {SharedPreferences prefs = await SharedPreferences.getInstance();
+                              onPressed: () async {
+                                SharedPreferences prefs =
+                                    await SharedPreferences.getInstance();
 
-  // Retrieve private key and wallet address before clearing session data
-  String? privateKey = prefs.getString('privateKey');
-  String? walletAddress = prefs.getString('walletAddress');
+                                // Retrieve private key and wallet address before clearing session data
+                                String? privateKey =
+                                    prefs.getString('privateKey');
+                                String? walletAddress =
+                                    prefs.getString('walletAddress');
 
-  // Clear all session-related data (but keep the private key and wallet address)
-  await prefs.remove('userSession'); // Remove any session data you want cleared
+                                // Clear all session-related data (but keep the private key and wallet address)
+                                await prefs.remove(
+                                    'userSession'); // Remove any session data you want cleared
 
-  // If we have the private key and wallet address, restore them
-  if (privateKey != null) {
-    await prefs.setString('privateKey', privateKey);
-  }
-  if (walletAddress != null) {
-    await prefs.setString('walletAddress', walletAddress);
-  }
+                                // If we have the private key and wallet address, restore them
+                                if (privateKey != null) {
+                                  await prefs.setString(
+                                      'privateKey', privateKey);
+                                }
+                                if (walletAddress != null) {
+                                  await prefs.setString(
+                                      'walletAddress', walletAddress);
+                                }
 
-  print('✅ User logged out. Session cleared but private key and wallet address retained.');
+                                print(
+                                    '✅ User logged out. Session cleared but private key and wallet address retained.');
 
-  // Navigate to UsersPage
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => const UsersPage()),
-  );
-},
-
-
+                                // Navigate to UsersPage
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const UsersPage()),
+                                );
+                              },
                               child: const Text(
                                 'Log out',
                                 style: TextStyle(
