@@ -10,7 +10,7 @@ contract CharityAuth {
         charityRegistry = CharityRegistration(_charityRegistryAddress);
     }
 
-  function loginCharity(
+function loginCharity(
     string memory _email,
     string memory _password
 ) external view returns (bool) {
@@ -24,10 +24,11 @@ contract CharityAuth {
 
     // ✅ Hash the provided password ONCE (No need to hash it twice!)
     if (storedPasswordHash == keccak256(abi.encodePacked(_password))) {
-        return true;
-    } else {
-        revert("Invalid password!");
+        return true; // ✅ Only return true here if password matches
     }
+
+
+
 
 
 

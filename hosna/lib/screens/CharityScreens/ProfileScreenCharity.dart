@@ -210,17 +210,34 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Log out logic
-                                SharedPreferences.getInstance().then((prefs) {
-                                  prefs.setString('walletAddress', 'none');
-                                });
+                             onPressed: () async {SharedPreferences prefs = await SharedPreferences.getInstance();
 
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
+  // Retrieve private key and wallet address before clearing session data
+  String? privateKey = prefs.getString('privateKey');
+  String? walletAddress = prefs.getString('walletAddress');
+
+  // Clear all session-related data (but keep the private key and wallet address)
+  await prefs.remove('userSession'); // Remove any session data you want cleared
+
+  // If we have the private key and wallet address, restore them
+  if (privateKey != null) {
+    await prefs.setString('privateKey', privateKey);
+  }
+  if (walletAddress != null) {
+    await prefs.setString('walletAddress', walletAddress);
+  }
+
+  print('✅ User logged out. Session cleared but private key and wallet address retained.');
+
+  // Navigate to UsersPage
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => const UsersPage()),
+  );
+
+
+
+
                               },
                               child: Text(
                                 'Log out',

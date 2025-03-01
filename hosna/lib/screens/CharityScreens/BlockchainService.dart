@@ -352,7 +352,7 @@ class BlockchainService {
     String description,
     int startDate,
     int endDate,
-    int totalAmount,
+    double totalAmount,
     String projectType,
   ) async {
     try {

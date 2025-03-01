@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initializeWeb3();
+    printUserType();
   }
 
   Future<void> _initializeWeb3() async {
@@ -35,6 +36,21 @@ class _HomePageState extends State<HomePage> {
 
     if (_walletAddress.isNotEmpty) {
       await _getDonorData();
+    }
+  }
+
+  Future<void> printUserType() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? userType = prefs.getInt('userType'); // 0 = Donor, 1 = Charity
+
+    if (userType != null) {
+      if (userType == 0) {
+        print("User Type: Donor");
+      } else if (userType == 1) {
+        print("User Type: Charity Employee");
+      }
+    } else {
+      print("No user type found in SharedPreferences");
     }
   }
 

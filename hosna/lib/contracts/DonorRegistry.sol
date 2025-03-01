@@ -108,4 +108,20 @@ contract DonorRegistry {
         require(donor.registered, "Donor not found");
         return donor.passwordHash;
     }
+function updateDonor(
+    address _wallet,
+    string memory _firstName,
+    string memory _lastName,
+    string memory _email,
+    string memory _phone
+) public {
+    require(donors[_wallet].registered, "Donor not registered");
+    Donor storage donor = donors[_wallet];
+
+    donor.firstName = _firstName;
+    donor.lastName = _lastName;
+    donor.email = _email;
+    donor.phone = _phone;
+}
+
 }

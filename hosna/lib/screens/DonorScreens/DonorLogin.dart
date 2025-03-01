@@ -46,120 +46,148 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     _web3Client = Web3Client(_rpcUrl, Client());
     print('Web3Client initialized');
   }
+Future<void> _authenticateUser() async {
+  if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter your email and password')),
+    );
+    return;
+  }
 
-  Future<void> _authenticateUser() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email and password')),
-      );
-      return;
-    }
+  final email = _emailController.text.toLowerCase();
+  final password = _passwordController.text;
 
-    final email = _emailController.text.toLowerCase();
-    final password = _passwordController.text;
+  print('Attempting to authenticate user with email: $email and password: $password');
 
-    print(
-        'Attempting to authenticate user with email: $email and password: $password');
+  // Contract for donor authentication
+  final authContract = DeployedContract(
+    ContractAbi.fromJson(
+      '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
+      'DonorAuth',
+    ),
+    EthereumAddress.fromHex(_contractAddress.toString()),
+  );
 
-    // Contract for donor authentication
-    final authContract = DeployedContract(
-      ContractAbi.fromJson(
-        '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
-        'DonorAuth',
-      ),
-      EthereumAddress.fromHex(_contractAddress.toString()),
+  final authFunction = authContract.function('loginDonor');
+
+  try {
+    print('Calling the loginDonor function on the contract...');
+    final authResult = await _web3Client.call(
+      contract: authContract,
+      function: authFunction,
+      params: [email, password],
     );
 
-    final authFunction = authContract.function('loginDonor');
+    print('Auth result: $authResult');
 
-    try {
-      print('Calling the loginDonor function on the contract...');
-      final authResult = await _web3Client.call(
-        contract: authContract,
-        function: authFunction,
-        params: [email, password],
+    if (authResult.isNotEmpty && authResult[0] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login successful!')),
+      );
+      print('Login successful');
+
+      // Lookup wallet address
+      final lookupContract = DeployedContract(
+        ContractAbi.fromJson(
+          '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
+          'DonorLookup',
+        ),
+        EthereumAddress.fromHex(_lookupContractAddress.toString()),
       );
 
-      print('Auth result: $authResult');
+      final lookupFunction = lookupContract.function('getWalletAddressByEmail');
 
-      if (authResult.isNotEmpty && authResult[0] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login successful!')),
-        );
-        print('login successfully');
-        // Second contract for wallet lookup
-        final lookupContract = DeployedContract(
-          ContractAbi.fromJson(
-            '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
-            'DonorLookup',
-          ),
-          EthereumAddress.fromHex(_lookupContractAddress.toString()),
-        );
+      print('Calling the getWalletAddressByEmail function...');
+      final walletResult = await _web3Client.call(
+        contract: lookupContract,
+        function: lookupFunction,
+        params: [email],
+      );
 
-        final lookupFunction =
-            lookupContract.function('getWalletAddressByEmail');
+      print('Wallet result: $walletResult');
 
-        print('Calling the getWalletAddressByEmail function...');
-        final walletResult = await _web3Client.call(
-          contract: lookupContract,
-          function: lookupFunction,
-          params: [email],
-        );
+      if (walletResult.isNotEmpty &&
+          walletResult[0] != EthereumAddress.fromHex('0x0000000000000000000000000000000000000000')) {
+        String walletAddress = walletResult[0].toString().trim().toLowerCase(); // Normalize address
+        print('Wallet address found: $walletAddress');
 
-        print('Wallet result: $walletResult');
+        try {
+          // Save wallet address to SharedPreferences
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('walletAddress', walletAddress);
+          print('Wallet address saved to SharedPreferences');
 
-        if (walletResult.isNotEmpty &&
-            walletResult[0] !=
-                EthereumAddress.fromHex(
-                    '0x0000000000000000000000000000000000000000')) {
-          final walletAddress = walletResult[0].toString();
-          print('Wallet address found: $walletAddress');
-          if (walletAddress != null && walletAddress.isNotEmpty) {
-            try {
-              // Save the wallet address to SharedPreferences
-              SharedPreferences prefs = await SharedPreferences.getInstance();
+          // Retrieve private key
+          String? privateKey = await _getPrivateKey(walletAddress);
 
-              bool isSaved =
-                  await prefs.setString('walletAddress', walletAddress);
-
-              if (isSaved) {
-                print('Wallet address saved to SharedPreferences');
-              } else {
-                print('Failed to save wallet address to SharedPreferences');
-              }
-            } catch (e) {
-              print('Error saving wallet address: $e');
-            }
+          if (privateKey != null) {
+            print("✅ Loaded Private Key: $privateKey");
           } else {
-            print('Wallet address is null or empty');
+            print("❌ No private key found for this wallet.");
           }
 
-          // Navigate to MainScreen with the wallet address
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainScreen(walletAddress: walletAddress),
-            ),
-          );
-        } else {
-          print('Wallet address not found or invalid address');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Wallet address not found!')),
-          );
+          // Save private key if not found
+          if (privateKey == null) {
+            String newPrivateKey = "new_private_key_example"; // Retrieve this securely
+            await prefs.setString('privateKey_$walletAddress', newPrivateKey);
+            print('✅ New private key saved for wallet $walletAddress');
+          }
+
+        } catch (e) {
+          print('Error saving wallet address or retrieving private key: $e');
         }
+
+        // Navigate to MainScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScreen(walletAddress: walletAddress),
+          ),
+        );
       } else {
-        print('Invalid credentials');
+        print('❌ Wallet address not found or invalid address');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid credentials!')),
+          const SnackBar(content: Text('Wallet address not found!')),
         );
       }
-    } catch (e) {
-      print('Error during authentication: $e');
+    } else {
+      print('❌ Invalid credentials');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
+        const SnackBar(content: Text('Invalid credentials!')),
       );
     }
+  } catch (e) {
+    print('❌ Error during authentication: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An error occurred: $e')),
+    );
   }
+}
+
+// Function to retrieve the private key from SharedPreferences
+Future<String?> _getPrivateKey(String walletAddress) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Retrieve private key using the correct key format
+    String privateKeyKey = 'privateKey_$walletAddress';
+    String? privateKey = prefs.getString(privateKeyKey);
+
+    if (privateKey != null) {
+      print('✅ Private key retrieved for wallet $walletAddress');
+    } else {
+      print('❌ Private key not found for wallet $walletAddress');
+    }
+
+    return privateKey;
+  } catch (e) {
+    print('⚠️ Error retrieving private key: $e');
+    return null;
+  }
+}
+
+
+  
 
 // Sample method to get Ethereum address (replace with actual logic)
   Future<String> _getEthereumAddressForEmail(String email) async {
