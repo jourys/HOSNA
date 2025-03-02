@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 
 class OrganizationsPage extends StatefulWidget {
   final String walletAddress;
@@ -306,6 +307,8 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 }
 
+
+
 class OrganizationProfilePage extends StatelessWidget {
   final Map<String, dynamic> organization;
 
@@ -316,32 +319,32 @@ class OrganizationProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(24, 71, 137, 1), // Top bar color
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80), // Increase app bar height
+        preferredSize: const Size.fromHeight(80), // Increased app bar height
         child: AppBar(
           backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
           elevation: 0, // Remove shadow
           leading: Padding(
-            padding: const EdgeInsets.only(top: 20), // Adjust this value to move the icon down
+            padding: const EdgeInsets.only(top: 20), // Adjust icon position
             child: IconButton(
               icon: const Icon(
                 Icons.arrow_back,
                 color: Colors.white,
-                size: 30, // Adjust the size of the icon
+                size: 30, // Adjusted size
               ),
               onPressed: () {
-                Navigator.pop(context); // Go back to previous page
+                Navigator.pop(context); // Navigate back
               },
             ),
           ),
           flexibleSpace: Padding(
-            padding: const EdgeInsets.only(bottom: 20), // Move text down
+            padding: const EdgeInsets.only(bottom: 20), // Moves text down
             child: Align(
               alignment: Alignment.bottomCenter,
               child: Text(
                 organization["name"] ?? "Unknown Organization",
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 24, // Increased size
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -362,25 +365,145 @@ class OrganizationProfilePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Center(
-              child: Icon(Icons.account_circle, size: 100, color: Colors.grey),
+              child: Icon(Icons.account_circle, size: 120, color: Colors.grey), // Enlarged profile icon
             ),
+            const SizedBox(height: 20),
+
+            _buildSectionTitle(Icons.contact_phone, "Contact Information"),
+            _buildInfoRow(Icons.phone, "Phone", organization["phone"]),
+            _buildInfoRow(Icons.email, "Email", organization["email"]),
+            _buildInfoRow(Icons.location_city, "City", organization["city"]),
+
             const SizedBox(height: 16),
-            Text("📍 City: ${organization["city"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text("📧 Email: ${organization["email"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text("📞 Phone: ${organization["phone"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text("🆔 License: ${organization["licenseNumber"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text("🌐 Website: ${organization["website"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.blue)),
-            const SizedBox(height: 8),
-            Text("📅 Established: ${organization["establishmentDate"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
+
+            _buildSectionTitle(Icons.business, "Organization Details"),
+            _buildInfoRow(Icons.badge, "License Number", organization["licenseNumber"]),
+            _buildInfoRow(Icons.public, "Website", organization["website"], isLink: true),
+            _buildInfoRow(Icons.calendar_today, "Established", organization["establishmentDate"]),
+
             const SizedBox(height: 16),
-            Text("📝 Description: ${organization["description"] ?? "N/A"}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
+
+            _buildSectionTitle(Icons.info_outline, "About Us"),
+            _buildInfoRow(Icons.description, "About Us", organization["description"]),
+
+            const Spacer(), // Push button to bottom
+
+           Center(
+ child: ElevatedButton(
+                onPressed: () async {
+  try {
+    // Call the loadProjects() method
+    await loadProjects();
+
+    // Navigate to projects page (replace with actual navigation)
+    Navigator.pushNamed(
+      context,
+      '/projects',
+      arguments: organization["id"],
+    );
+  } catch (e) {
+    // Handle any errors that occur during project loading
+    print("Error occurred: $e");
+    // Optionally, show a dialog or Snackbar to notify the user about the error
+  }
+},
+
+
+    child: const Text(
+      "View Projects",
+      style: TextStyle(
+        fontSize: 20,
+       
+        color: Colors.white, // Ensuring text is white
+      ),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color.fromRGBO(24, 71, 137, 1), // Matching theme color
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 100), // Increased padding for a longer button
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+    ),
+  ),
+),
+
+            const SizedBox(height: 20), // Add spacing at bottom
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          // Icon(icon, size: 28, color: Colors.blueGrey),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String? value, {bool isLink = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 26, color: Colors.blueGrey), // Adjusted icon size
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value ?? "N/A",
+              style: TextStyle(
+                fontSize: 18, // Increased text size
+                color: isLink ? Colors.blue : Colors.black87,
+                decoration: isLink ? TextDecoration.underline : TextDecoration.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+Future<void> loadProjects() async {
+  BlockchainService blockchainService = BlockchainService();
+  String organizationAddress = "0x25f30375f43dce255c8261ab6baf64f4ab62a87c"; // Replace with actual address
+  try {
+    List<Map<String, dynamic>> projects = await blockchainService.fetchOrganizationProjects(organizationAddress);
+
+    for (var project in projects) {
+      var name = project["name"];
+      var totalAmount = project["totalAmount"];
+      
+      // Check if totalAmount is valid and convert it to int
+      int totalAmountInt = totalAmount != null ? int.tryParse(totalAmount.toString()) ?? 0 : 0;
+
+      print("Project Name: $name, Total Amount: $totalAmountInt");
+    }
+  } catch (e) {
+    print("Error loading projects: $e");
+  }
+}
+
+
+
+}
+class ProjectsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Projects")),
+      body: Center(child: Text("Projects List")),
     );
   }
 }

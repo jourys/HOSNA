@@ -459,4 +459,34 @@ class BlockchainService {
       return {"error": "Error fetching project details: $e"};
     }
   }
+
+   /// Fetch all projects for a given organization address
+    /// Fetch all projects for a given organization address
+  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(String orgAddress) async {
+    try {
+      final contract = await _getContract();
+      final function = contract.function("getOrganizationProjects");
+
+      // Fetch project IDs for the given organization
+      List<dynamic> projectIds = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [EthereumAddress.fromHex(orgAddress)],
+      );
+
+      List<Map<String, dynamic>> projects = [];
+
+      for (var projectId in projectIds) {
+        var projectDetails = await getProjectDetails(projectId.toInt());
+        projects.add(projectDetails);
+      }
+
+      return projects;
+    } catch (e) {
+      print("❌ Error fetching organization projects: $e");
+      return [];
+    }
+  }
+
+
 }
