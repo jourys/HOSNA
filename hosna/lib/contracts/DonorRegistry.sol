@@ -133,4 +133,4 @@ contract DonorRegistry {
         emit DonorUpdated(_wallet, _firstName, _lastName, _email, _phone);
     }
 
-}
+}  
