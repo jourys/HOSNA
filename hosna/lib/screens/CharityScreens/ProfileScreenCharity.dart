@@ -26,7 +26,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xdCa2F9A0040A0eD1eE2Df11bA027bf6270910eBF';
+  final String contractAddress = '0x1DC4865a263df51a7Aa882C29008cAc433cfDDA7';
 
   @override
   void initState() {

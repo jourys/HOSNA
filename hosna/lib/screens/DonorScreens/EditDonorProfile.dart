@@ -115,14 +115,22 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   Future<void> _updateDonorData() async {
     final prefs = await SharedPreferences.getInstance();
     String? privateKey = prefs.getString('privateKey');
+
     _donorAddress = prefs.getString('walletAddress') ?? '';
 
     if (privateKey == null || privateKey.isEmpty) {
       print("❌ Error: Private key not found!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Error: Private key not found! Please re-login.")),
+      );
       return;
     }
 
-    if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(privateKey)) {
+    // ✅ Validate Private Key Format
+    privateKey = privateKey.replaceAll("0x", "").trim();
+    if (privateKey.length != 64 ||
+        !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(privateKey)) {
       print("❌ Error: Invalid private key format!");
       return;
     }
@@ -151,7 +159,9 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
             emailController.text,
             phoneController.text,
           ],
-          maxGas: 1000000,
+          gasPrice:
+              EtherAmount.inWei(BigInt.from(30000000000)), // ✅ Added gas price
+          maxGas: 1000000, // ✅ Increased gas limit
         ),
         chainId: 11155111,
       );
@@ -161,9 +171,12 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
         SnackBar(content: Text('Profile updated successfully!')),
       );
 
-      Navigator.pop(context, true); // ✅ Return `true` to refresh Profile Page
+      Navigator.pop(context, true);
     } catch (e) {
       print("❌ Error updating profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating profile: $e")),
+      );
     }
   }
 
