@@ -23,7 +23,13 @@ contract DonorRegistry {
         string email,
         string phone
     );
-
+  event DonorUpdated(
+        address indexed walletAddress,
+        string firstName,
+        string lastName,
+        string email,
+        string phone
+    );
     modifier uniquePhoneNumber(string memory _phone) {
         require(
             phoneToAddress[_phone] == address(0),
@@ -107,21 +113,24 @@ contract DonorRegistry {
         Donor memory donor = donors[_wallet];
         require(donor.registered, "Donor not found");
         return donor.passwordHash;
+} function updateDonor(
+        address _wallet,
+        string memory _firstName,
+        string memory _lastName,
+        string memory _email,
+        string memory _phone
+    ) public {
+        require(donors[_wallet].registered, "Donor not registered");
+
+        Donor storage donor = donors[_wallet];
+
+        donor.firstName = _firstName;
+        donor.lastName = _lastName;
+        donor.email = _email;
+        donor.phone = _phone;
+
+        // ✅ Added event for updates
+        emit DonorUpdated(_wallet, _firstName, _lastName, _email, _phone);
     }
-function updateDonor(
-    address _wallet,
-    string memory _firstName,
-    string memory _lastName,
-    string memory _email,
-    string memory _phone
-) public {
-    require(donors[_wallet].registered, "Donor not registered");
-    Donor storage donor = donors[_wallet];
 
-    donor.firstName = _firstName;
-    donor.lastName = _lastName;
-    donor.email = _email;
-    donor.phone = _phone;
-}
-
-}
+}  

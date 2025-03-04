@@ -33,14 +33,16 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   Future<void> _initializeWeb3() async {
     _web3Client = Web3Client(rpcUrl, Client());
 
-    // Retrieve wallet address from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     _donorAddress = prefs.getString('walletAddress') ?? '';
+    String? userType = prefs.getString('userType');
 
     if (_donorAddress.isNotEmpty) {
+      print("🔍 Loaded Wallet Address: $_donorAddress");
+      print("🔍 Loaded User Type: $userType");
       await _getDonorData();
     } else {
-      print("No wallet address found in SharedPreferences");
+      print("⚠️ No wallet address found in SharedPreferences");
     }
   }
 
