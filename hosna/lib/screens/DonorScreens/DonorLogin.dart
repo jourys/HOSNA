@@ -46,21 +46,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     _web3Client = Web3Client(_rpcUrl, Client());
     print('Web3Client initialized');
     // ✅ Clear SharedPreferences for debugging
-    _clearSharedPreferences();
-    print('Web3Client initialized');
   }
 
   Future<void> clearUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     print("🗑️ Cleared SharedPreferences");
-  }
-
-// Function to clear SharedPreferences (TEMPORARY)
-  Future<void> _clearSharedPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    print("🗑️ Cleared SharedPreferences"); // ✅ Debugging message
   }
 
   Future<void> _authenticateUser() async {
