@@ -71,36 +71,66 @@ contract CharityRegistration {
 
         emit CharityRegistered(_wallet, _name, _email, _phone);
     }
-    function getAllCharities() public view returns (
-        address[] memory wallets,
-        string[] memory names,
-        string[] memory emails,
-        string[] memory phones,
-        string[] memory cities,
-        string[] memory websites
-    ) {
-        uint count = registeredCharities.length;
-        
+
+    function getAllCharities()
+        public
+        view
+        returns (
+            address[] memory wallets,
+            string[] memory names,
+            string[] memory emails,
+            string[] memory phones,
+            string[] memory cities,
+            string[] memory websites,
+            string[] memory descriptions,
+            string[] memory licenseNumbers,
+            string[] memory establishmentDates
+        )
+    {
+        uint256 count = registeredCharities.length;
+
+        require(count > 0, "No charities registered yet"); // ✅ Ensure charities exist
+
         wallets = new address[](count);
         names = new string[](count);
         emails = new string[](count);
         phones = new string[](count);
         cities = new string[](count);
         websites = new string[](count);
+        descriptions = new string[](count);
+        licenseNumbers = new string[](count);
+        establishmentDates = new string[](count);
 
-        for (uint i = 0; i < count; i++) {
+        for (uint256 i = 0; i < count; i++) {
             address charityWallet = registeredCharities[i];
-            Charity storage charity = charities[charityWallet];
 
-            wallets[i] = charity.wallet;
-            names[i] = charity.name;
-            emails[i] = charity.email;
-            phones[i] = charity.phone;
-            cities[i] = charity.city;
-            websites[i] = charity.website;
+            if (charities[charityWallet].registered) {
+                // ✅ Ensure charity is registered
+                Charity storage charity = charities[charityWallet];
+
+                wallets[i] = charity.wallet;
+                names[i] = charity.name;
+                emails[i] = charity.email;
+                phones[i] = charity.phone;
+                cities[i] = charity.city;
+                websites[i] = charity.website;
+                descriptions[i] = charity.description;
+                licenseNumbers[i] = charity.licenseNumber;
+                establishmentDates[i] = charity.establishmentDate;
+            }
         }
 
-        return (wallets, names, emails, phones, cities, websites);
+        return (
+            wallets,
+            names,
+            emails,
+            phones,
+            cities,
+            websites,
+            descriptions,
+            licenseNumbers,
+            establishmentDates
+        );
     }
 
     // ✅ **Force Link Email to Wallet (Fix for your issue)**
