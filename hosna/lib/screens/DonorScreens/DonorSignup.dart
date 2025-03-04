@@ -77,7 +77,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
 
     // Example contract address
     _contractAddress =
-        EthereumAddress.fromHex("0xC16cB636f27bAC0E27d3E14CEfCadd0f2D526b75");
+        EthereumAddress.fromHex("0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -95,7 +95,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   Future<void> _registerDonor() async {
     print("Registering donor...");
     final creatorPrivateKey =
-        "8eb4bc49ee12dee2338f1b43a2f7c70d90045bd682025381b61f0958b6b4316a";
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
     // Generate a unique private key for the donor
     _privateKey = _generatePrivateKey();
     print("Generated private key: $_privateKey");
