@@ -26,7 +26,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   late String _donorAddress;
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0xC16cB636f27bAC0E27d3E14CEfCadd0f2D526b75';
+  final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
 
   final _formKey = GlobalKey<FormState>();
 
