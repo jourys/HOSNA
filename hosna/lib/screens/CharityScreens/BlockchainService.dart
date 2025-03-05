@@ -1,8 +1,6 @@
-import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:web3dart/credentials.dart';
+import 'package:web3dart/web3dart.dart';
 
 class BlockchainService {
   final String rpcUrl =
@@ -460,9 +458,9 @@ class BlockchainService {
     }
   }
 
-   /// Fetch all projects for a given organization address
-    /// Fetch all projects for a given organization address
-  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(String orgAddress) async {
+  /// Fetch all projects for a given organization address
+  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(
+      String orgAddress) async {
     try {
       final contract = await _getContract();
       final function = contract.function("getOrganizationProjects");
@@ -474,11 +472,21 @@ class BlockchainService {
         params: [EthereumAddress.fromHex(orgAddress)],
       );
 
+      // Flatten projectIds if it contains a list within a list
+      List<dynamic> flattenedProjectIds =
+          projectIds.expand((x) => x is List ? x : [x]).toList();
+
       List<Map<String, dynamic>> projects = [];
 
-      for (var projectId in projectIds) {
-        var projectDetails = await getProjectDetails(projectId.toInt());
-        projects.add(projectDetails);
+      for (var projectId in flattenedProjectIds) {
+        // Ensure that projectId is a BigInt and convert it to int
+        if (projectId is BigInt) {
+          var projectDetails = await getProjectDetails(
+              projectId.toInt()); // Convert BigInt to int
+          projects.add(projectDetails);
+        } else {
+          print("Unexpected project ID type: $projectId");
+        }
       }
 
       return projects;
@@ -487,6 +495,4 @@ class BlockchainService {
       return [];
     }
   }
-
-
 }
