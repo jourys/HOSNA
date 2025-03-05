@@ -32,6 +32,14 @@ class _PostProjectScreenState extends State<PostProject> {
     'Other'
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // Set the current date as the start date
+    _startDateController.text =
+        DateTime.now().toLocal().toString().split(' ')[0];
+  }
+
   Future<Map<String, String?>> getCharityCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     return {
@@ -65,11 +73,14 @@ class _PostProjectScreenState extends State<PostProject> {
                 controller: _descriptionController,
                 hintText: 'Enter project description',
               ),
+              // Remove the onTap functionality for start date
               _buildDatePickerField(
                 label: 'Project Start Date:',
                 controller: _startDateController,
                 onTap: () => _selectDate(context, true),
+                enabled: false, // Disables editing the field
               ),
+
               _buildDatePickerField(
                 label: 'Project Funding Deadline:',
                 controller: _deadlineController,
@@ -154,43 +165,45 @@ class _PostProjectScreenState extends State<PostProject> {
     );
   }
 
- Widget _buildTotalAmountField() {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 15),
-    child: TextFormField(
-      controller: _totalAmountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Allows decimals
-      ],
-      decoration: const InputDecoration(
-        labelText: 'Project Total Amount',
-        hintText: 'Enter total amount',
-        suffixText: 'ETH', // Optional: Indicate currency
-        border: OutlineInputBorder(),
+  Widget _buildTotalAmountField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextFormField(
+        controller: _totalAmountController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(
+              RegExp(r'^\d*\.?\d*')), // Allows decimals
+        ],
+        decoration: const InputDecoration(
+          labelText: 'Project Total Amount',
+          hintText: 'Enter total amount',
+          suffixText: 'ETH', // Optional: Indicate currency
+          border: OutlineInputBorder(),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter the total amount';
+          }
+          if (double.tryParse(value) == null) {
+            return 'Please enter a valid number';
+          }
+          return null;
+        },
       ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter the total amount';
-        }
-        if (double.tryParse(value) == null) {
-          return 'Please enter a valid number';
-        }
-        return null;
-      },
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildDatePickerField(
       {required String label,
       required TextEditingController controller,
-      required VoidCallback onTap}) {
+      required VoidCallback onTap,
+      bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextFormField(
         controller: controller,
-        readOnly: true,
+        enabled: enabled, // Disable the field for editing
         decoration: InputDecoration(
             labelText: label,
             suffixIcon: Icon(Icons.calendar_today),
@@ -220,81 +233,86 @@ class _PostProjectScreenState extends State<PostProject> {
     print("Project Saved: ${_projectNameController.text}");
   }
 
- void _postProject() async {
-  if (_formKey.currentState!.validate()) {
-    print("✅ Form validation passed, proceeding to post project...");
-    final blockchainService = BlockchainService();
+  void _postProject() async {
+    if (_formKey.currentState!.validate()) {
+      print("✅ Form validation passed, proceeding to post project...");
+      final blockchainService = BlockchainService();
 
-    try {
-      // Parsing start date and deadline
-      int startDate, deadline;
       try {
-        startDate = DateTime.parse(_startDateController.text).millisecondsSinceEpoch ~/ 1000;
-        deadline = DateTime.parse(_deadlineController.text).millisecondsSinceEpoch ~/ 1000;
-      } catch (e) {
-        print("❌ Error parsing dates: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid date format. Please check your input.')),
+        // Parsing start date and deadline
+        int startDate, deadline;
+        try {
+          startDate = DateTime.parse(_startDateController.text)
+                  .millisecondsSinceEpoch ~/
+              1000;
+          deadline =
+              DateTime.parse(_deadlineController.text).millisecondsSinceEpoch ~/
+                  1000;
+        } catch (e) {
+          print("❌ Error parsing dates: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Invalid date format. Please check your input.')),
+          );
+          return;
+        }
+
+        // Parsing total amount
+        double? totalAmount = double.tryParse(_totalAmountController.text);
+        if (totalAmount == null) {
+          print(
+              "❌ Invalid total amount entered: ${_totalAmountController.text}");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter a valid total amount.')),
+          );
+          return;
+        }
+
+        // Print values before sending
+        print("📌 Project Details:");
+        print("   - Name: ${_projectNameController.text}");
+        print("   - Description: ${_descriptionController.text}");
+        print("   - Start Date: $startDate (Unix timestamp)");
+        print("   - Deadline: $deadline (Unix timestamp)");
+        print("   - Total Amount: $totalAmount");
+        print("   - Type: ${_selectedProjectType ?? 'Other'}");
+        print("   - Wallet Address: $walletAddress");
+
+        // Send project to blockchain
+        await blockchainService.addProject(
+          _projectNameController.text,
+          _descriptionController.text,
+          startDate,
+          deadline,
+          totalAmount,
+          _selectedProjectType ?? 'Other',
         );
-        return;
-      }
 
-      // Parsing total amount
-      double? totalAmount = double.tryParse(_totalAmountController.text);
-      if (totalAmount == null) {
-        print("❌ Invalid total amount entered: ${_totalAmountController.text}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid total amount.')),
-        );
-        return;
-      }
+        print("✅ Project successfully posted!");
 
-      // Print values before sending
-      print("📌 Project Details:");
-      print("   - Name: ${_projectNameController.text}");
-      print("   - Description: ${_descriptionController.text}");
-      print("   - Start Date: $startDate (Unix timestamp)");
-      print("   - Deadline: $deadline (Unix timestamp)");
-      print("   - Total Amount: $totalAmount");
-      print("   - Type: ${_selectedProjectType ?? 'Other'}");
-      print("   - Wallet Address: $walletAddress");
-
-      // Send project to blockchain
-      await blockchainService.addProject(
-        _projectNameController.text,
-        _descriptionController.text,
-        startDate,
-        deadline,
-        totalAmount,
-        _selectedProjectType ?? 'Other',
-      );
-
-      print("✅ Project successfully posted!");
-
-      // Navigate to project details page
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProjectDetails(
-            projectName: _projectNameController.text,
-            description: _descriptionController.text,
-            startDate: _startDateController.text,
-            deadline: _deadlineController.text,
-            totalAmount: _totalAmountController.text,
-            projectType: _selectedProjectType ?? 'Other',
-            projectCreatorWallet: walletAddress.toString(),
+        // Navigate to project details page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectDetails(
+              projectName: _projectNameController.text,
+              description: _descriptionController.text,
+              startDate: _startDateController.text,
+              deadline: _deadlineController.text,
+              totalAmount: _totalAmountController.text,
+              projectType: _selectedProjectType ?? 'Other',
+              projectCreatorWallet: walletAddress.toString(),
+            ),
           ),
-        ),
-      );
-    } catch (e) {
-      print("❌ Error posting project: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post project. Error: $e')),
-      );
+        );
+      } catch (e) {
+        print("❌ Error posting project: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to post project. Error: $e')),
+        );
+      }
+    } else {
+      print("❌ Form validation failed!");
     }
-  } else {
-    print("❌ Form validation failed!");
   }
-}
-
 }
