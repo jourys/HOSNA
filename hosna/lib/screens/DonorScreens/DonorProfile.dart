@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/DonorScreens/EditDonorProfile.dart';
 import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart'; // To make HTTP requests
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:hosna/screens/DonorScreens/EditDonorProfile.dart';
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -19,7 +19,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   String _lastName = '';
   String _email = '';
   String _phone = '';
-
+  int? userType;
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
   final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
@@ -27,7 +27,17 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   @override
   void initState() {
     super.initState();
+    _getUserType();
     _initializeWeb3();
+  }
+
+  Future<void> _getUserType() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userType = prefs.getInt('userType');
+    });
+
+    print("All keys: ${prefs.getKeys()}");
   }
 
   Future<void> _initializeWeb3() async {
@@ -35,7 +45,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
 
     final prefs = await SharedPreferences.getInstance();
     _donorAddress = prefs.getString('walletAddress') ?? '';
-    String? userType = prefs.getString('userType');
+    // String? userType = prefs.getString('userType');
 
     if (_donorAddress.isNotEmpty) {
       print("🔍 Loaded Wallet Address: $_donorAddress");

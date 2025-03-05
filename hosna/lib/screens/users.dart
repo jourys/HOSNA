@@ -14,28 +14,28 @@ class _UsersPageState extends State<UsersPage> {
   @override
   void initState() {
     super.initState();
-    // _checkUserSession();
+    _checkUserSession();
   }
 
   Future<void> _checkUserSession() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int? userType = prefs.getInt('userType'); // 0 = Donor, 1 = Charity
 
-    if (userType != null) {
-      // Redirect to the respective page
-      if (userType == 0) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DonorFirstPage()),
-        );
-      } else if (userType == 1) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const Charityemployeeregistration()),
-        );
-      }
-    }
+    // if (userType != null) {
+    //   // Redirect to the respective page
+    //   if (userType == 0) {
+    //     Navigator.pushReplacement(
+    //       context,
+    //       MaterialPageRoute(builder: (context) => const DonorFirstPage()),
+    //     );
+    //   } else if (userType == 1) {
+    //     Navigator.pushReplacement(
+    //       context,
+    //       MaterialPageRoute(
+    //           builder: (context) => const Charityemployeeregistration()),
+    //     );
+    //   }
+    // }
   }
 
   @override
