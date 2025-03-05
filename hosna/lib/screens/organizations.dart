@@ -14,7 +14,7 @@ class OrganizationsPage extends StatefulWidget {
 
 class _OrganizationsPageState extends State<OrganizationsPage> {
   final String rpcUrl = 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xdCa2F9A0040A0eD1eE2Df11bA027bf6270910eBF';
+  final String contractAddress = '0x02b0d417D48eEA64Aae9AdA80570783034ED6839';
 
   late Web3Client _client;
   late DeployedContract _contract;
@@ -22,26 +22,30 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   bool isLoading = true;
   TextEditingController _searchController = TextEditingController(); // Declare the controller
 
-  final String abiString = '''
-  [
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "getAllCharities",
-      "outputs": [
-        { "name": "wallets", "type": "address[]" },
-        { "name": "names", "type": "string[]" },
-        { "name": "emails", "type": "string[]" },
-        { "name": "phones", "type": "string[]" },
-        { "name": "cities", "type": "string[]" },
-        { "name": "websites", "type": "string[]" }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ]
-  ''';
+ final String abiString = '''
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getAllCharities",
+    "outputs": [
+      { "name": "wallets", "type": "address[]" },
+      { "name": "names", "type": "string[]" },
+      { "name": "emails", "type": "string[]" },
+      { "name": "phones", "type": "string[]" },
+      { "name": "cities", "type": "string[]" },
+      { "name": "websites", "type": "string[]" },
+      { "name": "descriptions", "type": "string[]" },
+      { "name": "licenseNumbers", "type": "string[]" },
+      { "name": "establishmentDates", "type": "string[]" }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+''';
+
 
   String _searchQuery = '';  // Search query variable
 
@@ -72,44 +76,50 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   Future<void> _fetchCharities() async {
-    try {
-      final function = _contract.function("getAllCharities");
-      final result = await _client.call(
-        contract: _contract,
-        function: function,
-        params: [],
-      );
+  try {
+    final function = _contract.function("getAllCharities");
+    final result = await _client.call(
+      contract: _contract,
+      function: function,
+      params: [],
+    );
 
-      List<dynamic> wallets = result[0];
-      List<dynamic> names = result[1];
-      List<dynamic> emails = result[2];
-      List<dynamic> phones = result[3];
-      List<dynamic> cities = result[4];
-      List<dynamic> websites = result[5];
+    List<dynamic> wallets = result[0];
+    List<dynamic> names = result[1];
+    List<dynamic> emails = result[2];
+    List<dynamic> phones = result[3];
+    List<dynamic> cities = result[4];
+    List<dynamic> websites = result[5];
+    List<dynamic> descriptions = result[6]; // New field
+    List<dynamic> licenseNumbers = result[7]; // New field
+    List<dynamic> establishmentDates = result[8]; // New field
 
-      List<Map<String, dynamic>> tempOrganizations = [];
-      for (int i = 0; i < wallets.length; i++) {
-        tempOrganizations.add({
-          "wallet": wallets[i].toString(),
-          "name": names[i],
-          "email": emails[i],
-          "phone": phones[i],
-          "city": cities[i],
-          "website": websites[i],
-        });
-      }
-
-      setState(() {
-        organizations = tempOrganizations;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching charities: $e");
-      setState(() {
-        isLoading = false;
+    List<Map<String, dynamic>> tempOrganizations = [];
+    for (int i = 0; i < wallets.length; i++) {
+      tempOrganizations.add({
+        "wallet": wallets[i].toString(),
+        "name": names[i],
+        "email": emails[i],
+        "phone": phones[i],
+        "city": cities[i],
+        "website": websites[i],
+        "description": descriptions[i], // Adding description
+        "licenseNumber": licenseNumbers[i], // Adding license number
+        "establishmentDate": establishmentDates[i], // Adding establishment date
       });
     }
+
+    setState(() {
+      organizations = tempOrganizations;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Error fetching charities: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {
