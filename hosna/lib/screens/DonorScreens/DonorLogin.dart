@@ -135,12 +135,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
             }
 
             // Save private key if not found
-            if (privateKey == null) {
-              String newPrivateKey =
-                  "new_private_key_example"; // Retrieve this securely
-              await prefs.setString('privateKey_$walletAddress', newPrivateKey);
-              print('✅ New private key saved for wallet $walletAddress');
-            }
+            // if (privateKey == null) {
+            //   String newPrivateKey =
+            //       "new_private_key_example"; // Retrieve this securely
+            //   await prefs.setString('privateKey_$walletAddress', newPrivateKey);
+            //   print('✅ New private key saved for wallet $walletAddress');
+            // }
           } catch (e) {
             print('Error saving wallet address or retrieving private key: $e');
           }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
@@ -33,126 +32,126 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final TextEditingController amountController = TextEditingController();
   bool isAnonymous = false;
   // String? globalPrivateKey;
-   // Declare global variables to store wallet address and private key
+  // Declare global variables to store wallet address and private key
   String? globalWalletAddress;
-
 
   // Web3 Variables
   late Web3Client _web3client;
-  final String rpcUrl = "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
+  final String rpcUrl =
+      "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final EthereumAddress contractAddress =
       EthereumAddress.fromHex("0x204e30437e9B11b05AC644EfdEaCf0c680022Fe5");
-@override
-void initState() {
-  super.initState();
-  _getUserType();
-  _web3client = Web3Client(rpcUrl, Client());
+  @override
+  void initState() {
+    super.initState();
+    _getUserType();
+    _web3client = Web3Client(rpcUrl, Client());
 
-  // Check if globalWalletAddress is available
-  if (globalWalletAddress == null) {
-    // If not, retrieve wallet address from SharedPreferences
-    _loadWalletAddress();
-  } else {
-    // If globalWalletAddress is already set, proceed to load the private key
-    _loadPrivateKey(globalWalletAddress!).then((privateKey) {
-      if (privateKey != null) {
-        print("✅ Loaded Private Key: $privateKey");
-        // You can handle the private key further if needed
-      } else {
-        print("❌ No private key found for this wallet address.");
-      }
-    });
+    // Check if globalWalletAddress is available
+    if (globalWalletAddress == null) {
+      // If not, retrieve wallet address from SharedPreferences
+      _loadWalletAddress();
+    } else {
+      // If globalWalletAddress is already set, proceed to load the private key
+      _loadPrivateKey(globalWalletAddress!).then((privateKey) {
+        if (privateKey != null) {
+          print("✅ Loaded Private Key: $privateKey");
+          // You can handle the private key further if needed
+        } else {
+          print("❌ No private key found for this wallet address.");
+        }
+      });
+    }
+
+    print("Project Creator Wallet Address: ${widget.projectCreatorWallet}");
+    print("Wallet Address: $globalWalletAddress");
   }
 
-  print("Project Creator Wallet Address: ${widget.projectCreatorWallet}");
-  print("Wallet Address: $globalWalletAddress");
-}
+  String? _globalPrivateKey;
 
-String? _globalPrivateKey;
+  String? get globalPrivateKey => _globalPrivateKey;
 
-String? get globalPrivateKey => _globalPrivateKey;
+  set globalPrivateKey(String? privateKey) {
+    _globalPrivateKey = privateKey;
+    print('✅ Global private key set: $privateKey');
+  }
 
-set globalPrivateKey(String? privateKey) {
-  _globalPrivateKey = privateKey;
-  print('✅ Global private key set: $privateKey');
-}
-
-
-Future<void> _getUserType() async {
+  Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       userType = prefs.getInt('userType');
     });
-    
-print("All keys: ${prefs.getKeys()}");
+
+    print("All keys: ${prefs.getKeys()}");
   }
 
-Future<String?> _loadWalletAddress() async {
-  try {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? walletAddress = prefs.getString('walletAddress');
+  Future<String?> _loadWalletAddress() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
 
-    if (walletAddress == null) {
-      print("Error: Wallet address not found. Please log in again.");
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Wallet address not found. Please log in again.')),
+        );
+        return null; // Return null if wallet address is not found
+      }
+
+      // If wallet address is found, load private key for it
+      print("Wallet address found: $walletAddress");
+      setState(() {
+        globalWalletAddress = walletAddress;
+      });
+
+      // Now load private key for this wallet address and return it
+      String? privateKey = await _loadPrivateKey(walletAddress);
+
+      if (privateKey == null) {
+        print("Error: Private key not found for wallet address.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Private key not found for wallet address.')),
+        );
+        return null; // Return null if private key is not found
+      }
+
+      return privateKey; // Return the private key if found
+    } catch (e) {
+      print("Error loading wallet address: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wallet address not found. Please log in again.')),
+        SnackBar(content: Text('Error loading wallet address: $e')),
       );
-      return null; // Return null if wallet address is not found
+      return null; // Return null in case of an error
     }
-
-    // If wallet address is found, load private key for it
-    print("Wallet address found: $walletAddress");
-    setState(() {
-      globalWalletAddress = walletAddress;
-    });
-
-    // Now load private key for this wallet address and return it
-    String? privateKey = await _loadPrivateKey(walletAddress);
-    
-    if (privateKey == null) {
-      print("Error: Private key not found for wallet address.");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Private key not found for wallet address.')),
-      );
-      return null; // Return null if private key is not found
-    }
-    
-    return privateKey; // Return the private key if found
-  } catch (e) {
-    print("Error loading wallet address: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error loading wallet address: $e')),
-    );
-    return null; // Return null in case of an error
   }
-}
 
-Future<String?> _loadPrivateKey(String walletAddress) async {
-  try {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    
-    // Construct the key for the private key
-    String privateKeyKey = 'privateKey_$walletAddress';
-    print('Retrieving private key for address: $walletAddress');
-    
-    String? privateKey = prefs.getString(privateKeyKey);
+  Future<String?> _loadPrivateKey(String walletAddress) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    if (privateKey != null) {
-      print('✅ Private key retrieved for wallet $walletAddress');
-      print('✅ Private key : $privateKey');
-      // Use setter to assign private key
-      globalPrivateKey = privateKey;
-      return privateKey;
-    } else {
-      print('❌ Private key not found for wallet $walletAddress');
+      // Construct the key for the private key
+      String privateKeyKey = 'privateKey_$walletAddress';
+      print('Retrieving private key for address: $walletAddress');
+
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print('✅ Private key retrieved for wallet $walletAddress');
+        print('✅ Private key : $privateKey');
+        // Use setter to assign private key
+        globalPrivateKey = privateKey;
+        return privateKey;
+      } else {
+        print('❌ Private key not found for wallet $walletAddress');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error retrieving private key: $e');
       return null;
     }
-  } catch (e) {
-    print('⚠️ Error retrieving private key: $e');
-    return null;
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -299,74 +298,99 @@ Future<String?> _loadPrivateKey(String walletAddress) async {
     );
   }
 
- 
-
-
-Future<void> _processDonation(String amount) async {
-  if (globalPrivateKey == null) {
-    print("Error: No private key found.");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Private key is missing.')),
-    );
-    return;
-  }
-
-  if (widget.projectCreatorWallet.isEmpty) {
-    print("Error: Invalid Ethereum address. The address is empty.");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Project creator address is empty or invalid.')),
-    );
-    return;
-  }
-
-  try {
-    final recipientAddress = EthereumAddress.fromHex(widget.projectCreatorWallet);
-    print("Recipient address: $recipientAddress"); // Debug log
-
-    final credentials = EthPrivateKey.fromHex(globalPrivateKey!);
-    print("Private key loaded successfully"); // Debug log
-
-    final senderAddress = await credentials.extractAddress();
-    print("Sender address: $senderAddress"); // Debug log
-
-    if (senderAddress == recipientAddress) {
-      print("Error: The sender and receiver addresses are the same.");
+  Future<void> _processDonation(String amount) async {
+    if (globalPrivateKey == null) {
+      print("Error: No private key found.");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sender and receiver cannot be the same.')),
+        const SnackBar(content: Text('Private key is missing.')),
       );
       return;
     }
 
-    final donationAmount = BigInt.from(double.parse(amount) * 1e18);
-    print("Donation amount: $donationAmount"); // Debug log
+    if (widget.projectCreatorWallet.isEmpty) {
+      print("Error: Invalid Ethereum address. The address is empty.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Project creator address is empty or invalid.')),
+      );
+      return;
+    }
 
-    final transaction = Transaction(
-      to: recipientAddress,
-      value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmount),
-    );
-    print("Transaction created: $transaction"); // Debug log
+    try {
+      final recipientAddress =
+          EthereumAddress.fromHex(widget.projectCreatorWallet);
+      print("Recipient address: $recipientAddress"); // Debug log
 
-    final result = await _web3client.sendTransaction(
-      credentials,
-      transaction,
-      chainId: 11155111, // Sepolia Testnet Chain ID
-    );
+      final credentials = EthPrivateKey.fromHex(globalPrivateKey!);
+      print("Private key loaded successfully"); // Debug log
 
-    print("Transaction successful: $result"); // Debug log
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Donation successful!')),
-    );
-  } catch (e) {
-    print("Error processing donation: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error processing donation: $e')),
-    );
+      final senderAddress = await credentials.extractAddress();
+      print("Sender address: $senderAddress"); // Debug log
+
+      if (senderAddress == recipientAddress) {
+        print("Error: The sender and receiver addresses are the same.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Sender and receiver cannot be the same.')),
+        );
+        return;
+      }
+
+      final donationAmount = BigInt.from(double.parse(amount) * 1e18);
+      print("Donation amount: $donationAmount"); // Debug log
+
+      final transaction = Transaction(
+        to: recipientAddress,
+        value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmount),
+      );
+      print("Transaction created: $transaction"); // Debug log
+
+      final result = await _web3client.sendTransaction(
+        credentials,
+        transaction,
+        chainId: 11155111, // Sepolia Testnet Chain ID
+      );
+
+      print("Transaction successful: $result"); // Debug log
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Donation successful!')),
+      );
+      // Store the donated project name locally in SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+
+// Use the wallet address to make the key unique for each wallet
+      String key = 'donatedProjects_$globalWalletAddress';
+
+// Retrieve the current list of donated project names (if any)
+      List<String> donatedProjects = prefs.getStringList(key) ?? [];
+
+// Check if the project name already exists for the donor
+      if (!donatedProjects.contains(widget.projectName)) {
+        // Add the new project name to the list
+        donatedProjects.add(widget.projectName);
+
+        // Store the updated list back in SharedPreferences
+        await prefs.setStringList(key, donatedProjects);
+
+        print(
+            "Project Name for wallet $globalWalletAddress stored: ${widget.projectName}");
+      } else {
+        print("Project already donated by this wallet: ${widget.projectName}");
+      }
+
+// To check the stored project names for the wallet address
+      List<String>? storedProjectNames = prefs.getStringList(key);
+      print(
+          "Stored Project Names for wallet $globalWalletAddress: $storedProjectNames");
+      // After saving the project name in SharedPreferences
+      print("All stored keys after donation: ${prefs.getKeys()}");
+    } catch (e) {
+      print("Error processing donation: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error processing donation: $e')),
+      );
+    }
   }
-}
-
-
-
-
 }
 
 final String _contractAbi = '''
