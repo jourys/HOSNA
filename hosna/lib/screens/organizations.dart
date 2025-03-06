@@ -536,7 +536,7 @@ class OrganizationProfilePage extends StatelessWidget {
 
 class ViewProjectsPage extends StatefulWidget {
   final String orgAddress;
-  final String orgName; // Add organization name
+  final String orgName;
 
   ViewProjectsPage({required this.orgAddress, required this.orgName});
 
@@ -550,41 +550,76 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
   @override
   void initState() {
     super.initState();
-    print("Fetching projects for organization address: ${widget.orgAddress}");
     projects = BlockchainService().fetchOrganizationProjects(widget.orgAddress);
+  }
+
+  String _getProjectState(Map<String, dynamic> project) {
+    DateTime now = DateTime.now();
+
+    DateTime startDate = project['startDate'] != null
+        ? DateTime.parse(project['startDate'].toString())
+        : now;
+
+    DateTime endDate = project['endDate'] != null
+        ? DateTime.parse(project['endDate'].toString())
+        : now;
+
+    double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
+    double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
+
+    if (now.isBefore(startDate)) {
+      return "upcoming";
+    } else if (donatedAmount >= totalAmount && now.isBefore(endDate)) {
+      return "completed";
+    } else if (now.isAfter(endDate) && donatedAmount < totalAmount) {
+      return "failed";
+    } else {
+      return "active";
+    }
+  }
+
+  Color _getStateColor(String state) {
+    switch (state) {
+      case "active":
+        return Colors.green;
+      case "failed":
+        return Colors.red;
+      case "completed":
+        return Colors.blue;
+      case "upcoming":
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(
-          24, 71, 137, 1), // Background color behind the white container
-
+      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
       appBar: AppBar(
-        toolbarHeight:
-            70, // Increase the height of the AppBar to move elements down
+        toolbarHeight: 70,
         title: Padding(
-          padding: EdgeInsets.only(bottom: 1), // Move the title slightly down
+          padding: EdgeInsets.only(bottom: 1),
           child: Text(
-            "${widget.orgName}'s Projects", // Display the organization name
+            "${widget.orgName}'s Projects",
             style: TextStyle(
               color: Colors.white,
-              fontWeight: FontWeight.bold, // Make text bold
-              fontSize: 25, // Increase font size
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
             ),
           ),
         ),
-        centerTitle: true, // Center the title
+        centerTitle: true,
         backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        elevation: 0, // Remove shadow for a smooth transition
+        elevation: 0,
         iconTheme: IconThemeData(
-          color: Colors.white, // Set back arrow color to white
-          size: 30, // Increase icon size
-          weight: 800, // Make arrow bold
+          color: Colors.white,
+          size: 30,
+          weight: 800,
         ),
         leading: Padding(
-          padding: EdgeInsets.only(
-              left: 10, bottom: 1), // Move the arrow slightly down
+          padding: EdgeInsets.only(left: 10, bottom: 1),
           child: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () {
@@ -593,12 +628,10 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
           ),
         ),
       ),
-
       body: Stack(
         children: [
           Positioned(
-            top:
-                16, // Adjust this value to control how high the white page starts
+            top: 16,
             left: 0,
             right: 0,
             bottom: 0,
@@ -606,130 +639,132 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft:
-                      Radius.circular(20), // Rounded corners only at the top
+                  topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
               ),
               child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: projects,
                 builder: (context, snapshot) {
-                  print("FutureBuilder State: ${snapshot.connectionState}");
-
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    print("Waiting for data...");
                     return Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
-                    print("Error occurred: ${snapshot.error}");
                     return Center(child: Text("Error: ${snapshot.error}"));
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    print("No data found.");
                     return Center(
                         child: Text(
-                      "Currently, there are no projects available.",
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: const Color.fromARGB(255, 10, 0, 0)),
-                    ));
+                            "Currently, there are no projects available."));
                   }
 
-                  // Display the list of projects
                   final projectList = snapshot.data!;
-                  print("Fetched ${projectList.length} projects.");
 
                   return ListView.builder(
-                    padding: EdgeInsets.only(
-                        top: 16), // Add padding to avoid overlap
+                    padding: EdgeInsets.all(16),
                     itemCount: projectList.length,
                     itemBuilder: (context, index) {
                       final project = projectList[index];
-                      print("Project ${index + 1}: ${project['title']}");
-
+                      final projectState = _getProjectState(project);
+                      final stateColor = _getStateColor(projectState);
                       final deadline = project['endDate'] != null
-                          ? (project['endDate'] is DateTime
-                              ? DateFormat('yyyy-MM-dd')
-                                  .format(project['endDate'])
-                              : project['endDate'])
+                          ? DateFormat('yyyy-MM-dd').format(
+                              DateTime.parse(project['endDate'].toString()))
                           : 'No deadline available';
+                      final double progress =
+                          project['donatedAmount'] / project['totalAmount'];
 
                       return Card(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                           side: BorderSide(
-                            color: Color.fromRGBO(
-                                24, 71, 137, 1), // Set border color
-                            width: 3, // Border width
-                          ),
+                              color: Color.fromRGBO(24, 71, 137, 1), width: 3),
                         ),
                         elevation: 2,
                         margin:
-                            EdgeInsets.symmetric(vertical: 6, horizontal: 24),
-                        child: Container(
-                          color: Colors.grey[
-                              200], // Set the background color to light gray
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 2,
-                                horizontal: 10), // Remove vertical padding
-                            title: Text(
-                              project['name'] ?? 'Untitled',
-                              style: TextStyle(
+                            EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                        child: ListTile(
+                          tileColor: Colors.grey[200],
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                          title: Text(
+                            project['name'] ?? 'Untitled',
+                            style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
-                                color: Color.fromRGBO(
-                                    24, 71, 137, 1), // Set title color
-                                height:
-                                    1.5, // Adjust height to add space between lines
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                    height:
-                                        16), // Add space between project name and deadline
-                                RichText(
-                                  text: TextSpan(
-                                    text: 'Deadline: ',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      color: const Color.fromRGBO(238, 100, 90,
-                                          1), // 'Deadline' text color to red
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: '$deadline',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          color: Colors
-                                              .grey, // Deadline value color to gray
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProjectDetails(
-                                    projectName: project['name'],
-                                    description: project['description'],
-                                    startDate: project['startDate'].toString(),
-                                    deadline: project['endDate'].toString(),
-                                    totalAmount:
-                                        project['totalAmount'].toString(),
-                                    projectType: project['projectType'],
-                                    projectCreatorWallet:
-                                        project['organization'] ?? '',
-                                  ),
-                                ),
-                              );
-                              print("Tapped on project: ${project['name']}");
-                            },
+                                color: Color.fromRGBO(24, 71, 137, 1)),
                           ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 8),
+                              RichText(
+                                text: TextSpan(
+                                  text: 'Deadline: ',
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      color: Color.fromRGBO(238, 100, 90, 1)),
+                                  children: [
+                                    TextSpan(
+                                      text: '$deadline',
+                                      style: TextStyle(
+                                          fontSize: 17, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.grey[200],
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(stateColor),
+                              ),
+                              SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${(progress * 100).toStringAsFixed(0)}%',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: stateColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      projectState,
+                                      style: TextStyle(
+                                          color: stateColor,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProjectDetails(
+                                  projectName: project['name'],
+                                  description: project['description'],
+                                  startDate: project['startDate'].toString(),
+                                  deadline: project['endDate'].toString(),
+                                  totalAmount: project['totalAmount'],
+                                  projectType: project['projectType'],
+                                  projectCreatorWallet:
+                                      project['organization'] ?? '',
+                                  donatedAmount: project['donatedAmount'],
+                                  projectId: project['id'],
+                                  progress: progress,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },

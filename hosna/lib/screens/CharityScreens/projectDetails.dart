@@ -582,7 +582,34 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Donation successful!')),
       );
+      SharedPreferences prefs = await SharedPreferences.getInstance();
 
+// Use the wallet address to make the key unique for each wallet
+      String key = 'donatedProjects_$globalWalletAddress';
+
+// Retrieve the current list of donated project names (if any)
+      List<String> donatedProjects = prefs.getStringList(key) ?? [];
+
+// Check if the project name already exists for the donor
+      if (!donatedProjects.contains(widget.projectName)) {
+        // Add the new project name to the list
+        donatedProjects.add(widget.projectName);
+
+        // Store the updated list back in SharedPreferences
+        await prefs.setStringList(key, donatedProjects);
+
+        print(
+            "Project Name for wallet $globalWalletAddress stored: ${widget.projectName}");
+      } else {
+        print("Project already donated by this wallet: ${widget.projectName}");
+      }
+
+// To check the stored project names for the wallet address
+      List<String>? storedProjectNames = prefs.getStringList(key);
+      print(
+          "Stored Project Names for wallet $globalWalletAddress: $storedProjectNames");
+      // After saving the project name in SharedPreferences
+      print("All stored keys after donation: ${prefs.getKeys()}");
       // Refresh the donated amount after a successful donation
       //_fetchDonatedAmount();
     } catch (e) {
