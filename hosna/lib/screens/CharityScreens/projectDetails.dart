@@ -8,20 +8,25 @@ class ProjectDetails extends StatefulWidget {
   final String description;
   final String startDate;
   final String deadline;
-  final String totalAmount;
+  final double totalAmount;
   final String projectType;
   final String projectCreatorWallet;
+  final double donatedAmount;
+  final int projectId;
+  final double progress;
 
-  const ProjectDetails({
-    super.key,
-    required this.projectName,
-    required this.description,
-    required this.startDate,
-    required this.deadline,
-    required this.totalAmount,
-    required this.projectType,
-    required this.projectCreatorWallet,
-  });
+  const ProjectDetails(
+      {super.key,
+      required this.projectName,
+      required this.description,
+      required this.startDate,
+      required this.deadline,
+      required this.totalAmount,
+      required this.projectType,
+      required this.projectCreatorWallet,
+      required this.donatedAmount,
+      required this.projectId,
+      required this.progress});
 
   @override
   _ProjectDetailsState createState() => _ProjectDetailsState();
@@ -31,32 +36,28 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   int? userType;
   final TextEditingController amountController = TextEditingController();
   bool isAnonymous = false;
-  // String? globalPrivateKey;
-  // Declare global variables to store wallet address and private key
   String? globalWalletAddress;
+  bool _isFetchingDonatedAmount = false;
 
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final EthereumAddress contractAddress =
-      EthereumAddress.fromHex("0x204e30437e9B11b05AC644EfdEaCf0c680022Fe5");
+      EthereumAddress.fromHex("0x95a20778c2713a11ff61695e57cd562f78f75754");
+
   @override
   void initState() {
     super.initState();
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
-    // Check if globalWalletAddress is available
     if (globalWalletAddress == null) {
-      // If not, retrieve wallet address from SharedPreferences
       _loadWalletAddress();
     } else {
-      // If globalWalletAddress is already set, proceed to load the private key
       _loadPrivateKey(globalWalletAddress!).then((privateKey) {
         if (privateKey != null) {
           print("✅ Loaded Private Key: $privateKey");
-          // You can handle the private key further if needed
         } else {
           print("❌ No private key found for this wallet address.");
         }
@@ -81,7 +82,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     setState(() {
       userType = prefs.getInt('userType');
     });
-
     print("All keys: ${prefs.getKeys()}");
   }
 
@@ -96,16 +96,13 @@ class _ProjectDetailsState extends State<ProjectDetails> {
           const SnackBar(
               content: Text('Wallet address not found. Please log in again.')),
         );
-        return null; // Return null if wallet address is not found
+        return null;
       }
 
-      // If wallet address is found, load private key for it
-      print("Wallet address found: $walletAddress");
       setState(() {
         globalWalletAddress = walletAddress;
       });
 
-      // Now load private key for this wallet address and return it
       String? privateKey = await _loadPrivateKey(walletAddress);
 
       if (privateKey == null) {
@@ -114,24 +111,22 @@ class _ProjectDetailsState extends State<ProjectDetails> {
           const SnackBar(
               content: Text('Private key not found for wallet address.')),
         );
-        return null; // Return null if private key is not found
+        return null;
       }
 
-      return privateKey; // Return the private key if found
+      return privateKey;
     } catch (e) {
       print("Error loading wallet address: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading wallet address: $e')),
       );
-      return null; // Return null in case of an error
+      return null;
     }
   }
 
   Future<String?> _loadPrivateKey(String walletAddress) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-
-      // Construct the key for the private key
       String privateKeyKey = 'privateKey_$walletAddress';
       print('Retrieving private key for address: $walletAddress');
 
@@ -140,7 +135,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       if (privateKey != null) {
         print('✅ Private key retrieved for wallet $walletAddress');
         print('✅ Private key : $privateKey');
-        // Use setter to assign private key
         globalPrivateKey = privateKey;
         return privateKey;
       } else {
@@ -153,8 +147,122 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     }
   }
 
+  Future<void> _fetchDonatedAmount() async {
+    setState(() {
+      _isFetchingDonatedAmount = true;
+    });
+
+    try {
+      print("Fetching donated amount for project ID: ${widget.projectId}");
+
+      final donationContract = DeployedContract(
+        ContractAbi.fromJson(_contractAbi, 'DonationContract'),
+        contractAddress,
+      );
+
+      final function = donationContract.function('getProjectDonations');
+
+      final result = await _web3client.call(
+        contract: donationContract,
+        function: function,
+        params: [BigInt.from(widget.projectId)],
+      );
+
+      print("Raw Result from Smart Contract: $result");
+
+      if (result.isEmpty || result[0] == null) {
+        print("⚠️ Warning: No data returned from contract!");
+        return;
+      }
+
+      final donatedAmountInWei = result[0] as BigInt;
+      final donatedAmountInEth = donatedAmountInWei / BigInt.from(10).pow(18);
+
+      print("✅ Donated Amount (ETH): $donatedAmountInEth");
+    } catch (e) {
+      print("❌ Error fetching donated amount: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching donated amount: $e')),
+      );
+    } finally {
+      setState(() {
+        _isFetchingDonatedAmount = false;
+      });
+    }
+  }
+
+  String _getProjectState() {
+    Map<String, dynamic> project = {
+      'startDate': widget.startDate,
+      'endDate': widget.deadline,
+      'totalAmount': widget.totalAmount,
+      'donatedAmount': widget.donatedAmount,
+    };
+
+    return getProjectState(project); // Use the utility function
+  }
+
+  String getProjectState(Map<String, dynamic> project) {
+    DateTime now = DateTime.now();
+
+    // Handle startDate (could be DateTime, String, or null)
+    DateTime startDate;
+    if (project['startDate'] == null) {
+      return "upcoming"; // If startDate is null, assume the project is upcoming
+    } else if (project['startDate'] is DateTime) {
+      startDate = project['startDate'];
+    } else {
+      startDate = DateTime.parse(project['startDate']);
+    }
+
+    // Handle endDate (could be DateTime, String, or null)
+    DateTime endDate;
+    if (project['endDate'] == null) {
+      return "active"; // If endDate is null, assume the project is active
+    } else if (project['endDate'] is DateTime) {
+      endDate = project['endDate'];
+    } else {
+      endDate = DateTime.parse(project['endDate']);
+    }
+
+    // Handle totalAmount (could be int, String, or null)
+    double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
+    double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
+
+    if (now.isBefore(startDate)) {
+      return "upcoming";
+    } else if (donatedAmount >= totalAmount) {
+      return "in-progress"; // Project reached the goal
+    } else {
+      if (now.isAfter(endDate)) {
+        return "failed"; // Project failed to reach the target
+      } else {
+        return "active"; // Project is ongoing and goal is not reached yet
+      }
+    }
+  }
+
+  Color _getStateColor(String state) {
+    switch (state) {
+      case "active":
+        return Colors.green;
+      case "failed":
+        return Colors.red;
+      case "in-progress":
+        return Colors.purple;
+      case "completed":
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    String projectState = _getProjectState();
+    Color stateColor = _getStateColor(projectState);
+    double totalAmount = widget.totalAmount;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Project Details'),
@@ -180,37 +288,115 @@ class _ProjectDetailsState extends State<ProjectDetails> {
               const SizedBox(height: 20),
               _buildDetailItem('Start Date:', widget.startDate),
               _buildDetailItem('Deadline:', widget.deadline),
-              _buildDetailItem('Total Amount:', '${widget.totalAmount} SR'),
+              _buildDetailItem(
+                  'Total Amount:', '${totalAmount.toStringAsFixed(5)} ETH'),
               _buildDetailItem('Project Type:', widget.projectType),
-              const SizedBox(height: 20),
-              Divider(color: Colors.grey[300]),
-              const SizedBox(height: 10),
-              Text('30% of donors contributed',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(
-                  value: 0.3,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue)),
-              const SizedBox(height: 20),
-              if (userType == 0)
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () => _showDonationPopup(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 30, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+              Visibility(
+                visible: _isFetchingDonatedAmount,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              Visibility(
+                visible: !_isFetchingDonatedAmount,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailItem('Donated Amount:',
+                        '${widget.donatedAmount.toStringAsFixed(5)} ETH'), // Updated here
+                    const SizedBox(height: 20),
+                    Divider(color: Colors.grey[300]),
+                    const SizedBox(height: 10),
+                    LinearProgressIndicator(
+                      value: widget.progress,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(stateColor),
                     ),
-                    child: const Text('Donate',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                  ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${(widget.progress * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: stateColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            projectState,
+                            style: TextStyle(
+                                color: stateColor, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    if (userType == 0 && projectState == "active")
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => _showDonationPopup(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Donate',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    if (userType == 1 &&
+                        projectState == "failed" &&
+                        widget.projectCreatorWallet == globalWalletAddress)
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => print("voting"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Initiate Voting',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    if (userType == 1 &&
+                        projectState == "in-progress" &&
+                        widget.projectCreatorWallet == globalWalletAddress)
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => print("post update"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Post Update',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
+                        ),
+                      ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
@@ -237,6 +423,10 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   }
 
   void _showDonationPopup(BuildContext context) {
+    TextEditingController amountController = TextEditingController();
+    bool isAnonymous = false;
+    String? errorMessage;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -262,25 +452,44 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                        hintText: 'Amount ',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12))),
+                      hintText: 'Amount',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      errorText: errorMessage, // Show error message if invalid
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        double? amount = double.tryParse(value);
+                        if (amount == null || amount <= 0) {
+                          errorMessage =
+                              "Please enter a valid amount greater than zero";
+                        } else {
+                          errorMessage = null;
+                        }
+                      });
+                    },
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
                       Checkbox(
-                          value: isAnonymous,
-                          onChanged: (value) =>
-                              setState(() => isAnonymous = value!)),
+                        value: isAnonymous,
+                        onChanged: (value) =>
+                            setState(() => isAnonymous = value!),
+                      ),
                       const Text('Donate anonymously'),
                     ],
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () => _processDonation(amountController.text),
+                    onPressed: errorMessage == null
+                        ? () async {
+                            await _processDonation(amountController.text);
+                            Navigator.pop(context);
+                          }
+                        : null, // Disable if input is invalid
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 30, vertical: 15),
                         shape: RoundedRectangleBorder(
@@ -317,33 +526,51 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     }
 
     try {
-      final recipientAddress =
-          EthereumAddress.fromHex(widget.projectCreatorWallet);
-      print("Recipient address: $recipientAddress"); // Debug log
-
       final credentials = EthPrivateKey.fromHex(globalPrivateKey!);
-      print("Private key loaded successfully"); // Debug log
-
       final senderAddress = await credentials.extractAddress();
-      print("Sender address: $senderAddress"); // Debug log
 
-      if (senderAddress == recipientAddress) {
-        print("Error: The sender and receiver addresses are the same.");
+      // Convert the donation amount from ETH to wei
+      final donationAmountInEth = double.parse(amount);
+      final donationAmountInWei = BigInt.from(donationAmountInEth * 1e18);
+
+      // Check wallet balance
+      final balance = await _web3client.getBalance(senderAddress);
+
+      // Estimate gas fees
+      final gasPrice = await _web3client.getGasPrice();
+      final gasLimit = BigInt.from(300000); // Example gas limit
+      final totalGasFee = gasPrice.getInWei * gasLimit;
+
+      // Check if the wallet has enough ETH for the donation and gas fees
+      if (balance.getInWei < (donationAmountInWei + totalGasFee)) {
+        print("Error: Insufficient funds for donation and gas fees.");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Sender and receiver cannot be the same.')),
+              content: Text('Insufficient funds for donation and gas fees.')),
         );
         return;
       }
 
-      final donationAmount = BigInt.from(double.parse(amount) * 1e18);
-      print("Donation amount: $donationAmount"); // Debug log
-
-      final transaction = Transaction(
-        to: recipientAddress,
-        value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmount),
+      // Load the DonationContract
+      final donationContract = DeployedContract(
+        ContractAbi.fromJson(_contractAbi, 'DonationContract'),
+        EthereumAddress.fromHex('0x95a20778c2713a11ff61695e57cd562f78f75754'),
       );
-      print("Transaction created: $transaction"); // Debug log
+
+      // Get the function reference
+      final function = donationContract.function('donate');
+
+      // Send the transaction to the DonationContract
+      final transaction = Transaction.callContract(
+        contract: donationContract,
+        function: function,
+        parameters: [
+          BigInt.from(widget.projectId), // Pass project ID
+        ],
+        value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmountInWei),
+        gasPrice: gasPrice,
+        maxGas: gasLimit.toInt(),
+      );
 
       final result = await _web3client.sendTransaction(
         credentials,
@@ -351,39 +578,13 @@ class _ProjectDetailsState extends State<ProjectDetails> {
         chainId: 11155111, // Sepolia Testnet Chain ID
       );
 
-      print("Transaction successful: $result"); // Debug log
+      print("Transaction successful: $result");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Donation successful!')),
       );
-      // Store the donated project name locally in SharedPreferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
 
-// Use the wallet address to make the key unique for each wallet
-      String key = 'donatedProjects_$globalWalletAddress';
-
-// Retrieve the current list of donated project names (if any)
-      List<String> donatedProjects = prefs.getStringList(key) ?? [];
-
-// Check if the project name already exists for the donor
-      if (!donatedProjects.contains(widget.projectName)) {
-        // Add the new project name to the list
-        donatedProjects.add(widget.projectName);
-
-        // Store the updated list back in SharedPreferences
-        await prefs.setStringList(key, donatedProjects);
-
-        print(
-            "Project Name for wallet $globalWalletAddress stored: ${widget.projectName}");
-      } else {
-        print("Project already donated by this wallet: ${widget.projectName}");
-      }
-
-// To check the stored project names for the wallet address
-      List<String>? storedProjectNames = prefs.getStringList(key);
-      print(
-          "Stored Project Names for wallet $globalWalletAddress: $storedProjectNames");
-      // After saving the project name in SharedPreferences
-      print("All stored keys after donation: ${prefs.getKeys()}");
+      // Refresh the donated amount after a successful donation
+      //_fetchDonatedAmount();
     } catch (e) {
       print("Error processing donation: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -398,47 +599,13 @@ final String _contractAbi = '''
   {
     "inputs": [
       {
-        "internalType": "address payable",
-        "name": "projectCreator",
-        "type": "address"
-      }
-    ],
-    "name": "donate",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
-        "name": "donor",
+        "name": "_postProjectAddress",
         "type": "address"
       }
     ],
-    "name": "getDonorInfo",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "totalDonated",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getContractBalance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   },
   {
     "anonymous": false,
@@ -460,6 +627,12 @@ final String _contractAbi = '''
         "internalType": "address",
         "name": "projectCreator",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "projectId",
+        "type": "uint256"
       }
     ],
     "name": "DonationReceived",
@@ -483,7 +656,102 @@ final String _contractAbi = '''
     ],
     "name": "FundsTransferred",
     "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "projectId",
+        "type": "uint256"
+      }
+    ],
+    "name": "donate",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getContractBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "donor",
+        "type": "address"
+      }
+    ],
+    "name": "getDonorInfo",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "projectId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getProjectDonations",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "postProject",
+    "outputs": [
+      {
+        "internalType": "contract PostProject",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "projectDonations",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ]
-
 ''';

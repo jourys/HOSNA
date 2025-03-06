@@ -1,11 +1,11 @@
+import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web3dart/web3dart.dart';
 
 class BlockchainService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x25f30375f43dce255c8261ab6baf64f4ab62a87c';
+  final String contractAddress = '0x2bbf496a6df44fbd91b14dbf682e43162ec4f3da';
 
   late Web3Client _web3Client;
   late EthPrivateKey _credentials;
@@ -13,6 +13,31 @@ class BlockchainService {
 
   // ABI for the contract
   final abi = '''[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "projectId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "donor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DonationReceived",
+    "type": "event"
+  },
   {
     "anonymous": false,
     "inputs": [
@@ -92,7 +117,7 @@ class BlockchainService {
       },
       {
         "internalType": "uint256",
-        "name": "_totalAmount",
+        "name": "_totalAmountInWei",
         "type": "uint256"
       },
       {
@@ -161,6 +186,11 @@ class BlockchainService {
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "donatedAmount",
+        "type": "uint256"
+      },
+      {
         "internalType": "address",
         "name": "organization",
         "type": "address"
@@ -169,6 +199,11 @@ class BlockchainService {
         "internalType": "string",
         "name": "projectType",
         "type": "string"
+      },
+      {
+        "internalType": "enum PostProject.ProjectState",
+        "name": "state",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -247,6 +282,11 @@ class BlockchainService {
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "donatedAmount",
+        "type": "uint256"
+      },
+      {
         "internalType": "address",
         "name": "organization",
         "type": "address"
@@ -255,9 +295,32 @@ class BlockchainService {
         "internalType": "string",
         "name": "projectType",
         "type": "string"
+      },
+      {
+        "internalType": "enum PostProject.ProjectState",
+        "name": "state",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_projectId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amountInWei",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateDonatedAmount",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]''';
@@ -350,12 +413,14 @@ class BlockchainService {
     String description,
     int startDate,
     int endDate,
-    double totalAmount,
+    double totalAmount, // Pass ETH value
     String projectType,
   ) async {
     try {
       // Ensure the charity employee is connected
       await connect();
+
+      BigInt totalAmountInWei = BigInt.from(totalAmount * 1e18);
 
       final contract = await _getContract();
       final function = contract.function('addProject');
@@ -370,18 +435,46 @@ class BlockchainService {
             description,
             BigInt.from(startDate),
             BigInt.from(endDate),
-            BigInt.from(totalAmount),
+            totalAmountInWei, // Send Wei value
             projectType,
           ],
-          gasPrice: EtherAmount.inWei(BigInt.from(20000000000)),
+          gasPrice: EtherAmount.inWei(BigInt.from(20 * 1000000000)),
           maxGas: 300000,
         ),
         chainId: 11155111, // Sepolia Testnet Chain ID
       );
 
       print("✅ Transaction sent. Hash: $transactionHash");
+      final receipt = await _web3Client.getTransactionReceipt(transactionHash);
+      //if (receipt == null || !receipt.status!) {
+      //throw Exception("Transaction failed");
+      //}
+
+      print("✅ Project added successfully!");
     } catch (e) {
       print("❌ Error posting project: $e");
+      throw e;
+    }
+  }
+
+  Future<double> getProjectDonations(int projectId) async {
+    try {
+      final contract = await _getContract();
+      final function = contract.function('getProjectDonations');
+
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [BigInt.from(projectId)],
+      );
+
+      final donatedAmountInWei = result[0] as BigInt;
+      final donatedAmountInEth = donatedAmountInWei.toDouble() / 1e18;
+
+      return donatedAmountInEth.toDouble();
+    } catch (e) {
+      print("❌ Error fetching donated amount: $e");
+      throw e;
     }
   }
 
@@ -417,16 +510,21 @@ class BlockchainService {
     try {
       final contract = await _getContract();
       final function = contract.function('getProjectCount');
-      var result = await _web3Client.call(
+      final result = await _web3Client.call(
         contract: contract,
         function: function,
         params: [],
       );
-      return (result[0] as BigInt).toInt();
+      return result[0].toInt(); // Ensure this returns a valid integer
     } catch (e) {
       print("Error fetching project count: $e");
-      return 0;
+      throw Exception("Failed to fetch project count: $e");
     }
+  }
+
+  static double weiToEth(BigInt wei) {
+    //Use BigInt for precise division
+    return wei / BigInt.from(10).pow(18);
   }
 
   /// Get project details by ID
@@ -441,58 +539,35 @@ class BlockchainService {
         params: [BigInt.from(projectId)],
       );
 
+      // Ensure the result is valid
+      if (result.isEmpty) {
+        throw Exception("No project found for ID: $projectId");
+      }
+
+      // Convert Wei to ETH
+      double totalAmountInEth = weiToEth(result[4]);
+      double donatedAmountInEth = weiToEth(result[5]);
+
+      // Print to verify ETH values
+      print("Total Amount in ETH: $totalAmountInEth");
+      print("Donated Amount in ETH: $donatedAmountInEth");
+
       return {
+        "id": projectId,
         "name": result[0].toString(),
         "description": result[1].toString(),
         "startDate": DateTime.fromMillisecondsSinceEpoch(
             int.parse(result[2].toString()) * 1000),
         "endDate": DateTime.fromMillisecondsSinceEpoch(
             int.parse(result[3].toString()) * 1000),
-        "totalAmount": result[4].toInt(),
-        "organization": result[5].toString(),
-        "projectType": result[6].toString(), // New field
+        "totalAmount": totalAmountInEth.toDouble(), // Display in ETH
+        "donatedAmount": donatedAmountInEth.toDouble(), // Display in ETH
+        "organization": result[6].toString(),
+        "projectType": result[7].toString(), // New field
       };
     } catch (e) {
-      print("Error fetching project details: $e");
+      print("Error fetching project details for ID $projectId: $e");
       return {"error": "Error fetching project details: $e"};
-    }
-  }
-
-  /// Fetch all projects for a given organization address
-  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(
-      String orgAddress) async {
-    try {
-      final contract = await _getContract();
-      final function = contract.function("getOrganizationProjects");
-
-      // Fetch project IDs for the given organization
-      List<dynamic> projectIds = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [EthereumAddress.fromHex(orgAddress)],
-      );
-
-      // Flatten projectIds if it contains a list within a list
-      List<dynamic> flattenedProjectIds =
-          projectIds.expand((x) => x is List ? x : [x]).toList();
-
-      List<Map<String, dynamic>> projects = [];
-
-      for (var projectId in flattenedProjectIds) {
-        // Ensure that projectId is a BigInt and convert it to int
-        if (projectId is BigInt) {
-          var projectDetails = await getProjectDetails(
-              projectId.toInt()); // Convert BigInt to int
-          projects.add(projectDetails);
-        } else {
-          print("Unexpected project ID type: $projectId");
-        }
-      }
-
-      return projects;
-    } catch (e) {
-      print("❌ Error fetching organization projects: $e");
-      return [];
     }
   }
 }
