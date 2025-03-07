@@ -585,23 +585,25 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
 // Use the wallet address to make the key unique for each wallet
-      String key = 'donatedProjects_$globalWalletAddress';
+      String key = 'donatedProjectIds';
 
 // Retrieve the current list of donated project names (if any)
       List<String> donatedProjects = prefs.getStringList(key) ?? [];
 
 // Check if the project name already exists for the donor
-      if (!donatedProjects.contains(widget.projectName)) {
+      if (!donatedProjects.contains(widget.projectId.toString())) {
         // Add the new project name to the list
-        donatedProjects.add(widget.projectName);
+        donatedProjects.add(widget.projectId.toString());
 
         // Store the updated list back in SharedPreferences
         await prefs.setStringList(key, donatedProjects);
 
         print(
+            "Project id for wallet $globalWalletAddress stored: ${widget.projectId}");
+        print(
             "Project Name for wallet $globalWalletAddress stored: ${widget.projectName}");
       } else {
-        print("Project already donated by this wallet: ${widget.projectName}");
+        print("Project already donated by this wallet: ${widget.projectId}");
       }
 
 // To check the stored project names for the wallet address
