@@ -42,11 +42,16 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadDonatedProjectIds() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? storedIds = prefs.getStringList('donatedProjectIds');
+    List<String>? storedIds =
+        prefs.getStringList('donatedProjects_$_walletAddress');
 
     if (storedIds != null) {
       setState(() {
-        projectIds = storedIds.map((id) => int.parse(id)).toList();
+        projectIds = storedIds
+            .where((id) =>
+                RegExp(r'^\d+$').hasMatch(id)) // Ensure it's a valid number
+            .map((id) => int.parse(id))
+            .toList();
         donatedProjects = _fetchDonatedProjects();
       });
     }

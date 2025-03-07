@@ -585,7 +585,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
 // Use the wallet address to make the key unique for each wallet
-      String key = 'donatedProjectIds';
+      String key = 'donatedProjects_$globalWalletAddress';
 
 // Retrieve the current list of donated project names (if any)
       List<String> donatedProjects = prefs.getStringList(key) ?? [];
