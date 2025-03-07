@@ -27,6 +27,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   final String _contractAddress = "0xbCDE877f2f9043F79fc03C691E774f4289D055ED";
   final String _lookupContractAddress =
       "0xBD732aE611e101d0aDC7A792785b07ee634adDE2";
+  bool _isPasswordVisible = false; // Track password visibility
 
   @override
   void initState() {
@@ -213,9 +214,24 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               SizedBox(height: 30),
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: !_isPasswordVisible, // Toggle visibility
                 decoration: InputDecoration(
-                    labelText: 'Password', border: OutlineInputBorder()),
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
+                ),
               ),
               SizedBox(height: 30),
               Center(
