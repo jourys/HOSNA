@@ -29,6 +29,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
     super.initState();
     _getUserType();
     _initializeWeb3();
+    _getDonorData();
   }
 
   Future<void> _getUserType() async {
@@ -156,27 +157,26 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: Icon(Icons.edit, color: Colors.white),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditDonorProfileScreen(
-                    firstName: _firstName,
-                    lastName: _lastName,
-                    email: _email,
-                    phone: _phone,
+              icon: Icon(Icons.edit, color: Colors.white),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditDonorProfileScreen(
+                      firstName: _firstName,
+                      lastName: _lastName,
+                      email: _email,
+                      phone: _phone,
+                    ),
                   ),
-                ),
-              );
+                );
 
-              if (result == true) {
-                // ✅ Check if Edit Screen returned success
-                print("🔄 Refreshing profile after edit...");
-                _getDonorData();
-              }
-            },
-          ),
+                if (result == true) {
+                  print("🔄 Refreshing profile after edit...");
+                  await _getDonorData(); // ✅ Fetch fresh data from blockchain
+                  setState(() {}); // ✅ Forces a rebuild with new data
+                }
+              }),
         ],
         // Setting the height of the AppBar using preferredSize
         toolbarHeight: 80, // Adjust the height here

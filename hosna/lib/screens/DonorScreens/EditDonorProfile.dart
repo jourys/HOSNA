@@ -88,23 +88,38 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
 
   Future<DeployedContract> _loadContract() async {
     final contractAbi = '''[
-    {
-      "constant": true,
-      "inputs": [{"name": "_wallet", "type": "address"}],
-      "name": "getDonor",
-      "outputs": [
-        {"name": "firstName", "type": "string"},
-        {"name": "lastName", "type": "string"},
-        {"name": "email", "type": "string"},
-        {"name": "phone", "type": "string"},
-        {"name": "walletAddress", "type": "address"},
-        {"name": "registered", "type": "bool"}
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ]''';
+  {
+    "constant": true,
+    "inputs": [{"name": "_wallet", "type": "address"}],
+    "name": "getDonor",
+    "outputs": [
+      {"name": "firstName", "type": "string"},
+      {"name": "lastName", "type": "string"},
+      {"name": "email", "type": "string"},
+      {"name": "phone", "type": "string"},
+      {"name": "walletAddress", "type": "address"},
+      {"name": "registered", "type": "bool"}
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {"name": "_wallet", "type": "address"},
+      {"name": "_firstName", "type": "string"},
+      {"name": "_lastName", "type": "string"},
+      {"name": "_email", "type": "string"},
+      {"name": "_phone", "type": "string"}
+    ],
+    "name": "updateDonor",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]''';
 
     return DeployedContract(
       ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
@@ -114,7 +129,19 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
 
   Future<void> _updateDonorData() async {
     final prefs = await SharedPreferences.getInstance();
-    String? privateKey = prefs.getString('privateKey');
+    String? walletAddress =
+        prefs.getString('walletAddress'); // Retrieve wallet address
+    String? privateKey =
+        prefs.getString('privateKey_$walletAddress'); // Retrieve private key
+
+    if (privateKey == null || privateKey.isEmpty) {
+      print("❌ Error: Private key not found for wallet: $walletAddress");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Error: Private key not found! Please re-login.")),
+      );
+      return;
+    }
 
     _donorAddress = prefs.getString('walletAddress') ?? '';
 
@@ -144,7 +171,6 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
 
     final contract = await _loadContract();
     final function = contract.function('updateDonor');
-
     try {
       final credentials = EthPrivateKey.fromHex(privateKey);
       await _web3Client.sendTransaction(
@@ -159,19 +185,30 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
             emailController.text,
             phoneController.text,
           ],
-          gasPrice:
-              EtherAmount.inWei(BigInt.from(30000000000)), // ✅ Added gas price
-          maxGas: 1000000, // ✅ Increased gas limit
+          gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
         ),
         chainId: 11155111,
       );
 
-      print("✅ Profile updated successfully!");
+      print("✅ Profile update transaction sent!");
+      print("⏳ Waiting for blockchain confirmation...");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⏳ Waiting for updating your profile...'),
+          duration: Duration(seconds: 10), // Display while waiting
+        ),
+      );
+      // ⏳ **Add a delay before navigating back**
+      await Future.delayed(Duration(seconds: 10)); // ⏳ Adjust if needed
+
+      print("✅ Profile update confirmed, navigating back!");
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile updated successfully!')),
       );
 
-      Navigator.pop(context, true);
+      Navigator.pop(context, true); // ✅ Trigger profile refresh
     } catch (e) {
       print("❌ Error updating profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
