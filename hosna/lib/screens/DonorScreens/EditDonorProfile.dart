@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorHomePage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart';
@@ -166,6 +167,53 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       print("❌ Error: Invalid wallet address - $_donorAddress");
       return;
     }
+    String firstName = firstNameController.text.trim();
+    if (firstName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ First name cannot be empty")),
+      );
+      return;
+    }
+    if (firstName.length > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ First name cannot exceed 20 characters")),
+      );
+      return;
+    }
+    String lastName = lastNameController.text.trim();
+    if (lastName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Last name cannot be empty")),
+      );
+      return;
+    }
+    if (lastName.length > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Last name cannot exceed 20 characters")),
+      );
+      return;
+    }
+
+    // ✅ **Validate Phone Number Before Sending to Blockchain**
+    String phone = phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number cannot be empty")),
+      );
+      return;
+    }
+    if (phone.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number must be exactly 10 digits")),
+      );
+      return;
+    }
+    if (!phone.startsWith('05')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number must start with '05'")),
+      );
+      return;
+    }
 
     print("🟢 Updating donor profile...");
 
@@ -260,21 +308,28 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
           labelText: label,
           border: OutlineInputBorder(),
         ),
+        readOnly: isEmail, // ✅ Make email field read-only
+        keyboardType: isPhone
+            ? TextInputType.number
+            : TextInputType.text, // ✅ Set numeric keyboard for phone
+        inputFormatters: isPhone
+            ? [
+                FilteringTextInputFormatter.digitsOnly, // ✅ Allow only numbers
+                LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
+              ]
+            : [],
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Enter $label';
           }
-          if (isEmail &&
-              value != widget.email && // ✅ Only validate if changed
-              !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,4}$').hasMatch(value)) {
-            return 'Enter a valid email';
+          if (isPhone) {
+            if (value.length != 10) {
+              return 'Phone number must be exactly 10 digits';
+            }
+            if (!value.startsWith('05')) {
+              return 'Phone number must start with 05';
+            }
           }
-          if (isPhone &&
-              value != widget.phone && // ✅ Only validate if changed
-              !RegExp(r'^05\d{8}$').hasMatch(value)) {
-            return 'Invalid phone number';
-          }
-
           return null;
         },
       ),
