@@ -1,5 +1,7 @@
 // TODO Implement this library.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hosna/screens/CharityScreens/ProfileScreenCharity.dart';
 import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart';
@@ -199,9 +201,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    print("🟢 Stored Wallet Address in Flutter: $storedAddress");
-
-    // Ensure wallet address is correct
     final privateKey = prefs.getString('privateKey');
     if (privateKey == null || privateKey.isEmpty) {
       print("❌ No private key found!");
@@ -212,48 +211,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     final derivedAddress = EthPrivateKey.fromHex(privateKey).address.hex;
-    print("✅ Wallet derived from private key: $derivedAddress");
-
     if (storedAddress != derivedAddress) {
-      print("! Wallet address mismatch! Updating SharedPreferences...");
       await prefs.setString('walletAddress', derivedAddress);
     }
 
-    print("🔍 Checking wallet balance before transaction...");
-    final blockchainService = BlockchainService();
-    await blockchainService.checkBalance();
+    // 🔹 **Retrieve Form Inputs & Trim Whitespace**
+    String name = nameController.text.trim();
+    String email = emailController.text.trim();
+    String phone = phoneController.text.trim();
+    String license = licenseController.text.trim();
+    String city = cityController.text.trim();
+    String date = dateController.text.trim();
+    String website = websiteController.text.trim();
+    String description = descriptionController.text.trim();
 
-    print("🔹 Using Wallet Address: $storedAddress");
-    print("🔍 Verifying wallet balance...");
-    await blockchainService.verifyWalletBalance();
+    // 🔹 **Validate Required Fields**
+    if (name.isEmpty) {
+      showError("Organization Name cannot be empty.");
+      return;
+    }
+    if (email.isEmpty ||
+        !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,4}$').hasMatch(email)) {
+      showError("Enter a valid email address.");
+      return;
+    }
+    if (phone.isEmpty || phone.length != 10 || !phone.startsWith('05')) {
+      showError("Phone number must be 10 digits and start with 05.");
+      return;
+    }
+    if (license.isEmpty) {
+      showError("License Number cannot be empty.");
+      return;
+    }
+    if (city.isEmpty) {
+      showError("City cannot be empty.");
+      return;
+    }
+    if (date.isEmpty) {
+      showError("Establishment Date cannot be empty.");
+      return;
+    }
 
-    final balance =
-        await _web3Client.getBalance(EthereumAddress.fromHex(storedAddress));
-    print(
-        "💰 Actual Wallet Balance Before Sending: ${balance.getValueInUnit(EtherUnit.ether)} ETH");
-    print("🔍 Debugging Gas Cost:");
-    print("   - Wallet: $storedAddress");
-    print("   - Gas Limit: 800000");
-    print("   - Function Parameters: ${[
-      storedAddress,
-      nameController.text,
-      emailController.text,
-      phoneController.text,
-      licenseController.text,
-      cityController.text,
-      descriptionController.text,
-      websiteController.text,
-      dateController.text
-    ]}");
+    // 🔹 **Optional Fields Validation**
+    if (website.isNotEmpty && !Uri.parse(website).isAbsolute) {
+      showError("Please enter a valid website URL.");
+      return;
+    }
+    if (description.length > 250) {
+      showError("Description must be at most 250 characters.");
+      return;
+    }
+
+    print("🔹 Preparing transaction...");
+    await estimateGasCost();
+
+    final credentials = EthPrivateKey.fromHex(privateKey);
 
     try {
       final contract = await _loadContract();
       final function = contract.function('updateCharity');
-
-      print("🔹 Preparing transaction...");
-      await estimateGasCost();
-
-      final credentials = EthPrivateKey.fromHex(privateKey);
 
       await _web3Client.sendTransaction(
         credentials,
@@ -262,67 +278,57 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           function: function,
           parameters: [
             EthereumAddress.fromHex(storedAddress),
-            nameController.text,
-            emailController.text,
-            phoneController.text,
-            licenseController.text,
-            cityController.text,
-            descriptionController.text,
-            websiteController.text,
-            dateController.text,
+            name,
+            email,
+            phone,
+            license,
+            city,
+            description.isEmpty ? " " : description,
+            website.isEmpty ? " " : website,
+            date,
           ],
-          gasPrice:
-              EtherAmount.inWei(BigInt.from(30000000000)), // Adjusted gas price
-          maxGas: 1000000, // Increased gas limit
+          gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
         ),
-        chainId: 11155111, // ✅ Ensure correct Sepolia Testnet Chain ID
+        chainId: 11155111,
       );
-
-      print("✅ Transaction sent successfully!");
-      print("⏳ Waiting for blockchain to update...");
-      //  await Future.delayed(Duration(seconds: 10)); // Wait for blockchain update
-
-      print("🔍 Fetching updated data...");
-      print("⏳ Waiting for blockchain to update...");
-      await Future.delayed(
-          Duration(seconds: 10)); // ⏳ Add delay to allow blockchain update
-
-      try {
-        print("🔍 Fetching updated data...");
-        final updatedData = await fetchCharityData(storedAddress);
-
-        if (updatedData.isNotEmpty) {
-          print("✅ Profile updated with new data: $updatedData");
-        } else {
-          print("⚠️ No updated data retrieved, but navigating anyway.");
-        }
-      } catch (fetchError) {
-        print(
-            "⚠️ Error fetching updated data: $fetchError (Ignoring and navigating)");
-      }
-
-      print("✅ Profile updated with new data: $profileData");
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Profile updated successfully!'),
-          duration: Duration(seconds: 2),
+          content: Text('⏳ Waiting for updating your profile...'),
+          duration: Duration(seconds: 10), // Display while waiting
         ),
       );
+      print("✅ Transaction sent successfully!");
+      await Future.delayed(
+          Duration(seconds: 10)); // Allow time for blockchain update
 
-      await Future.delayed(Duration(seconds: 2)); // Wait for snackbar to finish
+      print("🔍 Fetching updated data...");
+      final updatedData = await fetchCharityData(storedAddress);
+
+      if (updatedData.isNotEmpty) {
+        print("✅ Profile updated with new data: $updatedData");
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile updated successfully!')),
+      );
+
+      // await Future.delayed(Duration(seconds: 2));
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-            builder: (context) => CharityEmployeeHomePage()), // Home Page
-        (Route<dynamic> route) => false, // Remove all previous pages
+        MaterialPageRoute(builder: (context) => ProfileScreenCharity()),
+        (Route<dynamic> route) => false,
       );
     } catch (e) {
-      print('❌ Error updating profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile')),
-      );
+      showError('Failed to update profile: $e');
     }
+  }
+
+  void showError(String message) {
+    print("❌ Validation Error: $message");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -340,7 +346,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               _buildTextField(nameController, 'Organization Name'),
               _buildTextField(emailController, 'Email'),
-              _buildTextField(phoneController, 'Phone'),
+              _buildTextField(phoneController, 'Phone', isPhone: true),
               _buildTextField(licenseController, 'License Number'),
               _buildTextField(cityController, 'City'),
               _buildTextField(websiteController, 'Website'),
@@ -366,8 +372,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      {int maxLines = 1}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    int maxLines = 1,
+    bool isPhone = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -376,8 +386,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           labelText: label,
           border: OutlineInputBorder(),
         ),
-        validator: (value) => value!.isEmpty ? 'Enter $label' : null,
-        maxLines: maxLines,
+        keyboardType: isPhone
+            ? TextInputType.number
+            : TextInputType.text, // ✅ Numeric keyboard for phone
+        inputFormatters: isPhone
+            ? [
+                FilteringTextInputFormatter
+                    .digitsOnly, // ✅ Only numbers allowed
+                LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
+              ]
+            : [],
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return '$label cannot be empty';
+          }
+          if (isPhone) {
+            if (value.length != 10) {
+              return 'Phone number must be exactly 10 digits';
+            }
+            if (!value.startsWith('05')) {
+              return 'Phone number must start with 05';
+            }
+          }
+          return null;
+        },
       ),
     );
   }

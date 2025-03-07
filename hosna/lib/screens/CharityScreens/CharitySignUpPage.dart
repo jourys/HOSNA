@@ -305,8 +305,9 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                     isRequired: true, isCity: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _organizationDescriptionController, 'Description',
-                    isRequired: true, isDescription: true),
+                  _organizationDescriptionController,
+                  'Description',
+                ),
                 const SizedBox(height: 30),
                 _buildTextField(_organizationURLController, 'Website'),
                 const SizedBox(height: 30),
@@ -446,6 +447,15 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       controller: controller,
       obscureText: (isPassword && !_isPasswordVisible) ||
           (isConfirmPassword && !_isConfirmPasswordVisible),
+      keyboardType: isPhone
+          ? TextInputType.number
+          : TextInputType.text, // ✅ Numeric keyboard for phone
+      inputFormatters: isPhone
+          ? [
+              FilteringTextInputFormatter.digitsOnly, // ✅ Allow only numbers
+              LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
+            ]
+          : [],
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
