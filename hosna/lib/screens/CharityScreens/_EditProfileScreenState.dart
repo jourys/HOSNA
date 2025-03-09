@@ -312,13 +312,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile updated successfully!')),
       );
-
-      // await Future.delayed(Duration(seconds: 2));
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => ProfileScreenCharity()),
-        (Route<dynamic> route) => false,
-      );
+      Future.delayed(Duration(seconds: 2), () {
+        Navigator.pop(context, true);
+      });
     } catch (e) {
       showError('Failed to update profile: $e');
     }

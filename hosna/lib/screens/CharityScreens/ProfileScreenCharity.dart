@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:hosna/screens/CharityScreens/_EditProfileScreenState.dart';
 import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
 
 class ProfileScreenCharity extends StatefulWidget {
   const ProfileScreenCharity({super.key});
@@ -135,7 +137,13 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // ✅ Navigate to home page if returning after edit
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => CharityMainScreen()),
+            );
+          },
         ),
         title: Text('Profile',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
