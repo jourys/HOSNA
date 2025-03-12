@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorNavBar.dart';
-import 'package:hosna/screens/DonorScreens/DonorResetPassword.dart';
+import 'package:hosna/screens/PasswordResetPage.dart';
 import 'package:hosna/screens/DonorScreens/DonorSignup.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:firebase_auth/firebase_auth.dart';  // For Firebase Authentication
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -134,13 +135,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
               print("❌ No private key found for this wallet.");
             }
 
-            // Save private key if not found
-            // if (privateKey == null) {
-            //   String newPrivateKey =
-            //       "new_private_key_example"; // Retrieve this securely
-            //   await prefs.setString('privateKey_$walletAddress', newPrivateKey);
-            //   print('✅ New private key saved for wallet $walletAddress');
-            // }
           } catch (e) {
             print('Error saving wallet address or retrieving private key: $e');
           }
@@ -172,7 +166,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     }
   }
 
-// Function to retrieve the private key from SharedPreferences
+  // Function to retrieve the private key from SharedPreferences
   Future<String?> _getPrivateKey(String walletAddress) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -194,34 +188,8 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     }
   }
 
-// Sample method to get Ethereum address (replace with actual logic)
-  Future<String> _getEthereumAddressForEmail(String email) async {
-    // If the email-to-wallet mapping is stored in a smart contract or database,
-    // you can fetch the corresponding Ethereum address for the given email.
-
-    // Assuming you fetch it from a database or API:
-    String ethereumAddress =
-        ''; // Replace with actual logic to fetch the address
-
-    if (email == 'z@z.com') {
-      ethereumAddress =
-          '0x84F41a8f4e9d394Ff77Df64FFCc4447BA17d7809'; // Example address
-    }
-
-    return ethereumAddress;
-  }
-
-  @override
-  void dispose() {
-    _emailFocus.dispose();
-    _passwordFocus.dispose();
-    _web3Client.dispose(); // Dispose Web3Client when done
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    print('Building DonorLogInPage UI');
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -278,7 +246,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                DonorResetPasswordPage(), // Your Reset Password page widget
+                                const PasswordResetPage(), // الانتقال إلى صفحة إعادة تعيين كلمة المرور
                           ),
                         );
                       },
@@ -377,7 +345,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
       bool isEmail = false,
       bool isPhone = false,
       bool isName = false}) {
-    print('Building TextField for $label');
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
@@ -416,12 +383,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
             : null, // Show eye icon only for password field
       ),
       maxLength: maxLength,
-      buildCounter: (_,
-          {required currentLength, required isFocused, maxLength}) {
+      buildCounter: (_, {required currentLength, required isFocused, maxLength}) {
         return null; // Remove counter
       },
       validator: (value) {
-        print('Validating $label field');
         if (value == null || value.isEmpty || value.trim().isEmpty) {
           return 'Please enter your $label';
         }
@@ -446,58 +411,5 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
               RegExp(r'[a-zA-Z]')) // Allow only letters for name fields
       ],
     );
-  }
-}
-
-class DonorService {
-  final Web3Client _client;
-  final DeployedContract _contract;
-
-  DonorService(String rpcUrl, String contractAddress)
-      : _client = Web3Client(rpcUrl, Client()),
-        _contract = DeployedContract(
-          ContractAbi.fromJson(
-            '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_wallet","type":"address"}],"name":"getDonor","outputs":[{"name":"firstName","type":"string"},{"name":"lastName","type":"string"},{"name":"email","type":"string"},{"name":"phone","type":"string"},{"name":"walletAddress","type":"address"},{"name":"registered","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_wallet","type":"address"}],"name":"getPasswordHash","outputs":[{"name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"}]',
-            'DonorAuth',
-          ),
-          EthereumAddress.fromHex(contractAddress),
-        );
-
-  // Method to authenticate donor
-  Future<bool> authenticateDonor(String email, String password) async {
-    final loginFunction = _contract.function('loginDonor');
-
-    try {
-      final result = await _client.call(
-        contract: _contract,
-        function: loginFunction,
-        params: [email, password],
-      );
-
-      return result.isNotEmpty && result[0] == true;
-    } catch (e) {
-      print('Error in authentication: $e');
-      return false;
-    }
-  }
-
-  // Method to get the donor's wallet address
-  Future<String> getDonorWalletAddress(String email) async {
-    final getDonorFunction = _contract.function('getDonor');
-
-    try {
-      final result = await _client.call(
-        contract: _contract,
-        function: getDonorFunction,
-        params: [email],
-      );
-
-      // Extract wallet address from the result
-      String walletAddress = result[4] as String;
-      return walletAddress.toString();
-    } catch (e) {
-      print('Error fetching donor wallet address: $e');
-      return '';
-    }
   }
 }

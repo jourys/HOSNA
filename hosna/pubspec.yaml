@@ -44,6 +44,8 @@ dependencies:
   walletconnect_dart: ^0.0.11
   flutter_launcher_icons: ^0.14.3
   flutter_secure_storage: ^9.2.4
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
   # ethereum: ^0.2.1
   
   

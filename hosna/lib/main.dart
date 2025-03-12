@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // هنا تعديلي: استيراد Firebase Core
+import 'firebase_options.dart'; // هنا تعديلي: استيراد إعدادات Firebase
 
 import 'screens/CharityScreens/CharitySignUpPage.dart'; // Import the missing CharityHome screen
 import 'screens/CharityScreens/charityHome.dart'; // Import the Charity Sign-Up screen
 import 'screens/splash.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // هنا تعديلي: التأكد من تهيئة الـ Widgets قبل Firebase
+  await Firebase.initializeApp( // هنا تعديلي: تهيئة Firebase عند بدء التطبيق
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   runApp(const MyApp());
 }
 
