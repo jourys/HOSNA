@@ -7,11 +7,18 @@ import 'screens/CharityScreens/charityHome.dart'; // Import the Charity Sign-Up 
 import 'screens/splash.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // هنا تعديلي: التأكد من تهيئة الـ Widgets قبل Firebase
-  await Firebase.initializeApp( // هنا تعديلي: تهيئة Firebase عند بدء التطبيق
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  WidgetsFlutterBinding
+      .ensureInitialized(); // ✅ التأكد من تهيئة الـ Widgets قبل Firebase
+  try {
+    await Firebase.initializeApp(
+      // 🚀 تهيئة Firebase عند بدء التطبيق
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("✅ Firebase initialized successfully 🎉");
+  } catch (e) {
+    print("❌ Error initializing Firebase: $e ");
+  }
+
   runApp(const MyApp());
 }
 
