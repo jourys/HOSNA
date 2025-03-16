@@ -1,6 +1,6 @@
 
-//flutter run -d chrome --target=lib/AdminScreens/AdminLogin.dart --debug
-//Email : Admin@gmail.com
+// flutter run -d chrome --target=lib/AdminScreens/AdminLogin.dart --debug
+// Email : Admin@gmail.com
 // Password : Pass@12345678
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
