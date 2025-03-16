@@ -326,16 +326,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
                                           ),
                                         ],
                                       ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.flag,
-                                            color: Colors.grey,
-                                            size: 36), // Increased icon size
-                                        iconSize:
-                                            38, // Ensures the button itself is larger
-                                        onPressed: () {
-                                          // Implement report functionality
-                                        },
-                                      ),
+                                     
                                       onTap: () {
                                         // Navigate to Organization Profile Page
                                         Navigator.push(
