@@ -87,7 +87,18 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
           Expanded(
             child: Column(
-              children: [
+              children: [ 
+                 Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'Dashboard ', // Page title
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(24, 71, 137, 1), // Customize the color
+          ),
+        ),
+      ),
                 Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
@@ -123,7 +134,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
 }),
 
           _buildDashboardCard(context, "Total new complains", () {}),
-          _buildDashboardCard(context, "Total projects", () {}),
+          _buildDashboardCard(context, "Total new complaints", () {}),
         ],
       ),
     ),

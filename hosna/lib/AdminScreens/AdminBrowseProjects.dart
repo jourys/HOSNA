@@ -193,6 +193,7 @@ class _AdminBrowseProjectsState extends State<AdminBrowseProjects> {
           Expanded(
             child: Column(
               children: [
+                
                 Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
@@ -210,7 +211,7 @@ class _AdminBrowseProjectsState extends State<AdminBrowseProjects> {
   titleTextStyle: TextStyle(
     color:Color.fromRGBO(24, 71, 137, 1),
     fontWeight: FontWeight.bold,
-    fontSize: 20,
+    fontSize: 26,
   ),
   leading: IconButton(
     icon: const Icon(Icons.arrow_back),

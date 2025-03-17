@@ -1154,7 +1154,7 @@ class _ReportPopupState extends State<ReportPopup> {
     // Create an instance of ComplaintService
     final complaintService = ComplaintService(
       rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-      contractAddress: '0xD450acd11cb875f4c889CdEEFCb4c1f13e580F6e', // Replace securely
+      contractAddress: '0x3cC7a8C93c2bd9285785E382Bd9e9b2d2aB34D13', // Replace securely
     );
 
     // Call the sendComplaint function and get the transaction hash
@@ -1230,14 +1230,14 @@ class _ReportPopupState extends State<ReportPopup> {
             children: [
               Icon(
                 Icons.check_circle, 
-                color: Colors.green, 
+                color: Color.fromARGB(255, 54, 142, 57), 
                 size: 50, // Bigger icon
               ),
               SizedBox(height: 20), // Add spacing between the icon and text
               Text(
                 'Complaint Sent Successfully!',
                 style: TextStyle(
-                  color: Colors.green, 
+                  color: const Color.fromARGB(255, 54, 142, 57), 
                   fontWeight: FontWeight.bold, 
                   fontSize: 16, // Bigger text
                 ),
