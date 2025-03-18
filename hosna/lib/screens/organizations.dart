@@ -1154,7 +1154,7 @@ class _ReportPopupState extends State<ReportPopup> {
     // Create an instance of ComplaintService
     final complaintService = ComplaintService(
       rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-      contractAddress: '0x3cC7a8C93c2bd9285785E382Bd9e9b2d2aB34D13', // Replace securely
+      contractAddress: '0xc23C7DCCEFFD3CFBabED29Bd7eE28D75FF7612D4', // Replace securely
     );
 
     // Call the sendComplaint function and get the transaction hash

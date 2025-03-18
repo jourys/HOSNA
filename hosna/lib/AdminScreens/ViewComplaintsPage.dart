@@ -17,7 +17,7 @@ import 'package:http/http.dart' as http;
 
 // Define your Ethereum RPC and contract details
 const String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-const String contractAddress = '0x3cC7a8C93c2bd9285785E382Bd9e9b2d2aB34D13';
+const String contractAddress = '0xc23C7DCCEFFD3CFBabED29Bd7eE28D75FF7612D4';
 const String abi = '''[
   {
     "constant": true,
@@ -117,53 +117,38 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     await _fetchComplaints();
   }
 
+  
+
   // Function to resolve a complaint by calling the smart contract
 Future<void> _resolveComplaint(int complaintId) async {
-  if (!mounted) return; // ✅ Ensure the widget is still in the tree
+  if (!mounted) return;
 
   Navigator.pop(context); // Close modal
 
   try {
-    // Get user's credentials securely (DO NOT HARD-CODE PRIVATE KEY)
-    var credentials = await _web3Client.credentialsFromPrivateKey('9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'); 
+    var credentials = await _web3Client.credentialsFromPrivateKey('9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c');
 
     print("🔄 Sending transaction to resolve complaint...");
-    final result = await _web3Client.sendTransaction(
+    await _web3Client.sendTransaction(
       credentials,
       Transaction.callContract(
         contract: _contract,
         function: _resolveComplaintFunction,
         parameters: [BigInt.from(complaintId)],
-        gasPrice: EtherAmount.inWei(BigInt.from(5000000000)), // 5 Gwei
+        gasPrice: EtherAmount.inWei(BigInt.from(5000000000)),
         maxGas: 200000,
       ),
-      chainId: 11155111, // Sepolia testnet chainId
+      chainId: 11155111, // Sepolia testnet
     );
 
-    print("✅ Transaction successful: $result");
+    print("✅ Complaint resolved successfully!");
 
-    // ✅ Ensure the widget is still mounted before calling setState
-    if (mounted) {
-      setState(() {
-        _complaints = _complaints.map((complaint) {
-          if (complaint['id'] == complaintId) {
-            return {...complaint, 'resolved': true};
-          }
-          return complaint;
-        }).toList();
-      });
-      print("✅ Complaint resolved locally!");
-    }
+    // Fetch updated complaints to reflect changes
+    await _fetchComplaints();
   } catch (e) {
     print('❌ Error resolving complaint: $e');
   }
 }
-
-
-
-// Fetch complaints from the smart contract
-
-
 
 
 
@@ -214,9 +199,15 @@ Future<void> _fetchComplaints() async {
       throw Exception("❌ Data inconsistency detected! Arrays have mismatched lengths.");
     }
 
-    // Convert the extracted data into a list of maps
+    // Convert the extracted data into a list of maps, filtering out invalid complaints
     List<Map<String, dynamic>> complaints = [];
     for (int i = 0; i < expectedLength; i++) {
+      // Validate complaint data
+      if (ids[i] == BigInt.zero || titles[i].trim().isEmpty || descriptions[i].trim().isEmpty) {
+        print("⚠️ Skipping complaint #$i due to invalid or missing data.");
+        continue;
+      }
+
       print("\n📌 Processing complaint #$i");
       print("  ├── ID: ${ids[i]}");
       print("  ├── Title: ${titles[i]}");
@@ -238,12 +229,18 @@ Future<void> _fetchComplaints() async {
       });
     }
 
-    // Update state
+    // Sort complaints by timestamp (newest first)
+    complaints.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
+
+    // Ensure the widget is still mounted before calling setState
+    if (!mounted) return;
+
+    // Update UI state
     setState(() {
       _complaints = complaints;
     });
 
-    print("🎉 All complaints processed successfully! Total complaints: ${_complaints.length}");
+    print("🎉 All valid complaints processed successfully! Total complaints: ${_complaints.length}");
 
   } catch (e, stackTrace) {
     print("❌ Error fetching complaints: $e");
@@ -421,43 +418,51 @@ Future<void> _fetchComplaints() async {
           ),
         )
       : ListView.builder(
-          itemCount: _complaints.length,
-          itemBuilder: (context, index) {
-            final complaint = _complaints[index];
-            return GestureDetector(
-              onTap: () => _showComplaintDetails(complaint), // Show details on tap
-              child: Card(
-                margin: EdgeInsets.all(10),
-                elevation: 5,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2), // Custom blue border
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                color: Colors.grey[200], // Light grey background
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Pushes text left & icon right
-                    children: [
-                      Expanded( // Ensures text doesn't overflow
-                        child: Text(
-                          complaint['title'],
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color.fromRGBO(24, 71, 137, 1),
-                          ),
-                        ),
-                      ),
-                      if (complaint['resolved'] == true) // Show checkmark if resolved
-                        Icon(Icons.check_circle, color: Color.fromARGB(255, 54, 142, 57), size: 24),
-                    ],
+  itemCount: _complaints.length,
+  itemBuilder: (context, index) {
+    final complaint = _complaints[index];
+
+    // Check if title or description is empty
+    if (complaint['title'] == null || complaint['title'].trim().isEmpty || 
+        complaint['description'] == null || complaint['description'].trim().isEmpty) {
+      return SizedBox.shrink(); // Don't render the complaint if it's invalid
+    }
+
+    return GestureDetector(
+      onTap: () => _showComplaintDetails(complaint), // Show details on tap
+      child: Card(
+        margin: EdgeInsets.all(10),
+        elevation: 5,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2), // Custom blue border
+          borderRadius: BorderRadius.circular(10),
+        ),
+        color: Colors.grey[200], // Light grey background
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Pushes text left & icon right
+            children: [
+              Expanded( // Ensures text doesn't overflow
+                child: Text(
+                  complaint['title'],
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromRGBO(24, 71, 137, 1),
                   ),
                 ),
               ),
-            );
-          },
+              if (complaint['resolved'] == true) // Show checkmark if resolved
+                Icon(Icons.check_circle, color: Color.fromARGB(255, 54, 142, 57), size: 24),
+            ],
+          ),
         ),
+      ),
+    );
+  },
+),
+
 ),
 
               ],
@@ -577,13 +582,13 @@ Future<void> _fetchComplaints() async {
   if (shouldDelete) {
     // Call _deleteComplaint function with the complaint ID
     await _deleteComplaint(complaint['id']);
-    showSuccessPopup(context);
+    
     // Close dialog after action
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => ViewComplaintsPage()),
     ); // Close the current modal
-     
+     showSuccessPopup(context);
   }
 },
 child: Text('Delete', style: TextStyle(color: Colors.white)),
@@ -604,35 +609,51 @@ child: Text('Delete', style: TextStyle(color: Colors.white)),
 }
 
 Future<void> _deleteComplaint(int complaintId) async {
-  try {
-    print("🚀 Attempting to delete complaint with ID: $complaintId");
+  if (!mounted) return;
 
-    // Assuming _deleteComplaintFunction is the function reference for deleting a complaint
+  try {
+    // Credentials for the sender (private key)
     var credentials = await _web3Client.credentialsFromPrivateKey(
-        '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'); 
-    print("✅ Credentials fetched successfully");
+      '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'
+    );
+
+    print("🗑️ Deleting complaint...");
 
     // Sending the transaction to delete the complaint
-    var response = await _web3Client.sendTransaction(
+    var transaction = await _web3Client.sendTransaction(
       credentials,
       Transaction.callContract(
         contract: _contract,
         function: _deleteComplaintFunction,
         parameters: [BigInt.from(complaintId)],
+        gasPrice: EtherAmount.inWei(BigInt.from(5000000000)), // Set an appropriate gas price
+        maxGas: 200000, // Set the max gas limit (you might need to adjust this)
       ),
-        chainId: 11155111,
+      chainId: 11155111, // Sepolia testnet
     );
-    print("🚀 Transaction sent successfully with response: $response");
 
-    print('Complaint $complaintId deleted successfully');
-    
-    // Optionally refresh the complaints list after deletion
-    await _fetchComplaints();
-    print("📡 Complaints list refreshed after deletion");
+    // Confirming the transaction receipt
+    var receipt = await _web3Client.getTransactionReceipt(transaction);
+    if (receipt == null) {
+      print('❌ Transaction failed or is pending. Please check the transaction status.');
+      return;
+    }
+
+    // Check if the transaction was successful (receipt status 1 means success)
+    if (receipt.status == 1) {
+      print("✅ Complaint deleted successfully!");
+
+      // Fetch updated complaints to reflect changes
+      await _fetchComplaints();
+    } else {
+      print('❌ Deletion failed. Transaction receipt status: ${receipt.status}');
+    }
   } catch (e) {
-    print("❌ Error deleting complaint: $e");
+    print('❌ Error deleting complaint: $e');
   }
 }
+
+
 
 
 Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
