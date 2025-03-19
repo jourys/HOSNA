@@ -1,12 +1,15 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorNavBar.dart';
-import 'package:hosna/screens/PasswordResetPage.dart';
-import 'package:hosna/screens/DonorScreens/DonorSignup.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // For Firebase Authentication
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -19,177 +22,560 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _obscureText = true; // Initially password is hidden
 
-  // Toggle password visibility
-  void _togglePasswordVisibility() {
-    setState(() {
-      _obscureText = !_obscureText;
-    });
-  }
-
-  // Focus nodes for text fields
-  final FocusNode _emailFocus = FocusNode();
-  final FocusNode _passwordFocus = FocusNode();
+  bool _isResettingPassword = false;
+  bool _isLoggingIn = false;
+  String? _resetPasswordError;
+  String? _loginError;
+  bool _resetEmailSent = false;
+  bool _isPasswordVisible = false;
 
   late Web3Client _web3Client;
-  final String _rpcUrl =
-      "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0xa93d9eBB2e6fE211847e98C1d8f1BB4c166C01EE";
-  final String _lookupContractAddress =
-      "0xe58Af90506dc0a86d271AE02E83b7392adE4C13A";
+  final String _rpcUrl = 'https://bsc-testnet-rpc.publicnode.com';
+  late EthereumAddress _contractAddress;
+  late ContractAbi _contractAbi;
+  late StreamSubscription<User?> _authStateSubscription;
 
   @override
   void initState() {
     super.initState();
-    _emailFocus.addListener(() => setState(() {}));
-    _passwordFocus.addListener(() => setState(() {}));
-    _web3Client = Web3Client(_rpcUrl, Client());
-    print('Web3Client initialized');
+    _initWeb3();
+    _loadContractAbi();
+    // _setupAuthStateListener();
   }
 
-  Future<void> _authenticateUser() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email and password')),
+  void _initWeb3() {
+    _web3Client = Web3Client(_rpcUrl, Client());
+    print('✅ Web3Client initialized with URL: $_rpcUrl');
+    _contractAddress =
+        EthereumAddress.fromHex("0x662b9eecf8a37d033eab58120132ac82ae1b09cf");
+  }
+
+  @override
+  void dispose() {
+    // _authStateSubscription.cancel();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadContractAbi() async {
+    try {
+      final String abiString = await rootBundle.loadString('assets/abi.json');
+      _contractAbi = ContractAbi.fromJson(abiString, 'Hosna');
+      print("✅ Contract ABI loaded successfully");
+    } catch (e) {
+      print("❌ Error loading ABI: $e");
+    }
+  }
+
+  void _setupAuthStateListener() {
+    _authStateSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      if (user != null) {
+        print("👤 User state changed: ${user.email}");
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final lastLoginTime = prefs.getString('lastLoginTime');
+          final currentTime = DateTime.now().toIso8601String();
+
+          if (lastLoginTime == null ||
+              DateTime.parse(lastLoginTime).isBefore(
+                  DateTime.now().subtract(const Duration(seconds: 5)))) {
+            print("🔄 New login detected, checking for password reset");
+
+            await Future.delayed(const Duration(seconds: 3));
+            if (!mounted) return;
+            final shouldUpdate = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Password Reset'),
+                  content: const Text('Did you recently reset your password?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('No'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Yes'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (shouldUpdate == true) {
+              final newPassword = await _showNewPasswordDialog();
+              if (newPassword != null && newPassword.isNotEmpty) {
+                try {
+                  await _updateBlockchainPassword(user.email!, newPassword);
+                  await prefs.setString('lastLoginTime', currentTime);
+
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Password successfully synchronized with blockchain'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  print("❌ Failed to update blockchain password: $e");
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update blockchain: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            } else {
+              await prefs.setString('lastLoginTime', currentTime);
+            }
+          }
+        } catch (e) {
+          print("❌ Error checking user state: $e");
+        }
+      }
+    });
+  }
+
+  Future<String?> _showNewPasswordDialog() async {
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm New Password'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Please enter your new password to sync with blockchain',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your new password';
+                    }
+                    if (!RegExp(
+                            r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$')
+                        .hasMatch(value)) {
+                      return 'Password must meet complexity requirements';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(passwordController.text);
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateBlockchainPassword(
+      String email, String newPassword) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text('Updating password in blockchain...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      String walletAddress = await _getWalletAddressByEmail(email);
+      if (walletAddress.isEmpty) {
+        if (mounted) Navigator.of(context).pop();
+        throw Exception('No donor found with this email');
+      }
+
+      final contract = DeployedContract(_contractAbi, _contractAddress);
+      final resetPasswordFunction = contract.function('resetPassword');
+
+      final String ownerPrivateKey =
+          "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+      final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
+
+      print("📤 Updating blockchain password...");
+
+      final txHash = await _web3Client.sendTransaction(
+        ownerCredentials,
+        Transaction.callContract(
+          contract: contract,
+          function: resetPasswordFunction,
+          parameters: [
+            EthereumAddress.fromHex(walletAddress),
+            newPassword,
+          ],
+          maxGas: 2000000,
+        ),
+        chainId: 97,
       );
+
+      for (int i = 0; i < 12; i++) {
+        final receipt = await _web3Client.getTransactionReceipt(txHash);
+        if (receipt != null) {
+          if (receipt.status!) {
+            print("✅ Blockchain password updated successfully");
+            if (mounted) Navigator.of(context).pop();
+            return;
+          } else {
+            if (mounted) Navigator.of(context).pop();
+            throw Exception("Transaction failed");
+          }
+        }
+        if (i == 11) {
+          if (mounted) Navigator.of(context).pop();
+          throw Exception("Transaction timeout");
+        }
+        if (mounted) {
+          Navigator.of(context).pop();
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text('Waiting for confirmation... (${i + 1}/12)'),
+                  ],
+                ),
+              );
+            },
+          );
+        }
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      print("❌ Error updating blockchain password: $e");
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      throw e;
+    }
+  }
+
+  Future<void> _updatedResetPassword(String email, String newPassword) async {
+    try {
+      // Get charity address from email
+      String walletAddress = await _getWalletAddressByEmail(email);
+      if (walletAddress.isEmpty) {
+        throw Exception('No charity found with this email');
+      }
+
+      final contract = DeployedContract(_contractAbi, _contractAddress);
+      final resetPasswordFunction = contract.function('resetPassword');
+
+      // Get owner credentials for the transaction
+      final String ownerPrivateKey =
+          "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+      final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
+
+      final txHash = await _web3Client.sendTransaction(
+        ownerCredentials,
+        Transaction.callContract(
+          contract: contract,
+          function: resetPasswordFunction,
+          parameters: [
+            EthereumAddress.fromHex(walletAddress),
+            newPassword,
+          ],
+          maxGas: 2000000,
+        ),
+        chainId: 97,
+      );
+
+      // Wait for transaction confirmation
+      for (int i = 0; i < 12; i++) {
+        final receipt = await _web3Client.getTransactionReceipt(txHash);
+        if (receipt != null) {
+          if (receipt.status!) {
+            return;
+          } else {
+            throw Exception("Transaction failed");
+          }
+        }
+        if (i == 11) {
+          throw Exception("Transaction timeout");
+        }
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      print("❌ Error updating blockchain password: $e");
+      throw e;
+    }
+  }
+
+  Future<void> _authenticateDonor() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final email = _emailController.text.toLowerCase();
-    final password = _passwordController.text;
+    setState(() {
+      _isLoggingIn = true;
+      _loginError = null;
+    });
 
-    print(
-        'Attempting to authenticate user with email: $email and password: $password');
+    String email = _emailController.text.trim().toLowerCase();
+    String password = _passwordController.text.trim();
 
-    // Contract for donor authentication
-    final authContract = DeployedContract(
-      ContractAbi.fromJson(
-        '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
-        'DonorAuth',
-      ),
-      EthereumAddress.fromHex(_contractAddress.toString()),
-    );
-
-    final authFunction = authContract.function('loginDonor');
+    print("🔄 Starting authentication process for email: $email");
 
     try {
-      print('Calling the loginDonor function on the contract...');
-      final authResult = await _web3Client.call(
-        contract: authContract,
-        function: authFunction,
-        params: [email, password],
-      );
+      await _tryFirebaseAuth(email, password);
+      bool blockchainAuthSuccess = await _tryBlockchainAuth(email, password);
 
-      print('Auth result: $authResult');
-
-      if (authResult.isNotEmpty && authResult[0] == true) {
+      if (blockchainAuthSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
-        print('Login successful');
+      } else {
+        try {
+          await _updatedResetPassword(email, password);
 
-        // Lookup wallet address
-        final lookupContract = DeployedContract(
-          ContractAbi.fromJson(
-            '[{"constant":true,"inputs":[{"name":"_email","type":"string"}],"name":"getWalletAddressByEmail","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]',
-            'DonorLookup',
-          ),
-          EthereumAddress.fromHex(_lookupContractAddress.toString()),
-        );
+          // Try blockchain authentication again
+          blockchainAuthSuccess = await _tryBlockchainAuth(email, password);
 
-        final lookupFunction =
-            lookupContract.function('getWalletAddressByEmail');
-
-        print('Calling the getWalletAddressByEmail function...');
-        final walletResult = await _web3Client.call(
-          contract: lookupContract,
-          function: lookupFunction,
-          params: [email],
-        );
-
-        print('Wallet result: $walletResult');
-
-        if (walletResult.isNotEmpty &&
-            walletResult[0] !=
-                EthereumAddress.fromHex(
-                    '0x0000000000000000000000000000000000000000')) {
-          String walletAddress = walletResult[0]
-              .toString()
-              .trim()
-              .toLowerCase(); // Normalize address
-          print('Wallet address found: $walletAddress');
-
-          try {
-            // Save wallet address to SharedPreferences
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            await prefs.setString('walletAddress', walletAddress);
-            print('Wallet address saved to SharedPreferences');
-
-            // Retrieve private key
-            String? privateKey = await _getPrivateKey(walletAddress);
-
-            if (privateKey != null) {
-              print("✅ Loaded Private Key: $privateKey");
-            } else {
-              print("❌ No private key found for this wallet.");
-            }
-
-          } catch (e) {
-            print('Error saving wallet address or retrieving private key: $e');
+          if (!blockchainAuthSuccess) {
+            throw Exception("Failed to authenticate after password sync");
           }
 
-          // Navigate to MainScreen
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainScreen(walletAddress: walletAddress),
-            ),
-          );
-        } else {
-          print('❌ Wallet address not found or invalid address');
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Wallet address not found!')),
+            const SnackBar(content: Text('Login successful!')),
           );
+        } catch (e) {
+          print("❌ Error syncing passwords: $e");
+          // Sign out from Firebase since sync failed
+          await FirebaseAuth.instance.signOut();
+          throw Exception("Failed to sync passwords: $e");
         }
-      } else {
-        print('❌ Invalid credentials');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid credentials!')),
-        );
+
+        // setState(() {
+        //   _isLoggingIn = false;
+        //   _loginError =
+        //       'Blockchain authentication failed. Please contact support.';
+        // });
+
+        // await FirebaseAuth.instance.signOut();
+
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //       content: Text('Authentication failed with blockchain')),
+        // );
       }
     } catch (e) {
-      print('❌ Error during authentication: $e');
+      print("❌ Authentication error: $e");
+      setState(() {
+        _isLoggingIn = false;
+        _loginError = e.toString();
+      });
+      await FirebaseAuth.instance.signOut();
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
+        SnackBar(content: Text('Authentication failed: ${e.toString()}')),
       );
     }
   }
 
-  // Function to retrieve the private key from SharedPreferences
-  Future<String?> _getPrivateKey(String walletAddress) async {
+  Future<void> _tryFirebaseAuth(String email, String password) async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      print("🔍 Attempting Firebase authentication");
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print("✅ Firebase authentication successful");
+    } on FirebaseAuthException catch (e) {
+      print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user account has been disabled.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Authentication failed';
+      }
+      throw errorMessage;
+    }
+  }
 
-      // Retrieve private key using the correct key format
-      String privateKeyKey = 'privateKey_$walletAddress';
-      String? privateKey = prefs.getString(privateKeyKey);
+  Future<bool> _tryBlockchainAuth(String email, String password) async {
+    try {
+      print("🔍 Attempting blockchain authentication");
 
-      if (privateKey != null) {
-        print('✅ Private key retrieved for wallet $walletAddress');
-      } else {
-        print('❌ Private key not found for wallet $walletAddress');
+      final contract = DeployedContract(_contractAbi, _contractAddress);
+      final authenticateFunction = contract.function('login');
+
+      final result = await _web3Client.call(
+        contract: contract,
+        function: authenticateFunction,
+        params: [email, password, BigInt.from(2)], // 2 for donor type
+      );
+
+      if (result.isNotEmpty && result[0] == true) {
+        String walletAddress = result[1].hex;
+        String privateKey = result[2];
+
+        print("✅ Blockchain authentication successful!");
+        await _saveWalletDetails(walletAddress, privateKey);
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScreen(walletAddress: walletAddress),
+          ),
+        );
+
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("❌ Error in blockchain authentication: $e");
+      return false;
+    }
+  }
+
+  Future<String> _getWalletAddressByEmail(String email) async {
+    try {
+      final contract = DeployedContract(_contractAbi, _contractAddress);
+      final lookupFunction = contract.function('getDonorAddressByEmail');
+
+      final result = await _web3Client.call(
+        contract: contract,
+        function: lookupFunction,
+        params: [email],
+      );
+
+      if (result.isNotEmpty &&
+          result[0] !=
+              EthereumAddress.fromHex(
+                  "0x0000000000000000000000000000000000000000")) {
+        print("✅ Wallet address found: ${result[0].hex}");
+        return result[0].hex;
+      }
+      print("❌ No wallet address found");
+      return "";
+    } catch (e) {
+      print("❌ Error getting wallet address: $e");
+      return "";
+    }
+  }
+
+  Future<void> _saveWalletDetails(
+      String walletAddress, String privateKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('walletAddress', walletAddress);
+      await prefs.setString('privateKey', privateKey);
+      print('✅ Wallet details saved successfully');
+    } catch (e) {
+      print("❌ Error saving wallet details: $e");
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    setState(() {
+      _isResettingPassword = true;
+      _resetPasswordError = null;
+    });
+
+    String email = _emailController.text.trim().toLowerCase();
+
+    if (email.isEmpty) {
+      setState(() {
+        _resetPasswordError = 'Please enter your email address';
+        _isResettingPassword = false;
+      });
+      return;
+    }
+
+    try {
+      String walletAddress = await _getWalletAddressByEmail(email);
+      if (walletAddress.isEmpty) {
+        setState(() {
+          _resetPasswordError = 'No account found with this email address';
+          _isResettingPassword = false;
+        });
+        return;
       }
 
-      return privateKey;
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      setState(() {
+        _resetEmailSent = true;
+        _isResettingPassword = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent!')),
+      );
     } catch (e) {
-      print('⚠️ Error retrieving private key: $e');
-      return null;
+      setState(() {
+        _resetPasswordError = 'Failed to send reset email: ${e.toString()}';
+        _isResettingPassword = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Build method implementation remains largely the same as your original code
+    // Just update the button handlers to use the new methods
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -211,205 +597,125 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Welcome Back',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromRGBO(24, 71, 137, 1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Welcome Back',
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(24, 71, 137, 1),
+                ),
+              ),
+              const SizedBox(height: 80),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 30),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
                   ),
                 ),
-                const SizedBox(height: 80),
-                _buildTextField(
-                    _emailController, 'Email Address', _emailFocus, 250,
-                    isEmail: true),
-                const SizedBox(height: 30),
-                _buildTextField(
-                  _passwordController,
-                  'Password',
-                  _passwordFocus,
-                  250,
-                  obscureText: _obscureText,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Navigate to the Reset Password page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const PasswordResetPage(), // الانتقال إلى صفحة إعادة تعيين كلمة المرور
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Forgot your password?',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color.fromRGBO(24, 71, 137, 1),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 300),
-                Column(
-                  children: [
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          print('Login button pressed');
-
-                          if (_formKey.currentState?.validate() ?? false) {
-                            print('Form validation successful');
-                            _authenticateUser();
-                          } else {
-                            print('Form validation failed');
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(300, 50),
-                          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          'Log In',
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _isResettingPassword ? null : _resetPassword,
+                  child: _isResettingPassword
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Forgot Password?',
                           style: TextStyle(
-                            fontSize: 20,
+                            color: Color.fromRGBO(24, 71, 137, 1),
+                          ),
+                        ),
+                ),
+              ),
+              if (_resetPasswordError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _resetPasswordError!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              if (_resetEmailSent)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Password reset email sent to ${_emailController.text}',
+                    style: const TextStyle(color: Colors.green),
+                  ),
+                ),
+              const SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: _isLoggingIn ? null : _authenticateDonor,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(300, 50),
+                    backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                  child: _isLoggingIn
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
                             color: Colors.white,
                           ),
+                        )
+                      : const Text(
+                          'Log In',
+                          style: TextStyle(fontSize: 20, color: Colors.white),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color.fromARGB(255, 102, 100, 100),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            print('Navigating to Sign Up page');
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const DonorSignUpPage(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String label,
-      FocusNode focusNode, int maxLength,
-      {bool obscureText = false,
-      bool isEmail = false,
-      bool isPhone = false,
-      bool isName = false}) {
-    return TextFormField(
-      controller: controller,
-      focusNode: focusNode,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: focusNode.hasFocus
-              ? const Color.fromRGBO(24, 71, 137, 1)
-              : Colors.grey,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-        suffixIcon: label == 'Password'
-            ? IconButton(
-                icon: Icon(
-                  _obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: focusNode.hasFocus
-                      ? const Color.fromRGBO(24, 71, 137, 1)
-                      : Colors.grey,
                 ),
-                onPressed: _togglePasswordVisibility,
-              )
-            : null, // Show eye icon only for password field
+              ),
+            ],
+          ),
+        ),
       ),
-      maxLength: maxLength,
-      buildCounter: (_, {required currentLength, required isFocused, maxLength}) {
-        return null; // Remove counter
-      },
-      validator: (value) {
-        if (value == null || value.isEmpty || value.trim().isEmpty) {
-          return 'Please enter your $label';
-        }
-        if (isEmail &&
-            !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
-                .hasMatch(value.toLowerCase())) {
-          return 'Please enter a valid email';
-        }
-
-        return null;
-      },
-      keyboardType: isEmail
-          ? TextInputType.emailAddress
-          : isPhone
-              ? TextInputType.phone
-              : TextInputType.text,
-      inputFormatters: [
-        FilteringTextInputFormatter.deny(
-            RegExp(r'\s')), // Deny whitespace input
-        if (isName)
-          FilteringTextInputFormatter.allow(
-              RegExp(r'[a-zA-Z]')) // Allow only letters for name fields
-      ],
     );
   }
 }

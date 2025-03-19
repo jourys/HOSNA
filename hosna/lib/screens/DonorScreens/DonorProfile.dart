@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/DonorScreens/EditDonorProfile.dart';
 import 'package:hosna/screens/users.dart';
-import 'package:http/http.dart'; // To make HTTP requests
+import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/DonorScreens/DonorNavBar.dart';
+import 'package:flutter/services.dart';
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -13,134 +15,106 @@ class ProfileScreenTwo extends StatefulWidget {
 }
 
 class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
-  late Web3Client _web3Client; // For blockchain connection
-  late String _donorAddress; // Wallet address of the donor
+  late Web3Client _web3Client;
+  late String _donorAddress;
   String _firstName = '';
   String _lastName = '';
   String _email = '';
   String _phone = '';
-  int? userType;
-  final String rpcUrl =
-      'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
+  bool _isLoading = true;
+
+  final String _rpcUrl = 'https://bsc-testnet-rpc.publicnode.com';
+  final String _contractAddress = '0x662b9eecf8a37d033eab58120132ac82ae1b09cf';
+  late ContractAbi _contractAbi;
 
   @override
   void initState() {
     super.initState();
-    _getUserType();
-    _initializeWeb3();
-    _getDonorData();
+    _initializeWeb3AndLoadData();
   }
 
-  Future<void> _getUserType() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userType = prefs.getInt('userType');
-    });
+  Future<void> _initializeWeb3AndLoadData() async {
+    setState(() => _isLoading = true);
+    try {
+      // Initialize Web3 client
+      _web3Client = Web3Client(_rpcUrl, Client());
+      print("✅ Web3Client initialized");
 
-    print("All keys: ${prefs.getKeys()}");
-  }
+      // Get wallet address
+      final prefs = await SharedPreferences.getInstance();
+      _donorAddress = prefs.getString('walletAddress') ?? '';
 
-  Future<void> _initializeWeb3() async {
-    _web3Client = Web3Client(rpcUrl, Client());
+      if (_donorAddress.isEmpty) {
+        throw Exception("Wallet address not found");
+      }
+      print("✅ Wallet address loaded: $_donorAddress");
 
-    final prefs = await SharedPreferences.getInstance();
-    _donorAddress = prefs.getString('walletAddress') ?? '';
-    // String? userType = prefs.getString('userType');
-
-    if (_donorAddress.isNotEmpty) {
-      print("🔍 Loaded Wallet Address: $_donorAddress");
-      print("🔍 Loaded User Type: $userType");
+      // Load ABI and get donor data
+      await _loadContractAbi();
       await _getDonorData();
-    } else {
-      print("⚠️ No wallet address found in SharedPreferences");
+    } catch (e) {
+      print("❌ Initialization error: $e");
+      showError("Failed to load profile: $e");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  Future<DeployedContract> _loadContract() async {
-    final contractAbi = '''[
-    {
-      "constant": true,
-      "inputs": [{"name": "_wallet", "type": "address"}],
-      "name": "getDonor",
-      "outputs": [
-        {"name": "firstName", "type": "string"},
-        {"name": "lastName", "type": "string"},
-        {"name": "email", "type": "string"},
-        {"name": "phone", "type": "string"},
-        {"name": "walletAddress", "type": "address"},
-        {"name": "registered", "type": "bool"}
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
+  Future<void> _loadContractAbi() async {
+    try {
+      final String abiString = await rootBundle.loadString('assets/abi.json');
+      _contractAbi = ContractAbi.fromJson(abiString, 'Hosna');
+      print("✅ Contract ABI loaded successfully");
+    } catch (e) {
+      print("❌ Error loading ABI: $e");
+      showError("Failed to load contract ABI");
+      throw e;
     }
-  ]''';
+  }
 
+  DeployedContract _getContract() {
     return DeployedContract(
-      ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
-      EthereumAddress.fromHex(contractAddress),
+      _contractAbi,
+      EthereumAddress.fromHex(_contractAddress),
     );
   }
 
   Future<void> _getDonorData() async {
-    if (_donorAddress.isEmpty) {
-      print("⚠️ No donor wallet address found.");
-      return;
-    }
-
     try {
-      final contract = await _loadContract();
-      final function = contract.function('getDonor');
-
-      print("📡 Fetching donor data for $_donorAddress...");
+      final contract = _getContract();
+      final getDonorFunction = contract.function('getDonor');
 
       final result = await _web3Client.call(
         contract: contract,
-        function: function,
+        function: getDonorFunction,
         params: [EthereumAddress.fromHex(_donorAddress)],
       );
 
-      print("🟢 Raw Result: $result"); // ✅ Debugging the response
+      print("📌 Donor data result: $result");
 
       if (result.isEmpty) {
-        print("❌ Donor data is empty! Wallet: $_donorAddress");
-        return;
-      }
-
-      bool isRegistered = result[5] as bool;
-      if (!isRegistered) {
-        print("❌ Donor is not registered in the blockchain!");
-        return;
+        throw Exception("No donor data found");
       }
 
       setState(() {
-        _firstName = result[0] as String;
-        _lastName = result[1] as String;
-        _email = result[2] as String;
-        _phone = result[3] as String;
+        _firstName = result[0].toString();
+        _lastName = result[1].toString();
+        _email = result[2].toString();
+        _phone = result[3].toString();
       });
 
-      print("✅ Donor data retrieved successfully!");
+      print("✅ Profile data updated successfully");
     } catch (e) {
       print("❌ Error fetching donor data: $e");
+      showError("Failed to fetch donor data");
     }
   }
 
-  Future<List<dynamic>> _callGetDonorMethod(DeployedContract contract,
-      String methodName, List<dynamic> params) async {
-    try {
-      final function = contract.function(methodName);
-      final result = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: params,
-      );
-      return result;
-    } catch (e) {
-      print("Error calling contract method: $e");
-      return [];
-    }
+  void showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -150,160 +124,192 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
         backgroundColor: Colors.blue[900],
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainScreen()),
+            );
+          },
         ),
-        title: Text('Profile',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Profile',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-              icon: Icon(Icons.edit, color: Colors.white),
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EditDonorProfileScreen(
-                      firstName: _firstName,
-                      lastName: _lastName,
-                      email: _email,
-                      phone: _phone,
-                    ),
-                  ),
-                );
-
-                if (result == true) {
-                  print("🔄 Refreshing profile after edit...");
-                  await _getDonorData(); // ✅ Fetch fresh data from blockchain
-                  setState(() {}); // ✅ Forces a rebuild with new data
-                }
-              }),
-        ],
-        // Setting the height of the AppBar using preferredSize
-        toolbarHeight: 80, // Adjust the height here
-      ),
-      body: Container(
-        color: Colors.blue[900],
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          padding: EdgeInsets.all(50),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 38,
-                backgroundColor:
-                    Colors.transparent, // Removes the background color
-                child:
-                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
-              ),
-              SizedBox(height: 30),
-              Text('$_firstName $_lastName',
-                  style: TextStyle(
-                      color: Colors.blue[900],
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
-              SizedBox(height: 10),
-              SizedBox(height: 50),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      infoRow('Phone Number : ', _phone),
-                      infoRow('Email : ', _email),
-                      SizedBox(height: 200),
-                      Center(
-                        child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
-                            width: MediaQuery.of(context).size.width * .8,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                SharedPreferences prefs =
-                                    await SharedPreferences.getInstance();
-
-                                // Retrieve private key and wallet address before clearing session data
-                                String? privateKey =
-                                    prefs.getString('privateKey');
-                                String? walletAddress =
-                                    prefs.getString('walletAddress');
-
-                                // Clear all session-related data (but keep the private key and wallet address)
-                                await prefs.remove(
-                                    'userSession'); // Remove any session data you want cleared
-
-                                // If we have the private key and wallet address, restore them
-                                if (privateKey != null) {
-                                  await prefs.setString(
-                                      'privateKey', privateKey);
-                                }
-                                if (walletAddress != null) {
-                                  await prefs.setString(
-                                      'walletAddress', walletAddress);
-                                }
-
-                                print(
-                                    '✅ User logged out. Session cleared but private key and wallet address retained.');
-
-                                // Navigate to UsersPage
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
-                              },
-                              child: const Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.blue[900],
-                                  shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        color: Colors.blue[900]!,
-                                      ),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(24)))),
-                            )),
-                      ),
-                      SizedBox(height: 20),
-                      Center(
-                        child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
-                            width: MediaQuery.of(context).size.width * .8,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              child: Text(
-                                'Delete Account',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20, // Increase the font size here
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red[800],
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        color: Colors.red[900]!,
-                                      ),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(24)))),
-                            )),
-                      )
-                    ],
+            icon: const Icon(Icons.edit, color: Colors.white),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditDonorProfileScreen(
+                    firstName: _firstName,
+                    lastName: _lastName,
+                    email: _email,
+                    phone: _phone,
                   ),
                 ),
+              );
+
+              if (result == true) {
+                print("🔄 Refreshing profile after edit...");
+                await _getDonorData();
+              }
+            },
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              color: Colors.blue[900],
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                padding: const EdgeInsets.all(50),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircleAvatar(
+                      radius: 38,
+                      backgroundColor: Colors.transparent,
+                      child: Icon(Icons.account_circle,
+                          size: 100, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 30),
+                    Text(
+                      '$_firstName $_lastName',
+                      style: TextStyle(
+                        color: Colors.blue[900],
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 50),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            infoRow('Phone Number : ', _phone),
+                            infoRow('Email : ', _email),
+                            const SizedBox(height: 200),
+                            _buildLogoutButton(context),
+                            const SizedBox(height: 20),
+                            _buildDeleteAccountButton(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * .066,
+        width: MediaQuery.of(context).size.width * .8,
+        child: ElevatedButton(
+          onPressed: () => _handleLogout(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue[900],
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.blue[900]!),
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+          ),
+          child: const Text(
+            'Log out',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteAccountButton() {
+    return Center(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * .066,
+        width: MediaQuery.of(context).size.width * .8,
+        child: ElevatedButton(
+          onPressed: () => _handleDeleteAccount(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[800],
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.red[900]!),
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+          ),
+          child: const Text(
+            'Delete Account',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      // Store credentials temporarily
+      String? privateKey = prefs.getString('privateKey');
+      String? walletAddress = prefs.getString('walletAddress');
+
+      // Clear session data
+      await prefs.clear();
+
+      // Restore credentials
+      if (privateKey != null) await prefs.setString('privateKey', privateKey);
+      if (walletAddress != null) {
+        await prefs.setString('walletAddress', walletAddress);
+      }
+
+      print('✅ Logged out successfully');
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const UsersPage()),
+      );
+    } catch (e) {
+      print('❌ Error during logout: $e');
+      showError('Failed to log out');
+    }
+  }
+
+  void _handleDeleteAccount() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text('This feature is not yet implemented.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
@@ -325,10 +331,11 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
           Flexible(
             child: Text(
               value,
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
