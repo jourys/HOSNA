@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hosna/screens/CharityScreens/DraftsPage.dart';
+import 'dart:convert';
 
 class PostProject extends StatefulWidget {
   final String? walletAddress;
-  const PostProject({super.key, this.walletAddress});
+  final Map<String, dynamic>? draft;
+  const PostProject({super.key, this.walletAddress, this.draft});
   @override
   _PostProjectScreenState createState() => _PostProjectScreenState();
 }
@@ -41,6 +44,16 @@ class _PostProjectScreenState extends State<PostProject> {
     _focusNode.addListener(() {
       setState(() {}); // Rebuild when the focus state changes
     });
+
+    // Pre-fill form fields if a draft is provided
+    if (widget.draft != null) {
+      _projectNameController.text = widget.draft!['name'];
+      _descriptionController.text = widget.draft!['description'];
+      _startDateController.text = widget.draft!['startDate'];
+      _deadlineController.text = widget.draft!['deadline'];
+      _totalAmountController.text = widget.draft!['totalAmount'];
+      _selectedProjectType = widget.draft!['projectType'];
+    }
   }
 
   @override
@@ -93,6 +106,22 @@ class _PostProjectScreenState extends State<PostProject> {
             },
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.drafts),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DraftsPage(
+                    walletAddress:
+                        widget.walletAddress, // Pass the wallet address
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ClipRRect(
         borderRadius: BorderRadius.only(
@@ -139,7 +168,6 @@ class _PostProjectScreenState extends State<PostProject> {
                   _buildDatePickerField(
                     label: 'Project Funding Deadline:',
                     controller: _deadlineController,
-
                     onTap: () => _selectDate(context, false),
                     enabled: true,
                     isStartDate:
@@ -151,7 +179,6 @@ class _PostProjectScreenState extends State<PostProject> {
                     height: 80, // Set an explicit height
                     child: SizedBox(
                       width: 390, // Set a fixed width
-
                       child: DropdownButtonFormField<String>(
                         focusNode: _focusNode, // Attach the FocusNode
                         value: _selectedProjectType,
@@ -689,8 +716,48 @@ class _PostProjectScreenState extends State<PostProject> {
     }
   }
 
-  void _saveProject() {
-    print("Project Saved: ${_projectNameController.text}");
+  Future<void> _saveProject() async {
+    if (_projectNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Please enter a project name to save the draft.')),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress =
+        widget.walletAddress; // Use the wallet address from the widget
+
+    if (walletAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User not logged in. Cannot save draft.')),
+      );
+      return;
+    }
+
+    // Save project details as a draft
+    final draft = {
+      'name': _projectNameController.text,
+      'description': _descriptionController.text,
+      'startDate': _startDateController.text,
+      'deadline': _deadlineController.text,
+      'totalAmount': _totalAmountController.text,
+      'projectType': _selectedProjectType ?? 'Other',
+    };
+
+    // Retrieve existing drafts for this user
+    final userDraftsKey = 'drafts_$walletAddress'; // Unique key per user
+    final drafts = prefs.getStringList(userDraftsKey) ?? [];
+    drafts.add(jsonEncode(draft)); // Convert draft to JSON and save
+
+    // Save updated drafts list for this user
+    await prefs.setStringList(userDraftsKey, drafts);
+
+    print("✅ Draft saved: ${_projectNameController.text}");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Draft saved successfully!')),
+    );
   }
 
   void _postProject() async {

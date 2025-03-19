@@ -54,7 +54,7 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
       context,
       MaterialPageRoute(
           builder: (context) =>
-              PostProject()), // Navigate to PostProjectPage
+              PostProject(walletAddress: walletAddress,)), // Navigate to PostProjectPage
     );
   }
 
