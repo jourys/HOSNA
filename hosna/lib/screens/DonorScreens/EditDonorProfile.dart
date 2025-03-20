@@ -11,13 +11,12 @@ class EditDonorProfileScreen extends StatefulWidget {
   final String email;
   final String phone;
 
-  const EditDonorProfileScreen({
-    Key? key,
+  EditDonorProfileScreen({
     required this.firstName,
     required this.lastName,
     required this.email,
     required this.phone,
-  }) : super(key: key);
+  });
 
   @override
   _EditDonorProfileScreenState createState() => _EditDonorProfileScreenState();
@@ -26,15 +25,9 @@ class EditDonorProfileScreen extends StatefulWidget {
 class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   late Web3Client _web3Client;
   late String _donorAddress;
-  late String _donorPrivateKey;
-  Map<String, dynamic> profileData = {};
-  bool _isContractInitialized = false;
-  bool _isLoading = true;
-  bool _dataFetched = false;
-
-  final String _rpcUrl = 'https://bsc-testnet-rpc.publicnode.com';
-  final String _contractAddress = '0x662b9eecf8a37d033eab58120132ac82ae1b09cf';
-  late ContractAbi _contractAbi;
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
+  final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
 
   final _formKey = GlobalKey<FormState>();
 
@@ -46,393 +39,295 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
-    _initializeWeb3AndLoadData();
-  }
+    _initializeWeb3();
 
-  void _initializeControllers() {
+    // ✅ Directly initialize controllers with provided values
     firstNameController = TextEditingController(text: widget.firstName);
     lastNameController = TextEditingController(text: widget.lastName);
     emailController = TextEditingController(text: widget.email);
     phoneController = TextEditingController(text: widget.phone);
   }
 
-  Future<void> _initializeWeb3AndLoadData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      _web3Client = Web3Client(_rpcUrl, Client());
-      print('✅ Web3Client initialized with URL: $_rpcUrl');
-
-      final prefs = await SharedPreferences.getInstance();
-      _donorAddress = prefs.getString('walletAddress') ?? '';
-      _donorPrivateKey = prefs.getString('privateKey') ?? '';
-
-      if (_donorAddress.isEmpty) {
-        showError('Wallet address not found. Please log in again.');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      print('✅ Donor wallet address loaded: $_donorAddress');
-
-      await _loadContractAbi();
-      setState(() => _isContractInitialized = true);
-
-      final fetchedData = await _fetchDonorData(_donorAddress);
-
-      if (fetchedData.isNotEmpty) {
-        _updateControllersWithFetchedData(fetchedData);
-        setState(() => _dataFetched = true);
-        print('✅ Profile data fetched and displayed successfully');
-      } else {
-        print('⚠️ Could not fetch fresh data, using initial values');
-      }
-    } catch (e) {
-      print('❌ Error during initialization or data fetch: $e');
-      showError('Failed to initialize or fetch data: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  Future<void> _initializeWeb3() async {
+    _web3Client = Web3Client(rpcUrl, Client());
+    final prefs = await SharedPreferences.getInstance();
+    _donorAddress = prefs.getString('walletAddress') ?? '';
   }
 
-  void _updateControllersWithFetchedData(Map<String, dynamic> data) {
-    setState(() {
-      firstNameController.text = data['firstName'] ?? widget.firstName;
-      lastNameController.text = data['lastName'] ?? widget.lastName;
-      emailController.text = data['email'] ?? widget.email;
-      phoneController.text = data['phone'] ?? widget.phone;
-      profileData = Map.from(data);
-    });
-  }
-
-  Future<void> _loadContractAbi() async {
-    try {
-      final abiString = await rootBundle.loadString('assets/abi.json');
-      _contractAbi = ContractAbi.fromJson(abiString, 'Hosna');
-      print('✅ Contract ABI loaded successfully');
-    } catch (e) {
-      print('❌ Error loading ABI: $e');
-      showError('Failed to load contract ABI');
-      throw e;
-    }
-  }
-
-  DeployedContract _getContract() {
-    return DeployedContract(
-      _contractAbi,
-      EthereumAddress.fromHex(_contractAddress),
-    );
-  }
-
-  Future<Map<String, dynamic>> _fetchDonorData(String walletAddress) async {
-    if (!_isContractInitialized) {
-      print('❌ Contract not initialized yet');
-      return {};
+  Future<void> _getDonorData() async {
+    if (_donorAddress.isEmpty) {
+      print("⚠️ No donor wallet address found.");
+      return;
     }
 
     try {
-      print("🔍 Fetching donor data for wallet: $walletAddress");
+      final contract = await _loadContract();
+      final function = contract.function('getDonor');
 
-      if (walletAddress.isEmpty) {
-        print("❌ Error: Wallet address is empty.");
-        return {};
-      }
-
-      final contract = _getContract();
-      final getDonorFunction = contract.function('getDonor');
       final result = await _web3Client.call(
         contract: contract,
-        function: getDonorFunction,
-        params: [EthereumAddress.fromHex(walletAddress)],
+        function: function,
+        params: [EthereumAddress.fromHex(_donorAddress)],
       );
 
-      print("📌 Donor data result: $result");
+      if (result.isNotEmpty) {
+        setState(() {
+          firstNameController.text = result[0] as String;
+          lastNameController.text = result[1] as String;
+          emailController.text = result[2] as String;
+          phoneController.text = result[3] as String;
+        });
 
-      if (result.isEmpty) {
-        print("❌ No donor data found");
-        return {};
+        print("✅ Donor data retrieved successfully!");
+      } else {
+        print("⚠️ No donor data found for $_donorAddress");
       }
-
-      Map<String, dynamic> data = {
-        "firstName": result[0]?.toString() ?? '',
-        "lastName": result[1]?.toString() ?? '',
-        "email": result[2]?.toString() ?? '',
-        "phone": result[3]?.toString() ?? '',
-      };
-
-      print("✅ Donor data: $data");
-      return data;
     } catch (e) {
       print("❌ Error fetching donor data: $e");
-      return {};
     }
+  }
+
+  Future<DeployedContract> _loadContract() async {
+    final contractAbi = '''[
+  {
+    "constant": true,
+    "inputs": [{"name": "_wallet", "type": "address"}],
+    "name": "getDonor",
+    "outputs": [
+      {"name": "firstName", "type": "string"},
+      {"name": "lastName", "type": "string"},
+      {"name": "email", "type": "string"},
+      {"name": "phone", "type": "string"},
+      {"name": "walletAddress", "type": "address"},
+      {"name": "registered", "type": "bool"}
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {"name": "_wallet", "type": "address"},
+      {"name": "_firstName", "type": "string"},
+      {"name": "_lastName", "type": "string"},
+      {"name": "_email", "type": "string"},
+      {"name": "_phone", "type": "string"}
+    ],
+    "name": "updateDonor",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]''';
+
+    return DeployedContract(
+      ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
+      EthereumAddress.fromHex(contractAddress),
+    );
   }
 
   Future<void> _updateDonorData() async {
-    if (!_isContractInitialized) {
-      showError('Please wait, initializing contract...');
+    final prefs = await SharedPreferences.getInstance();
+    String? walletAddress =
+        prefs.getString('walletAddress'); // Retrieve wallet address
+    String? privateKey =
+        prefs.getString('privateKey_$walletAddress'); // Retrieve private key
+
+    if (privateKey == null || privateKey.isEmpty) {
+      print("❌ Error: Private key not found for wallet: $walletAddress");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Error: Private key not found! Please re-login.")),
+      );
       return;
     }
 
-    if (!_formKey.currentState!.validate()) {
+    _donorAddress = prefs.getString('walletAddress') ?? '';
+
+    if (privateKey == null || privateKey.isEmpty) {
+      print("❌ Error: Private key not found!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Error: Private key not found! Please re-login.")),
+      );
       return;
     }
 
-    setState(() => _isLoading = true);
+    // ✅ Validate Private Key Format
+    privateKey = privateKey.replaceAll("0x", "").trim();
+    if (privateKey.length != 64 ||
+        !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(privateKey)) {
+      print("❌ Error: Invalid private key format!");
+      return;
+    }
 
+    if (_donorAddress.isEmpty) {
+      print("❌ Error: Invalid wallet address - $_donorAddress");
+      return;
+    }
+    String firstName = firstNameController.text.trim();
+    if (firstName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ First name cannot be empty")),
+      );
+      return;
+    }
+    if (firstName.length > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ First name cannot exceed 20 characters")),
+      );
+      return;
+    }
+    String lastName = lastNameController.text.trim();
+    if (lastName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Last name cannot be empty")),
+      );
+      return;
+    }
+    if (lastName.length > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Last name cannot exceed 20 characters")),
+      );
+      return;
+    }
+
+    // ✅ **Validate Phone Number Before Sending to Blockchain**
+    String phone = phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number cannot be empty")),
+      );
+      return;
+    }
+    if (phone.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number must be exactly 10 digits")),
+      );
+      return;
+    }
+    if (!phone.startsWith('05')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Phone number must start with '05'")),
+      );
+      return;
+    }
+
+    print("🟢 Updating donor profile...");
+
+    final contract = await _loadContract();
+    final function = contract.function('updateDonor');
     try {
-      print("🟢 Updating donor data...");
+      final credentials = EthPrivateKey.fromHex(privateKey);
+      await _web3Client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: contract,
+          function: function,
+          parameters: [
+            EthereumAddress.fromHex(_donorAddress),
+            firstNameController.text,
+            lastNameController.text,
+            emailController.text,
+            phoneController.text,
+          ],
+          gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
+        ),
+        chainId: 11155111,
+      );
 
-      final prefs = await SharedPreferences.getInstance();
-      final storedAddress = prefs.getString('walletAddress') ?? '';
+      print("✅ Profile update transaction sent!");
+      print("⏳ Waiting for blockchain confirmation...");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⏳ Waiting for updating your profile...'),
+          duration: Duration(seconds: 10), // Display while waiting
+        ),
+      );
+      // ⏳ **Add a delay before navigating back**
+      await Future.delayed(Duration(seconds: 10)); // ⏳ Adjust if needed
 
-      if (storedAddress.isEmpty) {
-        showError("Wallet Address not found. Please log in again.");
-        return;
-      }
+      print("✅ Profile update confirmed, navigating back!");
 
-      String firstName = firstNameController.text.trim();
-      String lastName = lastNameController.text.trim();
-      String email = emailController.text.trim();
-      String phone = phoneController.text.trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile updated successfully!')),
+      );
 
-      final contract = _getContract();
-      final function = contract.function('updateDonor');
-
-      try {
-        final String ownerPrivateKey =
-            "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
-        final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
-
-        final txHash = await _web3Client.sendTransaction(
-          ownerCredentials,
-          Transaction.callContract(
-            contract: contract,
-            function: function,
-            parameters: [
-              EthereumAddress.fromHex(_donorAddress),
-              firstName,
-              lastName,
-              email,
-              phone,
-              _donorPrivateKey,
-            ],
-            maxGas: 2000000,
-          ),
-          chainId: 97,
-        );
-
-        TransactionReceipt? receipt;
-        for (int i = 0; i < 24; i++) {
-          receipt = await _web3Client.getTransactionReceipt(txHash);
-          if (receipt != null) break;
-
-          if (i == 23) {
-            throw Exception(
-                "Transaction timed out after 2 minutes. Please check your transaction on the blockchain explorer.");
-          }
-          await Future.delayed(const Duration(seconds: 5));
-          print("⏳ Still waiting for confirmation... Attempt ${i + 1}/24");
-        }
-
-        if (receipt == null || !receipt.status!) {
-          throw Exception("Transaction failed or was not confirmed");
-        }
-
-        print("✅ Transaction sent successfully! Hash: $txHash");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('⏳ Updating your profile... This may take a few moments.'),
-            duration: Duration(seconds: 15),
-          ),
-        );
-
-        await Future.delayed(const Duration(seconds: 15));
-
-        final updatedData = await _fetchDonorData(_donorAddress);
-
-        if (updatedData.isNotEmpty) {
-          print("✅ Profile updated with new data: $updatedData");
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully!')),
-          );
-
-          Future.delayed(const Duration(seconds: 1), () {
-            Navigator.pop(context, true);
-          });
-        } else {
-          showError('Unable to confirm profile update. Please check later.');
-        }
-      } catch (e) {
-        print("❌ Error updating donor data: $e");
-        showError('Failed to update profile: $e');
-      }
+      Navigator.pop(context, true); // ✅ Trigger profile refresh
     } catch (e) {
       print("❌ Error updating profile: $e");
-      showError('Failed to update profile: $e');
-    } finally {
-      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating profile: $e")),
+      );
     }
-  }
-
-  void showError(String message) {
-    print("❌ Error: $message");
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  @override
-  void dispose() {
-    firstNameController.dispose();
-    lastNameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: Text('Edit Profile'),
         backgroundColor: Colors.blue[900],
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 20),
-                  Text(
-                      _dataFetched ? 'Updating...' : 'Loading profile data...'),
-                ],
-              ),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    if (_dataFetched)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Card(
-                          color: Colors.green[50],
-                          child: const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              'Data loaded from blockchain',
-                              style: TextStyle(color: Colors.green),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ),
-                    _buildTextField(firstNameController, 'First Name',
-                        required: true),
-                    _buildTextField(lastNameController, 'Last Name',
-                        required: true),
-                    _buildTextField(emailController, 'Email',
-                        required: true, isEmail: true),
-                    _buildTextField(phoneController, 'Phone',
-                        required: true, isPhone: true),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _updateDonorData,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[900],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Save Changes',
-                              style: TextStyle(fontSize: 16)),
-                    ),
-                    if (_dataFetched)
-                      TextButton(
-                        onPressed: () async {
-                          setState(() => _isLoading = true);
-                          final data = await _fetchDonorData(_donorAddress);
-                          if (data.isNotEmpty) {
-                            _updateControllersWithFetchedData(data);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Reloaded data from blockchain')),
-                            );
-                          } else {
-                            showError('Failed to reload data');
-                          }
-                          setState(() => _isLoading = false);
-                        },
-                        child: const Text('Reset to Blockchain Data'),
-                      ),
-                  ],
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              _buildTextField(firstNameController, 'First Name'),
+              _buildTextField(lastNameController, 'Last Name'),
+              _buildTextField(emailController, 'Email', isEmail: true),
+              _buildTextField(phoneController, 'Phone', isPhone: true),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _updateDonorData,
+                child: Text('Save Changes'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[900],
+                  foregroundColor: Colors.white,
                 ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label, {
-    bool isPhone = false,
-    bool isEmail = false,
-    bool required = false,
-  }) {
+  Widget _buildTextField(TextEditingController controller, String label,
+      {bool isEmail = false, bool isPhone = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: required
-              ? const Icon(Icons.star, size: 10, color: Colors.red)
-              : null,
+          border: OutlineInputBorder(),
         ),
+        readOnly: isEmail, // ✅ Make email field read-only
         keyboardType: isPhone
-            ? TextInputType.phone
-            : isEmail
-                ? TextInputType.emailAddress
-                : TextInputType.text,
+            ? TextInputType.number
+            : TextInputType.text, // ✅ Set numeric keyboard for phone
         inputFormatters: isPhone
             ? [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
+                FilteringTextInputFormatter.digitsOnly, // ✅ Allow only numbers
+                LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
               ]
             : [],
         validator: (value) {
-          if (required && (value == null || value.isEmpty)) {
-            return '$label is required';
+          if (value == null || value.isEmpty) {
+            return 'Enter $label';
           }
-          if (isPhone && value != null && value.isNotEmpty) {
+          if (isPhone) {
             if (value.length != 10) {
               return 'Phone number must be exactly 10 digits';
             }
             if (!value.startsWith('05')) {
               return 'Phone number must start with 05';
-            }
-          }
-          if (isEmail && value != null && value.isNotEmpty) {
-            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-              return 'Please enter a valid email address';
             }
           }
           return null;

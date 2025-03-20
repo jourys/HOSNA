@@ -1,14 +1,12 @@
 import 'dart:convert';
-import 'dart:math';
+
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorLogin.dart';
 import 'package:http/http.dart';
-import 'package:web3dart/crypto.dart';
-import 'package:web3dart/web3dart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:web3dart/web3dart.dart';
 
 class DonorSignUpPage extends StatefulWidget {
   const DonorSignUpPage({super.key});
@@ -24,273 +22,198 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-
   bool _isAgreedToTerms = false;
-  bool _isRegistering = false;
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
+  bool _isPasswordVisible = false; // Track password visibility
+  bool _isPasswordFocused = false; // Track if password field is focused
+
+  // Focus nodes for text fields
+  final FocusNode _firstNameFocus = FocusNode();
+  final FocusNode _lastNameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+
+// Toggle the password visibility
+  void _togglePasswordVisibility() {
+    setState(() {
+      _isPasswordVisible = !_isPasswordVisible;
+    });
+  }
 
   late Web3Client _web3Client;
+  late String _privateKey;
   late EthereumAddress _contractAddress;
-  late ContractAbi _contractAbi;
 
   @override
   void initState() {
     super.initState();
+    _firstNameFocus.addListener(() => setState(() {}));
+    _lastNameFocus.addListener(() => setState(() {}));
+    _emailFocus.addListener(() => setState(() {}));
+    _phoneFocus.addListener(() => setState(() {}));
+    _passwordFocus.addListener(() => setState(() {
+          _isPasswordFocused = _passwordFocus.hasFocus;
+        }));
+
+    // Initialize Web3Client, contract address, and private key
     _initializeWeb3();
-    _loadContractAbi();
   }
 
+  @override
+  void dispose() {
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
+  // Initialize Web3 client and set up the contract interaction
   void _initializeWeb3() {
-    final String rpcUrl = 'https://bsc-testnet-rpc.publicnode.com';
+    final String rpcUrl =
+        'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // E.g., Infura, Alchemy, or local node
     _web3Client = Web3Client(rpcUrl, Client());
+
+    // Example contract address
     _contractAddress =
-        EthereumAddress.fromHex("0x662b9eecf8a37d033eab58120132ac82ae1b09cf");
-    print("✅ Web3 initialized with contract address: $_contractAddress");
+        EthereumAddress.fromHex("0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc");
+    print("Web3 initialized with contract address: $_contractAddress");
   }
 
-  Future<void> _loadContractAbi() async {
-    try {
-      final String abiString = await rootBundle.loadString('assets/abi.json');
-      _contractAbi = ContractAbi.fromJson(abiString, 'Hosna');
-      print("✅ Contract ABI loaded successfully");
-    } catch (e) {
-      print("❌ Error loading ABI: $e");
-    }
-  }
-
+  // Function to generate a unique private key and Ethereum address for each donor
   String _generatePrivateKey() {
-    final rng = Random.secure();
-    EthPrivateKey key = EthPrivateKey.createRandom(rng);
-    return bytesToHex(key.privateKey);
+    final String randomSeed = DateTime.now()
+        .toString(); // Generate a unique string based on current time
+    final bytes = utf8.encode(randomSeed);
+    final hash =
+        sha256.convert(bytes); // Hash the string to generate a unique key
+    return hash.toString();
   }
 
-  Future<void> _saveDonorCredentials(
-      String walletAddress, String privateKey) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String privateKeyKey = 'privateKey_$walletAddress';
-      await prefs.setString('walletAddress', walletAddress);
-      await prefs.setString(privateKeyKey, privateKey);
-      print('✅ Saved walletAddress: $walletAddress');
-      print('✅ Saved privateKey with key: $privateKeyKey');
-    } catch (e) {
-      print('❌ Error saving credentials: $e');
-    }
-  }
-
+  // Register donor function that interacts with the smart contract
   Future<void> _registerDonor() async {
-    if (!_formKey.currentState!.validate() || !_isAgreedToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please check all fields and agree to terms')),
-      );
-      return;
-    }
+    print("Registering donor...");
+    final creatorPrivateKey =
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+    // Generate a unique private key for the donor
+    _privateKey = _generatePrivateKey();
+    print("Generated private key: $_privateKey");
 
-    setState(() {
-      _isRegistering = true;
-    });
+    // Create credentials from the generated private key
+    final credentials =
+        await _web3Client.credentialsFromPrivateKey(_privateKey);
+    print("Credentials obtained: $credentials");
 
-    print("🛠 Registering donor...");
+    // Create a new wallet for the donor using the generated private key
+    final donorWallet =
+        await _web3Client.credentialsFromPrivateKey(_privateKey);
+    final walletAddress = await donorWallet.extractAddress();
+    print("Created wallet address for the donor: $walletAddress");
 
-    final String ownerPrivateKey =
-        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
-    final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
-    final ownerWallet = await ownerCredentials.extractAddress();
-    print("🔹 Owner's wallet address (paying gas): $ownerWallet");
+    // Get the owner's credentials to pay for the gas fees
+    final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
+        creatorPrivateKey); // Private key of contract owner
+    final creatorWallet = await creatorCredentials.extractAddress();
+    print("Creator's wallet address: $creatorWallet");
 
-    final String donorPrivateKey = _generatePrivateKey();
-    final donorCredentials = EthPrivateKey.fromHex(donorPrivateKey);
-    final donorWallet = await donorCredentials.extractAddress();
-    print("🔹 Donor Wallet Address: $donorWallet");
+    // Define the contract and function reference
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[{
+        "constant": false,
+        "inputs": [
+          {"name": "_firstName", "type": "string"},
+          {"name": "_lastName", "type": "string"},
+          {"name": "_email", "type": "string"},
+          {"name": "_phone", "type": "string"},
+          {"name": "_password", "type": "string"},
+          {"name": "_wallet", "type": "address"}
+        ],
+        "name": "registerDonor",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }]''',
+        'DonorRegistry', // Contract name
+      ),
+      _contractAddress,
+    );
+    print("Contract instantiated: $contract");
 
-    final contract = DeployedContract(_contractAbi, _contractAddress);
+    final registerDonor = contract.function('registerDonor');
+    print("Function reference obtained: $registerDonor");
+
+    // Prepare parameters
+    final firstName = _firstNameController.text;
+    final lastName = _lastNameController.text;
+    final email = _emailController.text.toLowerCase();
+    final phone = _phoneController.text;
+    final password = _passwordController.text;
+
+    print("Form inputs: $firstName, $lastName, $email, $phone, $password");
 
     try {
-      // Check if donor exists
-      final getDonorAddressByEmailFunction =
-          contract.function('getDonorAddressByEmail');
-      final existingAddress = await _web3Client.call(
-        contract: contract,
-        function: getDonorAddressByEmailFunction,
-        params: [_emailController.text.toLowerCase()],
-      );
-
-      if (existingAddress.isNotEmpty &&
-          existingAddress[0] !=
-              EthereumAddress.fromHex(
-                  '0x0000000000000000000000000000000000000000')) {
-        throw Exception('An account with this email already exists');
-      }
-
-      // Register donor
-      final registerDonorFunction = contract.function('registerDonor');
-      final txHash = await _web3Client.sendTransaction(
-        ownerCredentials,
+      // Send the transaction to register the donor using the creator's wallet for gas
+      final result = await _web3Client.sendTransaction(
+        creatorCredentials, // Use the creator's credentials to sign the transaction
         Transaction.callContract(
           contract: contract,
-          function: registerDonorFunction,
+          function: registerDonor,
           parameters: [
-            _firstNameController.text,
-            _lastNameController.text,
-            _emailController.text.toLowerCase(),
-            _phoneController.text,
-            donorWallet,
-            _passwordController.text.trim(),
-            donorPrivateKey,
+            firstName,
+            lastName,
+            email,
+            phone,
+            password,
+            walletAddress, // Use the created wallet address
           ],
-          maxGas: 2000000,
         ),
-        chainId: 97,
+        chainId: 11155111, // Replace with your network chain ID
       );
+      print("Transaction result: $result");
 
-      print("📤 Transaction sent: $txHash");
-
-      // Wait for confirmation
-      TransactionReceipt? receipt;
-      for (int i = 0; i < 24; i++) {
-        receipt = await _web3Client.getTransactionReceipt(txHash);
-        if (receipt != null) {
-          break;
-        }
-        if (i == 23) {
-          throw Exception("Transaction timed out after 2 minutes");
-        }
-        await Future.delayed(const Duration(seconds: 5));
-        print("⏳ Waiting for confirmation... Attempt ${i + 1}/24");
-      }
-
-      if (receipt == null || !receipt.status!) {
-        throw Exception("Transaction failed or was not confirmed");
-      }
-
-      print("✅ Transaction confirmed!");
-
-      // Save credentials
-      await _saveDonorCredentials(donorWallet.hex, donorPrivateKey);
-
-      // Create Firebase user
-      await _createFirebaseUser(
-          _emailController.text.toLowerCase(), _passwordController.text);
-
-      if (!mounted) return;
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎉 Account created successfully!'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('Signup successful!')),
       );
-
+      _storePrivateKey(walletAddress.toString(), _privateKey);
+      print("private key stoooored in shared pref.");
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
       );
     } catch (e) {
-      print("❌ Error registering donor: $e");
-      if (!mounted) return;
+      print("Error registering donor: $e");
+
+      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Registration failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Failed to sign up, please try again.')),
       );
-    } finally {
-      setState(() {
-        _isRegistering = false;
-      });
     }
   }
 
-  Future<void> _createFirebaseUser(String email, String password) async {
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      print("✅ Firebase user created successfully");
-    } catch (e) {
-      print("❌ Failed to create Firebase user: $e");
-      throw e;
-    }
-  }
+  Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Use a unique key format for storing the private key
+    String privateKeyKey = 'privateKey_$walletAddress';
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label, {
-    bool obscureText = false,
-    bool isEmail = false,
-    bool isPhone = false,
-    bool isRequired = true,
-    bool isPassword = false,
-    bool isConfirmPassword = false,
-    bool isName = false,
-    String? hintText,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: (isPassword && !_isPasswordVisible) ||
-          (isConfirmPassword && !_isConfirmPasswordVisible),
-      keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-      inputFormatters: isPhone
-          ? [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ]
-          : [],
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        border: const OutlineInputBorder(),
-        suffixIcon: (isPassword || isConfirmPassword)
-            ? IconButton(
-                icon: Icon(
-                  (isPassword && _isPasswordVisible) ||
-                          (isConfirmPassword && _isConfirmPasswordVisible)
-                      ? Icons.visibility
-                      : Icons.visibility_off,
-                  color: Colors.grey,
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (isPassword) {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    } else if (isConfirmPassword) {
-                      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                    }
-                  });
-                },
-              )
-            : null,
-      ),
-      validator: (value) {
-        if (isRequired && (value == null || value.isEmpty)) {
-          return 'Required';
-        }
-        if (isEmail &&
-            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
-          return 'Enter a valid email';
-        }
-        if (isPhone && !RegExp(r'^05\d{8}$').hasMatch(value!)) {
-          return 'Phone number must start with 05 and be 10 digits';
-        }
-        if (isPassword &&
-            !RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$')
-                .hasMatch(value!)) {
-          return 'Password must be at least 8 characters with uppercase, lowercase, number, and special character';
-        }
-        if (isConfirmPassword && value != _passwordController.text) {
-          return 'Passwords do not match';
-        }
-        if (isName && !RegExp(r'^[a-zA-Z ]{2,30}$').hasMatch(value!)) {
-          return 'Name must contain only letters (2-30 characters)';
-        }
-        return null;
-      },
-    );
+    // Save the private key
+    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+    if (isSaved) {
+      print('✅ Private key for wallet $walletAddress saved successfully!');
+    } else {
+      print('❌ Failed to save private key for wallet $walletAddress');
+    }
+  } catch (e) {
+    print('⚠️ Error saving private key: $e');
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -308,7 +231,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(
-          color: Color.fromRGBO(24, 71, 137, 1),
+          color: Color.fromRGBO(24, 71, 137, 1), // Updated arrow color
         ),
       ),
       body: Padding(
@@ -328,23 +251,26 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 50),
-                _buildTextField(_firstNameController, 'First Name',
+                _buildTextField(
+                    _firstNameController, 'First Name', _firstNameFocus, 30,
                     isName: true),
                 const SizedBox(height: 30),
-                _buildTextField(_lastNameController, 'Last Name', isName: true),
+                _buildTextField(
+                    _lastNameController, 'Last Name', _lastNameFocus, 30,
+                    isName: true),
                 const SizedBox(height: 30),
-                _buildTextField(_emailController, 'Email Address',
+                _buildTextField(
+                    _emailController, 'Email Address', _emailFocus, 250,
                     isEmail: true),
                 const SizedBox(height: 30),
-                _buildTextField(_phoneController, 'Phone Number',
-                    isPhone: true, hintText: 'Must start with 05'),
+                _buildTextField(
+                    _phoneController, 'Phone Number', _phoneFocus, 10,
+                    isPhone: true),
                 const SizedBox(height: 30),
-                _buildTextField(_passwordController, 'Password',
-                    obscureText: true, isPassword: true),
-                const SizedBox(height: 30),
-                _buildTextField(_confirmPasswordController, 'Confirm Password',
-                    obscureText: true, isConfirmPassword: true),
-                const SizedBox(height: 30),
+                _buildTextField(
+                    _passwordController, 'Password', _passwordFocus, 250,
+                    obscureText: !_isPasswordVisible, isPassword: true),
+                const SizedBox(height: 40),
                 CheckboxListTile(
                   title: Text(
                     'By creating an account, you agree to our Terms and Conditions',
@@ -364,72 +290,175 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: const Color.fromRGBO(24, 71, 137, 1),
                 ),
-                const SizedBox(height: 30),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: _isRegistering ? null : _registerDonor,
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-                      minimumSize: const Size(300, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 50),
+                Column(
+                  children: [
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            if (_isAgreedToTerms) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Signing up...')),
+                              );
+                              _registerDonor(); // Register donor on the blockchain
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Please agree to the terms and conditions'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(300, 50),
+                          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
-                    child: _isRegistering
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              fontSize: 20,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 25),
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const DonorLogInPage()),
-                      );
-                    },
-                    child: RichText(
-                      text: const TextSpan(
-                        text: 'Already have an account? ',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color.fromARGB(255, 102, 100, 100),
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text: 'Log In',
+                    const SizedBox(height: 25),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const DonorLogInPage()),
+                          );
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Already have an account? ',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              fontWeight: FontWeight.bold,
+                              color: Color.fromARGB(255, 102, 100, 100),
                             ),
+                            children: <TextSpan>[
+                              TextSpan(
+                                text: 'Log In',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: const Color.fromRGBO(24, 71, 137, 1),
+                                  fontWeight: FontWeight
+                                      .bold, // Blue color for "Log In"
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    )
+                  ],
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+// Helper function to build a text field with validation and focus
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    FocusNode focusNode,
+    int maxLength, {
+    bool obscureText = false,
+    bool isName = false,
+    bool isEmail = false,
+    bool isPhone = false,
+    bool isPassword = false, // Add a flag to check if it's a password field
+  }) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: focusNode.hasFocus
+              ? const Color.fromRGBO(24, 71, 137, 1)
+              : Colors.grey,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: _isPasswordFocused
+                      ? Color.fromRGBO(24, 71, 137, 1) // Color when focused
+                      : Colors.grey, // Gray when not focused
+                ),
+                onPressed: () {
+                  // Toggle the password visibility when the icon is pressed
+                  _togglePasswordVisibility();
+                },
+              )
+            : null,
+      ),
+      keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(maxLength), // Limit input to maxLength
+        FilteringTextInputFormatter.deny(
+            RegExp(r'\s')), // Deny whitespace characters
+        if (isPhone)
+          FilteringTextInputFormatter.allow(
+              RegExp(r'^[0-9]*$')), // Allow only numbers for phone
+      ],
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter $label';
+        }
+
+        // Deny fields starting with whitespace
+        if (value.startsWith(' ')) {
+          return 'Input cannot start with whitespace';
+        }
+
+        if (isEmail &&
+            !RegExp(r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
+                .hasMatch(value)) {
+          return 'Please enter a valid email';
+        }
+        // Ensure phone number starts with "05" and is 10 digits long
+        if (isPhone) {
+          if (value.length != 10) {
+            return 'Please enter a valid phone number (10 digits)';
+          }
+          if (!value.startsWith('05')) {
+            return 'Phone number must start with 05';
+          }
+        }
+
+        return null;
+      },
     );
   }
 }

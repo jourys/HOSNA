@@ -6,7 +6,6 @@ import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
-import 'package:flutter/services.dart';
 
 class ProfileScreenCharity extends StatefulWidget {
   const ProfileScreenCharity({super.key});
@@ -26,59 +25,31 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   String _organizationURL = '';
   String _establishmentDate = '';
   String _description = '';
-  bool _isLoading = true;
 
   final String rpcUrl =
-      //  'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-      'https://bsc-testnet-rpc.publicnode.com';
-  final String contractAddress =
-      // '0x168ef53DA3d4B294D4c2651Ae39c64310D35AabE';
-      '0x662b9eecf8a37d033eab58120132ac82ae1b09cf';
-  late ContractAbi _contractAbi;
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
+  final String contractAddress = '0x02b0d417D48eEA64Aae9AdA80570783034ED6839';
 
   @override
   void initState() {
     super.initState();
-    _initializeWeb3AndLoadData();
+    _initializeWeb3();
   }
 
-  Future<void> _initializeWeb3AndLoadData() async {
-    setState(() => _isLoading = true);
-    try {
-      // Initialize Web3 client
-      _web3Client = Web3Client(rpcUrl, Client());
-      print("✅ Web3Client initialized");
+  Future<void> _initializeWeb3() async {
+    _web3Client = Web3Client(rpcUrl, Client());
 
-      // Get wallet address
-      final prefs = await SharedPreferences.getInstance();
-      _charityAddress = prefs.getString('walletAddress') ?? '';
+    final prefs = await SharedPreferences.getInstance();
+    _charityAddress = prefs.getString('walletAddress') ?? '';
+    print(
+        "🟢 Retrieved Wallet Address from SharedPreferences: $_charityAddress");
 
-      if (_charityAddress.isEmpty) {
-        throw Exception("Wallet address not found");
-      }
-      print("✅ Wallet address loaded: $_charityAddress");
-
-      // Load ABI and get charity data
-      await _loadContractAbi();
-      await _getCharityData();
-    } catch (e) {
-      print("❌ Initialization error: $e");
-      showError("Failed to load profile: $e");
-    } finally {
-      setState(() => _isLoading = false);
+    if (_charityAddress.isEmpty || _charityAddress == "none") {
+      print("❌ Wallet address is invalid or missing. Please log in again.");
+      return;
     }
-  }
 
-  Future<void> _loadContractAbi() async {
-    try {
-      final String abiString = await rootBundle.loadString('assets/abi.json');
-      _contractAbi = ContractAbi.fromJson(abiString, 'Hosna');
-      print("✅ Contract ABI loaded successfully");
-    } catch (e) {
-      print("❌ Error loading ABI: $e");
-      showError("Failed to load contract ABI");
-      throw e;
-    }
+    await _getCharityData();
   }
 
   Future<DeployedContract> _loadContract() async {
@@ -111,63 +82,35 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     return contract;
   }
 
-  DeployedContract _getContract() {
-    return DeployedContract(
-      _contractAbi,
-      EthereumAddress.fromHex(contractAddress),
-    );
-  }
-
   Future<void> _getCharityData() async {
     try {
-      final contract = _getContract();
+      final contract = await _loadContract();
 
-      // Get basic charity info
-      final getCharityFunction = contract.function('getCharity');
-      final charityResult = await _web3Client.call(
-        contract: contract,
-        function: getCharityFunction,
-        params: [EthereumAddress.fromHex(_charityAddress)],
-      );
+      print("🔹 Fetching data for wallet: $_charityAddress");
 
-      print("📌 Basic charity data result: $charityResult");
+      final result = await _callGetCharityMethod(contract, 'getCharity', [
+        EthereumAddress.fromHex(_charityAddress),
+      ]);
 
-      // Get detailed charity info
-      final getDetailFunction = contract.function('getCharityDetails');
-      final detailResult = await _web3Client.call(
-        contract: contract,
-        function: getDetailFunction,
-        params: [EthereumAddress.fromHex(_charityAddress)],
-      );
+      print("📌 Raw Result: $result");
 
-      print("📌 Charity detail result: $detailResult");
-
-      setState(() {
-        // Basic info from getCharity
-        _organizationName = charityResult[0].toString();
-        _email = charityResult[1].toString();
-        _phone = charityResult[2].toString();
-        _organizationCity = charityResult[3].toString();
-        _organizationURL = charityResult[4].toString();
-
-        // Detailed info from getCharityDetails
-        _description = detailResult[0].toString();
-        _licenseNumber = detailResult[1].toString();
-        _establishmentDate = detailResult[2].toString();
-      });
-
-      print("✅ Profile data updated successfully");
+      if (result != null && result.isNotEmpty) {
+        setState(() {
+          _organizationName = result[0].toString();
+          _email = result[1].toString();
+          _phone = result[2].toString();
+          _licenseNumber = result[3].toString();
+          _organizationCity = result[4].toString();
+          _description = result[5].toString();
+          _organizationURL = result[6].toString();
+          _establishmentDate = result[7].toString();
+        });
+      } else {
+        print("❌ No charity data found for wallet: $_charityAddress");
+      }
     } catch (e) {
       print("❌ Error fetching charity data: $e");
-      showError("Failed to fetch charity data");
     }
-  }
-
-  void showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   Future<List<dynamic>> _callGetCharityMethod(DeployedContract contract,
@@ -193,20 +136,20 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         backgroundColor: Colors.blue[900],
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
+            // ✅ Navigate to home page if returning after edit
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                  builder: (context) => const CharityMainScreen()),
+              MaterialPageRoute(builder: (context) => CharityMainScreen()),
             );
           },
         ),
-        title: const Text('Profile',
+        title: Text('Profile',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
+            icon: Icon(Icons.edit, color: Colors.white),
             onPressed: () async {
               final result = await Navigator.push(
                 context,
@@ -226,158 +169,136 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
               if (result == true) {
                 print("🔄 Refreshing profile after edit...");
-                _getCharityData();
+                _getCharityData(); // Reload the updated data
               }
             },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Container(
-              color: Colors.blue[900],
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
-                padding: const EdgeInsets.all(50),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircleAvatar(
-                      radius: 38,
-                      backgroundColor: Colors.transparent,
-                      child: Icon(Icons.account_circle,
-                          size: 100, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 30),
-                    Text(_organizationName,
-                        style: TextStyle(
-                            color: Colors.blue[900],
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 60),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            infoRow('Phone Number : ', _phone),
-                            infoRow('Email : ', _email),
-                            infoRow('License Number : ', _licenseNumber),
-                            infoRow('City : ', _organizationCity),
-                            infoRow('Website : ', _organizationURL),
-                            infoRow(
-                                'Establishment Date : ', _establishmentDate),
-                            infoRow('Description : ', _description),
-                            const SizedBox(height: 200),
-                            _buildLogoutButton(context),
-                            const SizedBox(height: 20),
-                            _buildDeleteAccountButton(),
-                          ],
-                        ),
+      body: Container(
+        color: Colors.blue[900],
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          padding: EdgeInsets.all(50),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 38,
+                backgroundColor: Colors.transparent,
+                child:
+                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
+              ),
+              SizedBox(height: 30),
+              Text(_organizationName,
+                  style: TextStyle(
+                      color: Colors.blue[900],
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold)),
+              SizedBox(height: 10),
+              SizedBox(height: 50),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      infoRow('Phone Number : ', _phone),
+                      infoRow('Email : ', _email),
+                      infoRow('License Number : ', _licenseNumber),
+                      infoRow('City : ', _organizationCity),
+                      infoRow('Website : ', _organizationURL),
+                      infoRow('Establishment Date : ', _establishmentDate),
+                      infoRow('Description : ', _description),
+                      SizedBox(height: 200),
+                      Center(
+                        child: SizedBox(
+                            height: MediaQuery.of(context).size.height * .066,
+                            width: MediaQuery.of(context).size.width * .8,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                SharedPreferences prefs =
+                                    await SharedPreferences.getInstance();
+
+                                // Retrieve private key and wallet address before clearing session data
+                                String? privateKey =
+                                    prefs.getString('privateKey');
+                                String? walletAddress =
+                                    prefs.getString('walletAddress');
+
+                                // Clear all session-related data (but keep the private key and wallet address)
+                                await prefs.remove(
+                                    'userSession'); // Remove any session data you want cleared
+
+                                // If we have the private key and wallet address, restore them
+                                if (privateKey != null) {
+                                  await prefs.setString(
+                                      'privateKey', privateKey);
+                                }
+                                if (walletAddress != null) {
+                                  await prefs.setString(
+                                      'walletAddress', walletAddress);
+                                }
+
+                                print(
+                                    '✅ User logged out. Session cleared but private key and wallet address retained.');
+
+                                // Navigate to UsersPage
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const UsersPage()),
+                                );
+                              },
+                              child: Text(
+                                'Log out',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.blue[900],
+                                  shape: RoundedRectangleBorder(
+                                      side:
+                                          BorderSide(color: Colors.blue[900]!),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(24)))),
+                            )),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 20),
+                      Center(
+                        child: SizedBox(
+                            height: MediaQuery.of(context).size.height * .066,
+                            width: MediaQuery.of(context).size.width * .8,
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              child: Text(
+                                'Delete Account',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red[800],
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      side: BorderSide(color: Colors.red[900]!),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(24)))),
+                            )),
+                      )
+                    ],
+                  ),
                 ),
               ),
-            ),
-    );
-  }
-
-  Widget _buildLogoutButton(BuildContext context) {
-    return Center(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * .066,
-        width: MediaQuery.of(context).size.width * .8,
-        child: ElevatedButton(
-          onPressed: () => _handleLogout(context),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.blue[900],
-              shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.blue[900]!),
-                  borderRadius: const BorderRadius.all(Radius.circular(24)))),
-          child: const Text(
-            'Log out',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteAccountButton() {
-    return Center(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * .066,
-        width: MediaQuery.of(context).size.width * .8,
-        child: ElevatedButton(
-          onPressed: () => _handleDeleteAccount(),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[800],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.red[900]!),
-                  borderRadius: const BorderRadius.all(Radius.circular(24)))),
-          child: const Text(
-            'Delete Account',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-
-      // Store credentials temporarily
-      String? privateKey = prefs.getString('privateKey');
-      String? walletAddress = prefs.getString('walletAddress');
-
-      // Clear session data
-      await prefs.clear();
-
-      // Restore credentials
-      if (privateKey != null) await prefs.setString('privateKey', privateKey);
-      if (walletAddress != null)
-        await prefs.setString('walletAddress', walletAddress);
-
-      print('✅ Logged out successfully');
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const UsersPage()),
-      );
-    } catch (e) {
-      print('❌ Error during logout: $e');
-      showError('Failed to log out');
-    }
-  }
-
-  void _handleDeleteAccount() {
-    // TODO: Implement account deletion
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text('This feature is not yet implemented.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }
@@ -399,7 +320,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
           Flexible(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey),
