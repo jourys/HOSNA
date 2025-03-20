@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
+import 'AdminSidebar.dart'; //
 
 class AdminHomePage extends StatefulWidget {
   @override
@@ -13,78 +14,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Container(
+  color: Colors.white, // Change this to your desired color
+  child: Row(
         children: [
-          if (isSidebarVisible)
-            Container(
-              width: 350,
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                 
-                  // Logo
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Image.asset(
-                      'assets/HOSNA.jpg',
-                      height: 200,
-                      width: 350,
-                    ),
-                  ),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                 _buildSidebarItem(context, "Home", () { Navigator.push(
-    context,
-    MaterialPageRoute(
-     builder: (context) => AdminHomePage(),
-
-    ),
-  );}),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Organizations", () {}),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Projects", () { Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) =>  AdminBrowseProjects(),
-    ),
-  );}),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Complaints", () {}),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Terms & Conditions", () {}),
-                  Divider(color:  Color.fromRGBO(24, 71, 137, 1)),
-                  SizedBox(height: 50),
-  _buildSidebarButton(
-  title: "Sign Out",
-  onTap: () {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => AdminLoginPage()),
-    );
-  },
-  backgroundColor: Colors.white,
-  borderColor: Color.fromRGBO(24, 71, 137, 1),
-  textColor: Color.fromRGBO(24, 71, 137, 1),
-
-),
-
-
-
-          SizedBox(height: 14),
-          _buildSidebarButton(
-            title: "Delete Account",
-            onTap: () {
-              // Handle delete account
-            },
-            backgroundColor: Colors.red,
-            borderColor: Colors.red,
-            textColor: Colors.white,
-          ),
-         
-        ],
-      ),
-            ),
+          AdminSidebar(), 
           Expanded(
             child: Column(
               children: [ 
@@ -148,6 +82,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -6,15 +6,18 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
-
+import 'package:firebase_core/firebase_core.dart'; 
+import '../firebase_options.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseOrganizations.dart';
 import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
+import 'package:hosna/AdminScreens/Terms&cond.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
-
+import 'AdminSidebar.dart'; //
 // Define your Ethereum RPC and contract details
 const String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
 const String contractAddress = '0xc23C7DCCEFFD3CFBabED29Bd7eE28D75FF7612D4';
@@ -58,6 +61,17 @@ const String abi = '''[
 
 
 void main() {
+   WidgetsFlutterBinding
+      .ensureInitialized(); // ✅ التأكد من تهيئة الـ Widgets قبل Firebase
+  try {
+     Firebase.initializeApp(
+      // 🚀 تهيئة Firebase عند بدء التطبيق
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("✅ Firebase initialized successfully 🎉");
+  } catch (e) {
+    print("❌ Error initializing Firebase: $e ");
+  }
   runApp(MyApp());
 }
 
@@ -83,6 +97,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     late ContractFunction _deleteComplaintFunction;
   List<Map<String, dynamic>> _complaints = [];
   bool isSidebarVisible = true;
+
+  
 
   @override
   void initState() {
@@ -301,77 +317,12 @@ Future<void> _fetchComplaints() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+       body: Container(
+  color: Colors.white, // Change this to your desired color
+  child: Row(
         children: [
           // Sidebar (Toggleable visibility)
-          if (isSidebarVisible)
-            Container(
-              width: 350,
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Image.asset(
-                      'assets/HOSNA.jpg',
-                      height: 200,
-                      width: 350,
-                    ),
-                  ),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Home", () {
-                    // Navigate to Admin Home Page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminHomePage()),
-                    );
-                  }),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Organizations", () {Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminBrowseOrganizations()),
-                    );}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Projects", () {
-                    // Navigate to Admin Browse Projects
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminBrowseProjects()),
-                    );
-                  }),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Complaints", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Terms & Conditions", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  SizedBox(height: 50),
-                  _buildSidebarButton(
-                    title: "Sign Out",
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdminLoginPage()),
-                      );
-                    },
-                    backgroundColor: Colors.white,
-                    borderColor: Color.fromRGBO(24, 71, 137, 1),
-                    textColor: Color.fromRGBO(24, 71, 137, 1),
-                  ),
-                  SizedBox(height: 14),
-                  _buildSidebarButton(
-                    title: "Delete Account",
-                    onTap: () {
-                      // Handle delete account
-                    },
-                    backgroundColor: Colors.red,
-                    borderColor: Colors.red,
-                    textColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
+           AdminSidebar(), // Include the reusable sidebar
           // Main content (Complaints page)
           Expanded(
             child: Column(
@@ -470,6 +421,7 @@ Future<void> _fetchComplaints() async {
           ),
         ],
       ),
+      ),
     );
   }
   
@@ -482,127 +434,162 @@ Future<void> _fetchComplaints() async {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Container( // Container wraps the entire content and sets background to white
-           decoration: BoxDecoration(
-            color: Colors.white, // Set the background color to white
-            borderRadius: BorderRadius.circular(20), // Set circular corners
-          ),// Set circular corners
-        child: SizedBox(
-          width: 600,  // Fixed width
-          height: 600, // Fixed height to make it square
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-               Center(
-  child: Text(
-    complaint['title'],
-    style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold , color: Color.fromRGBO(24, 71, 137, 1)),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SizedBox(
+            width: 600, 
+            height: 600, 
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      complaint['title'],
+                      style: TextStyle(
+                          fontSize: 25, fontWeight: FontWeight.bold, color: Color.fromRGBO(24, 71, 137, 1)),
+                    ),
+                  ),
+                  SizedBox(height: 50),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Complaint Details: ${complaint['description']}',
+                              style: TextStyle(fontSize: 20, color: Color.fromRGBO(24, 71, 137, 1))),
+                          SizedBox(height: 30),
+                          Text('Complainant: ${complaint['complainant']}',
+                              style: TextStyle(fontSize: 20, color: Color.fromRGBO(24, 71, 137, 1))),
+                          SizedBox(height: 30),
+                          GestureDetector(
+                            onTap: () {
+                              // Assuming 'targetCharity' contains the organization details or ID to pass
+//                              Navigator.push(
+//   context,
+//   MaterialPageRoute(
+//     builder: (context) => OrganizationProfile(
+//       walletAddress: complaint['targetCharity'], // Pass the wallet address as String
+//     ),
+//   ),
+// );
+
+
+                            },
+                            child: RichText(
+  text: TextSpan(
+    text: 'Target Charity:  ',
+    style: TextStyle(
+      fontSize: 20,
+      color: Color.fromRGBO(24, 71, 137, 1),
+    ),
+    children: <TextSpan>[
+      TextSpan(
+        text: 'View profile',
+        style: TextStyle(
+          fontSize: 20,
+          color: Color.fromRGBO(14, 101, 240, 1), // Blue color
+          decoration: TextDecoration.underline, // Underlined
+        ),
+        recognizer: TapGestureRecognizer()..onTap = () {
+           Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => OrganizationProfile(
+      walletAddress: complaint['targetCharity'], // Pass the wallet address as String
+    ),
+  ),
+);
+        },
+      ),
+    ],
   ),
 )
 ,
-                SizedBox(height: 50),
-                Expanded( // Allows description to take available space
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Complaint Details : ${complaint['description']}', style: TextStyle(fontSize: 20 , color: Color.fromRGBO(24, 71, 137, 1)) ),
-                        SizedBox(height: 30),
-                        Text('Complainant: ${complaint['complainant']}', style: TextStyle(fontSize: 20 , color: Color.fromRGBO(24, 71, 137, 1)) ),
-                         SizedBox(height: 30),
-                        Text('Target Charity: ${complaint['targetCharity']}', style: TextStyle(fontSize: 20 , color: Color.fromRGBO(24, 71, 137, 1)) ),
-                         SizedBox(height: 40),
-                    Text(
-  'Date: ${complaint['timestamp'] is DateTime ? 
-            complaint['timestamp'].toLocal().toString().split(' ')[0] : 
-            complaint['timestamp'] != null ? DateTime.parse(complaint['timestamp']).toLocal().toString().split(' ')[0] : 'N/A'}',
-  style: TextStyle(fontSize: 20 , color: Color.fromRGBO(24, 71, 137, 1)),
-),
-
-
-                         SizedBox(height: 30),
-                    Row(
-  children: [
-    Icon(
-      complaint['resolved'] ? Icons.check_circle : Icons.cancel,
-      color: complaint['resolved'] ? Color.fromARGB(255, 54, 142, 57) : Color.fromARGB(255, 197, 47, 36),
-      size: 32, // Increase icon size
-    ),
-    SizedBox(width: 10), // Adds spacing between icon and text
-    Text(
-      complaint['resolved'] ? 'Resolved' : 'Unresolved',
-      style: TextStyle(fontSize: 20,   color: Color.fromRGBO(24, 71, 137, 1)), // Increase text size
-    ),
-  ],
-)
-
-
-                      ],
+                          ),
+                          SizedBox(height: 40),
+                          Text(
+                            'Date: ${complaint['timestamp'] is DateTime ? complaint['timestamp'].toLocal().toString().split(' ')[0] : complaint['timestamp'] != null ? DateTime.parse(complaint['timestamp']).toLocal().toString().split(' ')[0] : 'N/A'}',
+                            style: TextStyle(fontSize: 20, color: Color.fromRGBO(24, 71, 137, 1)),
+                          ),
+                          SizedBox(height: 30),
+                          Row(
+                            children: [
+                              Icon(
+                                complaint['resolved']
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: complaint['resolved']
+                                    ? Color.fromARGB(255, 54, 142, 57)
+                                    : Color.fromARGB(255, 197, 47, 36),
+                                size: 32,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                complaint['resolved'] ? 'Resolved' : 'Unresolved',
+                                style: TextStyle(
+                                    fontSize: 20, color: Color.fromRGBO(24, 71, 137, 1)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: 30),
-                // Buttons for resolving and deleting
-              Row(
-  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-  children: [
-    ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromARGB(255, 54, 142, 57),
-        minimumSize: Size(120, 50), // Width: 120, Height: 50
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
-        textStyle: TextStyle(fontSize: 18), // Increase text size
-      ),
-      onPressed: () {
-        _resolveComplaint(complaint['id']).then((_) {
-    // Navigate to ViewComplaintsPage after resolving
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => ViewComplaintsPage()),
-    );
-  });
-},
-      child: Text('Resolve', style: TextStyle(color: Colors.white)),
-    ),
-    ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromARGB(255, 197, 47, 36),
-        minimumSize: Size(120, 50), // Width: 120, Height: 50
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
-        textStyle: TextStyle(fontSize: 18), // Increase text size
-      ),
-      onPressed: () async {
-  // Show delete confirmation dialog
-  bool shouldDelete = await _showDeleteConfirmationDialog(context);
-
-  // If user confirms deletion, proceed
-  if (shouldDelete) {
-    // Call _deleteComplaint function with the complaint ID
-    await _deleteComplaint(complaint['id']);
-    
-    // Close dialog after action
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => ViewComplaintsPage()),
-    ); // Close the current modal
-     showSuccessPopup(context);
-  }
-},
-child: Text('Delete', style: TextStyle(color: Colors.white)),
-
-    ),
-  ],
-),
-  SizedBox(height: 15),
-
-              ],
+                  SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color.fromARGB(255, 54, 142, 57),
+                          minimumSize: Size(120, 50),
+                          padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
+                          textStyle: TextStyle(fontSize: 18),
+                        ),
+                        onPressed: () {
+                          _resolveComplaint(complaint['id']).then((_) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => ViewComplaintsPage()),
+                            );
+                          });
+                        },
+                        child: Text('Resolve', style: TextStyle(color: Colors.white)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color.fromARGB(255, 197, 47, 36),
+                          minimumSize: Size(120, 50),
+                          padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
+                          textStyle: TextStyle(fontSize: 18),
+                        ),
+                        onPressed: () async {
+                          bool shouldDelete = await _showDeleteConfirmationDialog(context);
+                          if (shouldDelete) {
+                            await _deleteComplaint(complaint['id']);
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => ViewComplaintsPage()),
+                            );
+                            showSuccessPopup(context);
+                          }
+                        },
+                        child: Text('Delete', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 15),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       );
     },
   );
@@ -782,3 +769,372 @@ Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
 
 }
 }
+
+class OrganizationProfile extends StatefulWidget {
+  final String walletAddress; // Pass the wallet address as a string
+
+  const OrganizationProfile({super.key, required this.walletAddress});
+  
+  @override
+  _OrganizationProfileState createState() => _OrganizationProfileState();
+}
+
+class _OrganizationProfileState extends State<OrganizationProfile> {
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
+  final String contractAddress = '0x02b0d417D48eEA64Aae9AdA80570783034ED6839';
+
+  late Web3Client _client;
+  late DeployedContract _contract;
+  Map<String, dynamic>? organizationData;  // Hold fetched data
+  bool isLoading = true;
+
+  final String abiString = '''
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getAllCharities",
+    "outputs": [
+      { "name": "wallets", "type": "address[]" },
+      { "name": "names", "type": "string[]" },
+      { "name": "emails", "type": "string[]" },
+      { "name": "phones", "type": "string[]" },
+      { "name": "cities", "type": "string[]" },
+      { "name": "websites", "type": "string[]" },
+      { "name": "descriptions", "type": "string[]" },
+      { "name": "licenseNumbers", "type": "string[]" },
+      { "name": "establishmentDates", "type": "string[]" }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+''';
+
+  @override
+  void initState() {
+    super.initState();
+    _client = Web3Client(rpcUrl, http.Client());
+    _loadContract();
+  }
+
+  Future<void> _loadContract() async {
+    try {
+      var abi = jsonDecode(abiString);
+      _contract = DeployedContract(
+        ContractAbi.fromJson(jsonEncode(abi), "CharityRegistration"),
+        EthereumAddress.fromHex(contractAddress),
+      );
+      await _fetchOrganizationData();
+    } catch (e) {
+      print("Error loading contract: $e");
+    }
+  }
+
+  Future<void> _fetchOrganizationData() async {
+    try {
+      final function = _contract.function("getAllCharities");
+      final result = await _client.call(
+        contract: _contract,
+        function: function,
+        params: [],
+      );
+
+      List<dynamic> wallets = result[0];
+      List<dynamic> names = result[1];
+      List<dynamic> emails = result[2];
+      List<dynamic> phones = result[3];
+      List<dynamic> cities = result[4];
+      List<dynamic> websites = result[5];
+      List<dynamic> descriptions = result[6];
+      List<dynamic> licenseNumbers = result[7];
+      List<dynamic> establishmentDates = result[8];
+
+      // Search for the organization using the wallet address
+      int index = wallets.indexOf(EthereumAddress.fromHex(widget.walletAddress));
+      if (index != -1) {
+        setState(() {
+          organizationData = {
+            "wallet": wallets[index].toString(),
+            "name": names[index],
+            "email": emails[index],
+            "phone": phones[index],
+            "city": cities[index],
+            "website": websites[index],
+            "description": descriptions[index],
+            "licenseNumber": licenseNumbers[index],
+            "establishmentDate": establishmentDates[index],
+          };
+          isLoading = false;
+        });
+      } else {
+        print("Organization not found");
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching organization data: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color.fromARGB(255, 246, 246, 246),
+    appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(80),
+      child: AppBar(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only( top: 20 ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back,
+              color: Color.fromRGBO(24, 71, 137, 1),
+              size: 30,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        flexibleSpace: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Text(
+              organizationData?["name"] ?? "Unknown Organization",
+              style: const TextStyle(
+                color: Color.fromRGBO(24, 71, 137, 1),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    body: isLoading
+        ? Center(child: CircularProgressIndicator())
+        : Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: Icon(Icons.account_circle, size: 120, color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+            Padding(
+  padding: const EdgeInsets.all(0), // Adjust the overall padding here
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.start,
+    children: [
+        const SizedBox(width: 200),
+      // Left Side - Contact Information & About Us
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.only(right: 120), // Space between the left and right sections
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              _buildSectionTitle(Icons.contact_phone, "Contact Information"),
+              _buildStyledInfoRow(Icons.phone, "Phone: ", organizationData?["phone"]),
+              _buildStyledInfoRow(Icons.email, "Email: ", organizationData?["email"]),
+              _buildStyledInfoRow(Icons.location_city, "City: ", organizationData?["city"]),
+              const SizedBox(height: 16),
+              _buildSectionTitle(Icons.info_outline, "About Us"),
+              _buildStyledInfoRow(Icons.description, "", organizationData?["description"]),
+            ],
+          ),
+        ),
+      ),
+                                    
+
+      // Right Side - Organization Details
+      Expanded(
+        
+        child: Padding(
+          padding: const EdgeInsets.only(left: 150.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              
+              _buildSectionTitle(Icons.business, "Organization Details"),
+              _buildStyledInfoRow(Icons.badge, "License No.: ", organizationData?["licenseNumber"]),
+              _buildStyledInfoRow(Icons.public, "Website: ", organizationData?["website"], isLink: true),
+              _buildStyledInfoRow(Icons.calendar_today, "Established date: ", organizationData?["establishmentDate"]),
+            ],
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+                                const SizedBox(height: 140),
+
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ElevatedButton(
+                      //   onPressed: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => ViewProjectsPage(
+                      //           orgAddress: widget.walletAddress,
+                      //           orgName: organizationData?["name"] ?? "Organization",
+                      //         ),
+                      //       ),
+                      //     );
+                      //   },
+                      //   style: ElevatedButton.styleFrom(
+                      //     backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                      //     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 100),
+                      //     shape: RoundedRectangleBorder(
+                      //       borderRadius: BorderRadius.circular(10),
+                      //     ),
+                      //   ),
+                      //   child: const Text(
+                      //     "View Projects",
+                      //     style: TextStyle(fontSize: 20, color: Colors.white),
+                      //   ),
+                      // ),
+                      
+                      ElevatedButton(
+                        onPressed: () {
+                          // Implement suspend account functionality
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          "Suspend Account",
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 180),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Implement suspend account and cancel all projects functionality
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          "Suspend & Cancel Projects",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+  );
+}
+
+
+// Custom styled info row to ensure consistency
+Widget _buildStyledInfoRow(IconData icon, String label, String? value, {bool isLink = false}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.grey),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Row(
+            children: [
+              Text(
+                "$label",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              if (isLink)
+                GestureDetector(
+                  onTap: () {
+                    // Handle the website link tap
+                    // launchUrl(Uri.parse(value ?? ""));
+                  },
+                  child: Text(
+                    value ?? "N/A",
+                    style: TextStyle(color: Colors.blue, fontSize: 16),
+                  ),
+                )
+              else
+                Text(
+                  value ?? "N/A",
+                  style: TextStyle(fontSize: 16),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String? value, {bool isLink = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 26, color: Colors.blueGrey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value ?? "N/A",
+              style: TextStyle(
+                fontSize: 18,
+                color: isLink ? Colors.blue : Colors.black87,
+                decoration: isLink ? TextDecoration.underline : TextDecoration.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

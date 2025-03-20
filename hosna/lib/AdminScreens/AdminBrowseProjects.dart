@@ -3,6 +3,7 @@ import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
+import 'AdminSidebar.dart'; 
 
 class AdminBrowseProjects extends StatefulWidget {
   const AdminBrowseProjects({super.key});
@@ -123,77 +124,26 @@ class _AdminBrowseProjectsState extends State<AdminBrowseProjects> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+        body: Container(
+  color: Colors.white, // Change this to your desired color
+  child: Row(
         children: [
-          if (isSidebarVisible)
-            Container(
-              width: 350,
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Image.asset(
-                      'assets/HOSNA.jpg',
-                      height: 200,
-                      width: 350,
-                    ),
-                  ),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Home", () { Navigator.push(
-    context,
-    MaterialPageRoute(
-     builder: (context) => AdminHomePage(),
-
-    ),
-  );}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Organizations", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Projects", () { Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const AdminBrowseProjects(),
-    ),
-  );}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Complaints", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Terms & Conditions", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  SizedBox(height: 50),
-                  _buildSidebarButton(
-                    title: "Sign Out",
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdminLoginPage()),
-                      );
-                    },
-                    backgroundColor: Colors.white,
-                    borderColor: Color.fromRGBO(24, 71, 137, 1),
-                    textColor: Color.fromRGBO(24, 71, 137, 1),
-                  ),
-                  SizedBox(height: 14),
-                  _buildSidebarButton(
-                    title: "Delete Account",
-                    onTap: () {
-                      // Handle delete account
-                    },
-                    backgroundColor: Colors.red,
-                    borderColor: Colors.red,
-                    textColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
+          AdminSidebar(), 
             // admin@gmail.com
           Expanded(
             child: Column(
               children: [
-                
+                                 Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'Browse Projects ', // Page title
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(24, 71, 137, 1), // Customize the color
+          ),
+        ),
+      ),
                 Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
@@ -205,22 +155,9 @@ class _AdminBrowseProjectsState extends State<AdminBrowseProjects> {
                     },
                   ),
                 ),
-                AppBar(
-  title: const Text('Browse Projects'),
-  backgroundColor:Colors.white, 
-  titleTextStyle: TextStyle(
-    color:Color.fromRGBO(24, 71, 137, 1),
-    fontWeight: FontWeight.bold,
-    fontSize: 26,
-  ),
-  leading: IconButton(
-    icon: const Icon(Icons.arrow_back),
-    iconSize: 30.0, // Make the back arrow bigger
-    color: Color.fromRGBO(24, 71, 137, 1), // Set the back arrow color to white
-    onPressed: () => Navigator.of(context).pop(), // Navigate back
-  ),
-)
-,
+             
+
+
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
@@ -400,6 +337,7 @@ Text(
           ),
         ],
       ),
+       ),
     );
   }
 

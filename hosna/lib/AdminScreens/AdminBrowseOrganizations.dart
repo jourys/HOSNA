@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart';
 import 'dart:convert';
+import 'AdminSidebar.dart'; 
 // Assuming the profile page is here
 
 class AdminBrowseOrganizations extends StatefulWidget {
@@ -153,79 +154,12 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
   Widget build(BuildContext context) {
     return Scaffold(
       
-      body: Row(
+          body: Container(
+  color: Colors.white, // Change this to your desired color
+  child: Row(
         children: [
           // Sidebar (Toggleable visibility)
-          if (isSidebarVisible)
-            Container(
-              width: 350,
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Image.asset(
-                      'assets/HOSNA.jpg',
-                      height: 200,
-                      width: 350,
-                    ),
-                  ),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Home", () {
-                    // Navigate to Admin Home Page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminHomePage()),
-                    );
-                  }),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Organizations", () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminBrowseOrganizations()),
-                    );
-                  }),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Projects", () {
-                    // Navigate to Admin Browse Projects
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AdminBrowseProjects()),
-                    );
-                  }),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Complaints", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  _buildSidebarItem(context, "Terms & Conditions", () {}),
-                  Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-                  SizedBox(height: 50),
-                  _buildSidebarButton(
-                    title: "Sign Out",
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdminLoginPage()),
-                      );
-                    },
-                    backgroundColor: Colors.white,
-                    borderColor: Color.fromRGBO(24, 71, 137, 1),
-                    textColor: Color.fromRGBO(24, 71, 137, 1),
-                  ),
-                  SizedBox(height: 14),
-                  _buildSidebarButton(
-                    title: "Delete Account",
-                    onTap: () {
-                      // Handle delete account
-                    },
-                    backgroundColor: Colors.red,
-                    borderColor: Colors.red,
-                    textColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
+         AdminSidebar(), 
           // Main content (Organizations list and search)
           Expanded(
             child: Column(
@@ -234,7 +168,7 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Complaints ', // Page title
+                    'Browse Organizations', // Page title
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.bold,
@@ -425,6 +359,7 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
           ),
         ],
       ),
+       ),
     );
   }
 
@@ -484,18 +419,18 @@ class OrganizationProfilePage extends StatelessWidget {
     String orgAddress = organization["wallet"];
     print("Organization Wallet Address: $orgAddress");
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(24, 71, 137, 1), // Top bar color
+      backgroundColor: Colors.white, // Top bar color
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80), // Increased app bar height
         child: AppBar(
-          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+          backgroundColor: Colors.white,
           elevation: 0, // Remove shadow
           leading: Padding(
             padding: const EdgeInsets.only(top: 20), // Adjust icon position
             child: IconButton(
               icon: const Icon(
                 Icons.arrow_back,
-                color: Colors.white,
+                color: Color.fromRGBO(24, 71, 137, 1),
                 size: 30, // Adjusted size
               ),
               onPressed: () {
@@ -510,7 +445,7 @@ class OrganizationProfilePage extends StatelessWidget {
               child: Text(
                 organization["name"] ?? "Unknown Organization",
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color.fromRGBO(24, 71, 137, 1),
                   fontSize: 24, // Increased size
                   fontWeight: FontWeight.bold,
                 ),
