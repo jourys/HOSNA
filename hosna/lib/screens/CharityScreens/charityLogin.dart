@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+import 'package:hosna/screens/SuspensionListener.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class CharityLogInPage extends StatefulWidget {
   const CharityLogInPage({super.key});
@@ -81,7 +84,28 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
         if (walletAddress.isNotEmpty) {
           // Save wallet address and private key to SharedPreferences
-          await _saveWalletDetails(walletAddress);
+          try {
+            // Save wallet address to SharedPreferences
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('walletAddress', walletAddress);
+            print('Wallet address saved to SharedPreferences');
+
+            // Retrieve private key
+            String? privateKey = await _getPrivateKey(walletAddress);
+
+            if (privateKey != null) {
+              print("✅ Loaded Private Key: $privateKey");
+            } else {
+              print("❌ No private key found for this wallet.");
+            }
+
+          } catch (e) {
+            print('Error saving wallet address or retrieving private key: $e');
+          }
+
+ 
+
+SuspensionListener(walletAddress);
 
           // Navigate to main screen
           Future.delayed(const Duration(seconds: 1), () {
@@ -111,6 +135,36 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         SnackBar(content: Text('An error occurred: $e')),
       );
     }
+  }
+// Function to retrieve the private key from SharedPreferences
+  Future<String?> _getPrivateKey(String walletAddress) async {
+     try {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(walletAddress)
+        .get();
+
+    if (snapshot.exists && snapshot['isSuspend'] == true) {
+      print("🚫 Access denied! Account is suspended.");
+      return null;
+    }
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      // Retrieve private key using the correct key format
+      String privateKeyKey = 'privateKey_$walletAddress';
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print('✅ Private key retrieved for wallet $walletAddress');
+      } else {
+        print('❌ Private key not found for wallet $walletAddress');
+      }
+
+      return privateKey;
+      } catch (e) {
+    print('⚠️ Error retrieving private key: $e');
+    return null;
+  }
   }
 
   /// Fetch wallet address from contract using email
@@ -150,7 +204,16 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
   /// Save wallet address and private key to SharedPreferences
   Future<void> _saveWalletDetails(String walletAddress) async {
-    try {
+     try {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(walletAddress)
+        .get();
+
+    if (snapshot.exists && snapshot['isSuspend'] == true) {
+      print("🚫 Access denied! Account is suspended.");
+      return null;
+    }
       final blockchainService = BlockchainService();
       final credentials = await blockchainService.getCharityCredentials();
       final privateKey = credentials['privateKey'];

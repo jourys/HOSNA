@@ -1,14 +1,18 @@
 import 'dart:convert';
-
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorLogin.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hosna/screens/SuspensionListener.dart';
 
 class DonorSignUpPage extends StatefulWidget {
+
   const DonorSignUpPage({super.key});
 
   @override
@@ -158,7 +162,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       // Send the transaction to register the donor using the creator's wallet for gas
       final result = await _web3Client.sendTransaction(
         creatorCredentials, // Use the creator's credentials to sign the transaction
-        Transaction.callContract(
+         web3.Transaction.callContract( 
           contract: contract,
           function: registerDonor,
           parameters: [
@@ -180,6 +184,10 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       );
       _storePrivateKey(walletAddress.toString(), _privateKey);
       print("private key stoooored in shared pref.");
+      // Store donor details in Firebase
+    await _storeDonorInFirebase(walletAddress.toString(), email);
+SuspensionListener(walletAddress.toString());
+reloadPrivateKey(walletAddress.toString());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
@@ -214,6 +222,46 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   }
 }
 
+Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
+  try {
+    await FirebaseFirestore.instance.collection('users').doc(walletAddress).set({
+      'walletAddress': walletAddress,
+      'email': email,
+      'userType': 0, // 0 means donor
+      'isSuspend': false,
+    });
+    print("✅ Donor data successfully stored in Firebase! 🎉");
+  } catch (e) {
+    print("❌ Error storing donor in Firebase: $e ");
+  }
+}
+Future<void> reloadPrivateKey(String walletAddress) async {
+  String? privateKey = await _fetchPrivateKeyFromSecureStorage(walletAddress);
+
+  if (privateKey != null && privateKey.isNotEmpty) {
+    // Proceed with using the private key
+    print("✅ Private key loaded for wallet $walletAddress.");
+  } else {
+    print("❌ Failed to load private key for wallet $walletAddress.");
+  }
+}
+Future<String?> _fetchPrivateKeyFromSecureStorage(String walletAddress) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String privateKeyKey = 'privateKey_$walletAddress';
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print("✅ Private key retrieved for wallet $walletAddress.");
+        return privateKey;
+      } else {
+        print("❌ No private key found for wallet $walletAddress.");
+      }
+    } catch (e) {
+      print("⚠️ Error retrieving private key: $e");
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {

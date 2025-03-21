@@ -128,142 +128,104 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     );
   }
 
-  Future<void> _updateDonorData() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? walletAddress =
-        prefs.getString('walletAddress'); // Retrieve wallet address
-    String? privateKey =
-        prefs.getString('privateKey_$walletAddress'); // Retrieve private key
+ Future<void> _updateDonorData() async {
+  if (!mounted) return; // ✅ Prevents running if widget is unmounted
+  print("🔄 Starting donor profile update...");
 
-    if (privateKey == null || privateKey.isEmpty) {
-      print("❌ Error: Private key not found for wallet: $walletAddress");
+  final prefs = await SharedPreferences.getInstance();
+  String? walletAddress = prefs.getString('walletAddress');
+  String? privateKey = prefs.getString('privateKey_$walletAddress');
+print("✅ Private key : $privateKey");
+  if (privateKey == null || privateKey.isEmpty) {
+    print("❌ Error: Private key not found for wallet: $walletAddress");
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Error: Private key not found! Please re-login.")),
+        SnackBar(content: Text("Error: Private key not found! Please re-login.")),
       );
-      return;
     }
+    return;
+  }
 
-    _donorAddress = prefs.getString('walletAddress') ?? '';
+  _donorAddress = walletAddress ?? '';
 
-    if (privateKey == null || privateKey.isEmpty) {
-      print("❌ Error: Private key not found!");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Error: Private key not found! Please re-login.")),
-      );
-      return;
-    }
+  // ✅ Validate Private Key Format
+  privateKey = privateKey.replaceAll("0x", "").trim();
+  if (privateKey.length != 64 || !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(privateKey)) {
+    print("❌ Error: Invalid private key format!");
+    return;
+  }
 
-    // ✅ Validate Private Key Format
-    privateKey = privateKey.replaceAll("0x", "").trim();
-    if (privateKey.length != 64 ||
-        !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(privateKey)) {
-      print("❌ Error: Invalid private key format!");
-      return;
-    }
+  if (_donorAddress.isEmpty) {
+    print("❌ Error: Invalid wallet address - $_donorAddress");
+    return;
+  }
 
-    if (_donorAddress.isEmpty) {
-      print("❌ Error: Invalid wallet address - $_donorAddress");
-      return;
-    }
-    String firstName = firstNameController.text.trim();
-    if (firstName.isEmpty) {
+  String firstName = firstNameController.text.trim();
+  if (firstName.isEmpty) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("⚠️ First name cannot be empty")),
       );
-      return;
     }
-    if (firstName.length > 20) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ First name cannot exceed 20 characters")),
-      );
-      return;
-    }
-    String lastName = lastNameController.text.trim();
-    if (lastName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Last name cannot be empty")),
-      );
-      return;
-    }
-    if (lastName.length > 20) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Last name cannot exceed 20 characters")),
-      );
-      return;
-    }
-
-    // ✅ **Validate Phone Number Before Sending to Blockchain**
-    String phone = phoneController.text.trim();
-    if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Phone number cannot be empty")),
-      );
-      return;
-    }
-    if (phone.length != 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Phone number must be exactly 10 digits")),
-      );
-      return;
-    }
-    if (!phone.startsWith('05')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Phone number must start with '05'")),
-      );
-      return;
-    }
-
-    print("🟢 Updating donor profile...");
-
-    final contract = await _loadContract();
-    final function = contract.function('updateDonor');
-    try {
-      final credentials = EthPrivateKey.fromHex(privateKey);
-      await _web3Client.sendTransaction(
-        credentials,
-        Transaction.callContract(
-          contract: contract,
-          function: function,
-          parameters: [
-            EthereumAddress.fromHex(_donorAddress),
-            firstNameController.text,
-            lastNameController.text,
-            emailController.text,
-            phoneController.text,
-          ],
-          gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
-          maxGas: 1000000,
-        ),
-        chainId: 11155111,
-      );
-
-      print("✅ Profile update transaction sent!");
-      print("⏳ Waiting for blockchain confirmation...");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('⏳ Waiting for updating your profile...'),
-          duration: Duration(seconds: 10), // Display while waiting
-        ),
-      );
-      // ⏳ **Add a delay before navigating back**
-      await Future.delayed(Duration(seconds: 10)); // ⏳ Adjust if needed
-
-      print("✅ Profile update confirmed, navigating back!");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully!')),
-      );
-
-      Navigator.pop(context, true); // ✅ Trigger profile refresh
-    } catch (e) {
-      print("❌ Error updating profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error updating profile: $e")),
-      );
-    }
+    return;
   }
+
+  print("🟢 Fetching contract...");
+  final contract = await _loadContract();
+  final function = contract.function('updateDonor');
+
+  try {
+  final credentials = EthPrivateKey.fromHex(privateKey);
+  
+  // 📝 Send transaction and get the transaction hash
+  String txHash = await _web3Client.sendTransaction(
+    credentials,
+    Transaction.callContract(
+      contract: contract,
+      function: function,
+      parameters: [
+        EthereumAddress.fromHex(_donorAddress),
+        firstNameController.text,
+        lastNameController.text,
+        emailController.text,
+        phoneController.text,
+      ],
+      gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
+      maxGas: 1000000,
+    ),
+    chainId: 11155111,
+  );
+
+  print("✅ Transaction Hash: $txHash");
+  print("⏳ Waiting for blockchain confirmation...");
+
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('⏳ Waiting for blockchain confirmation...')),
+    );
+  }
+
+  // 🕒 Optionally, wait a few seconds before fetching updated data
+  await Future.delayed(Duration(seconds: 10));
+
+  print("✅ Profile update confirmed, navigating back!");
+
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Profile updated successfully!')),
+    );
+    Navigator.pop(context, true);
+  }
+} catch (e) {
+  print("❌ Error updating profile: $e");
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error updating profile: $e")),
+    );
+  }
+}
+
+}
 
   @override
   Widget build(BuildContext context) {

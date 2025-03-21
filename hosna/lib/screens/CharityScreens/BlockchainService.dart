@@ -367,46 +367,71 @@ class BlockchainService {
     }
   }
 
-  Future<Map<String, String?>> getCharityCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final privateKey = prefs.getString('privateKey');
-    final walletAddress = prefs.getString('walletAddress');
+Future<Map<String, String?>> getCharityCredentials() async {
+  final prefs = await SharedPreferences.getInstance();
 
-    if (privateKey == null || walletAddress == null) {
-      print("❌ Private Key or Wallet Address Not Found in SharedPreferences!");
-    } else {
-      print("✅ Retrieved Private Key: $privateKey");
-      print("✅ Retrieved Wallet Address: $walletAddress");
-    }
+  // Retrieve the stored wallet address first
+  final walletAddress = prefs.getString('walletAddress');
 
+  // If wallet address is null, return early
+  if (walletAddress == null) {
+    print("❌ No wallet address found in SharedPreferences!");
     return {
-      'privateKey': privateKey,
-      'walletAddress': walletAddress,
+      'privateKey': null,
+      'walletAddress': null,
     };
   }
 
-  Future<void> connect() async {
+  // Retrieve the private key using the correct key format
+  final privateKeyKey = 'privateKey_$walletAddress';
+  String? privateKey = prefs.getString(privateKeyKey);
+
+  if (privateKey == null) {
+    print("❌ No private key found for wallet: $walletAddress.");
+  } else {
+    print("✅ Retrieved Private Key for wallet: $walletAddress.");
+    print("✅ Retrieved Private Key: $privateKey.");
+  }
+
+  return {
+    'privateKey': privateKey,
+    'walletAddress': walletAddress,
+  };
+}
+
+
+
+ Future<void> connect() async {
+  try {
     // Retrieve the charity employee's credentials from storage
     final credentials = await getCharityCredentials();
-    final privateKey = credentials['privateKey'];
     final walletAddress = credentials['walletAddress'];
+    final privateKey = credentials['privateKey'];
 
-    print(' Retrieved walletAddress: $walletAddress');
-    print('Retrieved privateKey: $privateKey');
+    print('🔍 Retrieved Wallet Address: $walletAddress');
+    print('🔍 Retrieved Private Key: ${privateKey != null ? "Exists ✅" : "Not Found ❌"}');
 
-    if (privateKey == null || walletAddress == null) {
-      print("❌ Charity employee not logged in.");
-      throw Exception("Charity employee not logged in.");
+    if (walletAddress == null) {
+      print("❌ Charity employee wallet address not found. Please log in.");
+      throw Exception("Wallet address not found.");
     }
 
-    // Initialize credentials using the charity employee's private key
-    _credentials = EthPrivateKey.fromHex(privateKey);
+    if (privateKey == null) {
+      print("❌ Private key not found. Cannot establish a secure connection.");
+      throw Exception("Private key not found.");
+    }
 
-    // Set the charity employee's wallet address
+    // Initialize credentials using the private key
+    _credentials = EthPrivateKey.fromHex(privateKey);
     _ownAddress = EthereumAddress.fromHex(walletAddress);
 
-    print("✅ Connected with wallet address: $_ownAddress");
+    print("✅ Successfully connected with wallet address: $_ownAddress");
+  } catch (e) {
+    print("⚠️ Error during wallet connection: $e");
+    throw Exception("Failed to connect wallet: $e");
   }
+}
+
 
   Future<void> addProject(
     String name,
@@ -478,25 +503,28 @@ class BlockchainService {
     }
   }
 
-  Future<String> getWalletAddressFromPrivateKey() async {
+Future<String?> getWalletAddressFromPrivateKey() async {
+  try {
     final prefs = await SharedPreferences.getInstance();
     final privateKey = prefs.getString('privateKey');
 
     if (privateKey == null || privateKey.isEmpty) {
-      print("❌ Private key not found in SharedPreferences.");
-      return "";
+      print("❌ No private key found in SharedPreferences.");
+      return null; // Return null instead of an empty string
     }
 
-    try {
-      final credentials = EthPrivateKey.fromHex(privateKey);
-      final walletAddress = credentials.address.hex;
-      print("✅ Wallet derived from private key: $walletAddress");
-      return walletAddress;
-    } catch (e) {
-      print("❌ Error deriving wallet address: $e");
-      return "";
-    }
+    // Derive wallet address from the private key
+    final credentials = EthPrivateKey.fromHex(privateKey);
+    final walletAddress = credentials.address.hex;
+
+    print("✅ Wallet address derived from private key: $walletAddress");
+    return walletAddress;
+  } catch (e) {
+    print("❌ Error deriving wallet address: $e");
+    return null; // Return null to indicate failure
   }
+}
+
 
   Future<DeployedContract> _getContract() async {
     return DeployedContract(

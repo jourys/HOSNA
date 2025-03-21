@@ -7,7 +7,10 @@ import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
 import 'package:hosna/screens/CharityScreens/charityLogin.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/crypto.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CharitySignUpPage extends StatefulWidget {
@@ -68,11 +71,14 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
 
   Future<void> saveCharityCredentials(
       String walletAddress, String privateKey) async {
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('walletAddress', walletAddress);
     await prefs.setString('privateKey', privateKey);
     print('✅ Saved walletAddress: $walletAddress');
     print('✅ Saved privateKey: $privateKey');
+
+
   }
 
   Uint8List hashPassword(String password) {
@@ -84,7 +90,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     print("🛠 Registering charity...");
 
     final String ownerPrivateKey =
-        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
     final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
@@ -94,7 +100,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final charityWallet = await charityCredentials.extractAddress();
     print("🔹 Charity Wallet Address: $charityWallet");
     print("🔹 Charity Wallet private Address: $charityPrivateKey");
-    await saveCharityCredentials(charityWallet.toString(), charityPrivateKey);
+    // await saveCharityCredentials(charityWallet.toString(), charityPrivateKey);
 
     final contract = DeployedContract(
       ContractAbi.fromJson(
@@ -150,7 +156,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     try {
       final result = await _web3Client.sendTransaction(
         ownerCredentials,
-        Transaction.callContract(
+  web3.Transaction.callContract( 
           contract: contract,
           function: registerCharity,
           parameters: [
@@ -175,6 +181,17 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('🎉 Account created successfully!')),
       );
+       
+
+
+
+await _storeDonorInFirebase(charityWallet.toString(),  _organizationEmailController.text.toLowerCase());
+
+
+_storePrivateKey(charityWallet.toString(), charityPrivateKey);
+      print("private key stoooored in shared pref.");
+
+
 
       Navigator.pushReplacement(
         context,
@@ -190,6 +207,40 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     }
   }
 
+  Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Use a unique key format for storing the private key
+    String privateKeyKey = 'privateKey_$walletAddress';
+
+    // Save the private key
+    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+    if (isSaved) {
+      print('✅ Private key for wallet $walletAddress saved successfully!');
+    } else {
+      print('❌ Failed to save private key for wallet $walletAddress');
+    }
+  } catch (e) {
+    print('⚠️ Error saving private key: $e');
+  }
+}
+
+
+Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
+  try {
+    await FirebaseFirestore.instance.collection('users').doc(walletAddress).set({
+      'walletAddress': walletAddress,
+      'email': email,
+      'userType': 1, // 0 means donor
+      'isSuspend': false,
+    });
+    print("✅ charity data successfully stored in Firebase! 🎉");
+  } catch (e) {
+    print("❌ Error storing charity in Firebase: $e ");
+  }
+}
   Future<void> getCharityDetails() async {
     final contract = DeployedContract(
       ContractAbi.fromJson(

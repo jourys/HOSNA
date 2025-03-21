@@ -7,6 +7,9 @@ import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // For Firebase Authentication
+import 'package:hosna/screens/SuspensionListener.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -138,6 +141,7 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           } catch (e) {
             print('Error saving wallet address or retrieving private key: $e');
           }
+SuspensionListener(walletAddress);
 
           // Navigate to MainScreen
           Navigator.pushReplacement(
@@ -168,7 +172,16 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
 
   // Function to retrieve the private key from SharedPreferences
   Future<String?> _getPrivateKey(String walletAddress) async {
-    try {
+     try {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(walletAddress)
+        .get();
+
+    if (snapshot.exists && snapshot['isSuspend'] == true) {
+      print("🚫 Access denied! Account is suspended.");
+      return null;
+    }
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
       // Retrieve private key using the correct key format
@@ -182,10 +195,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
       }
 
       return privateKey;
-    } catch (e) {
-      print('⚠️ Error retrieving private key: $e');
-      return null;
-    }
+      } catch (e) {
+    print('⚠️ Error retrieving private key: $e');
+    return null;
+  }
   }
 
   @override

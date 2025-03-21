@@ -82,50 +82,53 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
       EthereumAddress.fromHex(contractAddress),
     );
   }
+Future<void> _getDonorData() async {
+  print("🔄 Checking donor address: $_donorAddress");
 
-  Future<void> _getDonorData() async {
-    if (_donorAddress.isEmpty) {
-      print("⚠️ No donor wallet address found.");
+  if (_donorAddress.isEmpty) {
+    print("⚠️ No donor wallet address found.");
+    return;
+  }
+
+  try {
+    print("📡 Fetching contract...");
+    final contract = await _loadContract();
+    final function = contract.function('getDonor');
+
+    print("📡 Fetching donor data for $_donorAddress...");
+
+    final result = await _web3Client.call(
+      contract: contract,
+      function: function,
+      params: [EthereumAddress.fromHex(_donorAddress)],
+    );
+
+    print("🟢 Raw Result: $result"); // ✅ Debugging the response
+
+    if (result.isEmpty) {
+      print("❌ Donor data is empty! Wallet: $_donorAddress");
       return;
     }
 
-    try {
-      final contract = await _loadContract();
-      final function = contract.function('getDonor');
-
-      print("📡 Fetching donor data for $_donorAddress...");
-
-      final result = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [EthereumAddress.fromHex(_donorAddress)],
-      );
-
-      print("🟢 Raw Result: $result"); // ✅ Debugging the response
-
-      if (result.isEmpty) {
-        print("❌ Donor data is empty! Wallet: $_donorAddress");
-        return;
-      }
-
-      bool isRegistered = result[5] as bool;
-      if (!isRegistered) {
-        print("❌ Donor is not registered in the blockchain!");
-        return;
-      }
-
-      setState(() {
-        _firstName = result[0] as String;
-        _lastName = result[1] as String;
-        _email = result[2] as String;
-        _phone = result[3] as String;
-      });
-
-      print("✅ Donor data retrieved successfully!");
-    } catch (e) {
-      print("❌ Error fetching donor data: $e");
+    bool isRegistered = result[5] as bool;
+    if (!isRegistered) {
+      print("❌ Donor is not registered in the blockchain!");
+      return;
     }
+
+    setState(() {
+      _firstName = result[0] as String;
+      _lastName = result[1] as String;
+      _email = result[2] as String;
+      _phone = result[3] as String;
+    });
+
+    print("✅ Donor data retrieved successfully!");
+  } catch (e) {
+    print("❌ Error fetching donor data: $e");
   }
+}
+
 
   Future<List<dynamic>> _callGetDonorMethod(DeployedContract contract,
       String methodName, List<dynamic> params) async {

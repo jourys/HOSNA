@@ -68,11 +68,24 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
 
   Future<void> saveCharityCredentials(
       String walletAddress, String privateKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('walletAddress', walletAddress);
-    await prefs.setString('privateKey', privateKey);
-    print('✅ Saved walletAddress: $walletAddress');
-    print('✅ Saved privateKey: $privateKey');
+
+    try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Use a unique key format for storing the private key
+    String privateKeyKey = 'privateKey_$walletAddress';
+
+    // Save the private key
+    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+    if (isSaved) {
+      print('✅ Private key for wallet $walletAddress saved successfully!');
+    } else {
+      print('❌ Failed to save private key for wallet $walletAddress');
+    }
+  } catch (e) {
+    print('⚠️ Error saving private key: $e');
+  }
   }
 
   Uint8List hashPassword(String password) {

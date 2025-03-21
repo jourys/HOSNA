@@ -107,13 +107,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> estimateGasCost() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final privateKey = prefs.getString('privateKey') ?? '';
-      final walletAddress = prefs.getString('walletAddress') ?? '';
+    final walletAddress = prefs.getString('walletAddress') ?? '';
+   String privateKeyKey = 'privateKey_$walletAddress';
+String? privateKey = prefs.getString(privateKeyKey);
 
-      if (privateKey.isEmpty || walletAddress.isEmpty) {
-        print("❌ Private Key or Wallet Address missing!");
-        return;
-      }
+// Null check before accessing isEmpty
+if (privateKey == null || privateKey.isEmpty || walletAddress.isEmpty) {
+  print("❌ Private Key or Wallet Address missing!");
+  return;
+}
+
 
       final contract = await _loadContract();
       final function = contract.function('updateCharity');
@@ -143,52 +146,60 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       print("❌ Error estimating gas: $e");
     }
   }
+Future<Map<String, dynamic>> fetchCharityData(String walletAddress) async {
+  try {
+    print("🔍 Fetching updated profile data for wallet: $walletAddress");
 
-  Future<Map<String, dynamic>> fetchCharityData(String walletAddress) async {
-    try {
-      print("🔍 Fetching updated profile data for wallet: $walletAddress");
-
-      if (walletAddress.isEmpty) {
-        print("❌ Error: Wallet address is empty.");
-        return {};
-      }
-
-      final contract = await _loadContract();
-      final function = contract.function('getCharity');
-
-      // Call the contract and fetch data
-      final result = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [EthereumAddress.fromHex(walletAddress)],
-      );
-
-      // ✅ Debugging: Print the raw result before processing
-      print("📌 Raw Result from Blockchain: $result");
-
-      if (result.isEmpty) {
-        print("❌ No data found for wallet: $walletAddress");
-        return {};
-      }
-
-      Map<String, dynamic> data = {
-        "name": result[0].toString(),
-        "email": result[1].toString(),
-        "phone": result[2].toString(),
-        "license": result[3].toString(),
-        "city": result[4].toString(),
-        "description": result[5].toString(),
-        "website": result[6].toString(),
-        "date": result[7].toString(),
-      };
-
-      print("✅ Data fetched successfully: $data");
-      return data;
-    } catch (e) {
-      print("❌ Error fetching charity data: $e");
+    // Check if wallet address is empty
+    if (walletAddress.isEmpty) {
+      print("❌ Error: Wallet address is empty.");
       return {};
     }
+
+    // Load the contract
+    final contract = await _loadContract();
+    print("✅ Contract loaded successfully.");
+
+    // Define the function to call from the contract
+    final function = contract.function('getCharity');
+    print("✅ Function 'getCharity' prepared.");
+
+    // Call the contract and fetch the data
+    final result = await _web3Client.call(
+      contract: contract,
+      function: function,
+      params: [EthereumAddress.fromHex(walletAddress)],
+    );
+    print("📌 Raw Result from Blockchain: $result");
+
+    // Check if the result is empty
+    if (result.isEmpty) {
+      print("❌ No data found for wallet: $walletAddress");
+      return {};
+    }
+
+    // Extract data into a map
+    Map<String, dynamic> data = {
+      "name": result[0].toString(),
+      "email": result[1].toString(),
+      "phone": result[2].toString(),
+      "license": result[3].toString(),
+      "city": result[4].toString(),
+      "description": result[5].toString(),
+      "website": result[6].toString(),
+      "date": result[7].toString(),
+    };
+
+    // Print the structured data
+    print("✅ Structured Data: $data");
+
+    return data;
+  } catch (e) {
+    print("❌ Error fetching charity data: $e");
+    return {};
   }
+}
+
 
   Future<void> _updateCharityData() async {
     print("🟢 _updateCharityData() called!");
@@ -201,7 +212,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    final privateKey = prefs.getString('privateKey');
+    String privateKeyKey = 'privateKey_$storedAddress';
+      String? privateKey = prefs.getString(privateKeyKey);
+
     if (privateKey == null || privateKey.isEmpty) {
       print("❌ No private key found!");
       ScaffoldMessenger.of(context).showSnackBar(

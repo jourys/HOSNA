@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/DonorScreens/DonorHomePage.dart';
 import 'package:hosna/screens/DonorScreens/DonorNotificationsCenter.dart';
 import 'package:hosna/screens/organizations.dart';
@@ -6,9 +7,8 @@ import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
-  final String? walletAddress; // Wallet address is now nullable
+  final String? walletAddress;
 
-  // Constructor to receive the wallet address
   const MainScreen({super.key, this.walletAddress});
 
   @override
@@ -17,12 +17,13 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  String? walletAddress; // Initialize the wallet address
-  String? firstName; // Add firstName variable
-  // Pass the wallet address to all pages
+  String? walletAddress;
+  String? firstName;
+  bool isSuspended = false; // Track suspension status
+
   List<Widget> get _pages {
     return [
-      HomePage(), // Pass firstName
+      HomePage(),
       BrowseProjects(walletAddress: walletAddress ?? ''),
       NotificationsPage(walletAddress: walletAddress ?? ''),
       OrganizationsPage(walletAddress: walletAddress ?? ''),
@@ -32,23 +33,38 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _loadWalletAddress(); // Load the wallet address from SharedPreferences
+    _loadWalletAddress();
   }
 
-  // Load wallet address from SharedPreferences
   Future<void> _loadWalletAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? savedWalletAddress =
-        prefs.getString('walletAddress'); // Retrieve saved wallet address
+    String? savedWalletAddress = prefs.getString('walletAddress');
+    
     setState(() {
-      walletAddress = savedWalletAddress ??
-          widget.walletAddress; // Use saved address if available
-      firstName = prefs.getString('firstName') ??
-          "User"; // Default to "User" if not found
+      walletAddress = savedWalletAddress ?? widget.walletAddress;
+      firstName = prefs.getString('firstName') ?? "User";
     });
-    print(
-        "Loaded Wallet Address: $walletAddress"); // Debugging the wallet address
-    print("Loaded First Name: $firstName");
+
+    if (walletAddress != null) {
+      _listenForSuspension(walletAddress!);
+    }
+  }
+
+  void _listenForSuspension(String wallet) {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(wallet)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        bool suspendStatus = snapshot['isSuspend'] ?? false;
+        setState(() {
+          isSuspended = suspendStatus;
+        });
+      }
+    }, onError: (error) {
+      print("❌ Error checking suspension: $error");
+    });
   }
 
   void _onItemTapped(int index) {
@@ -56,52 +72,83 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
-
-  @override
-  Widget build(BuildContext context) {
-    if (walletAddress == null) {
-      // If walletAddress is null, show a loading screen
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    print(
-        "Wallet Address: $walletAddress"); // This will print the wallet address
-
-    return Scaffold(
-      body: _pages[_selectedIndex], // Display the selected page
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Color.fromRGBO(24, 71, 137, 1),
-        unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 38, weight: 38),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              _selectedIndex == 1
-                  ? 'assets/BlueProjects.png'
-                  : 'assets/Projects.png',
-              width: 30,
-              height: 30,
-            ),
-            label: 'Projects',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications, size: 35, weight: 35),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.apartment, size: 35, weight: 35),
-            label: 'Organizations',
-          ),
-        ],
-      ),
+@override
+Widget build(BuildContext context) {
+  if (walletAddress == null) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
+
+  return Scaffold(
+    body: Column(
+      children: [
+        Expanded(child: _pages[_selectedIndex]), // Main page content
+        if (isSuspended)
+          Container(
+            color: Colors.red,
+            padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    "Your account has been suspended. You cannot make any operation.",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedIndex = 2; // Navigate to NotificationsPage
+                    });
+                  },
+                  child: const Text(
+                    "More",
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
+          unselectedItemColor: Colors.black,
+          type: BottomNavigationBarType.fixed,
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home, size: 38),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Image.asset(
+                _selectedIndex == 1
+                    ? 'assets/BlueProjects.png'
+                    : 'assets/Projects.png',
+                width: 30,
+                height: 30,
+              ),
+              label: 'Projects',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.notifications, size: 35),
+              label: 'Notifications',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.apartment, size: 35),
+              label: 'Organizations',
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 }
