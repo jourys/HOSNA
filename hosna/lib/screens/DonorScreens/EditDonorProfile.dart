@@ -3,8 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:hosna/screens/DonorScreens/DonorHomePage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_core/firebase_core.dart';  // Make sure Firebase is initialized
 
+import 'dart:io';
+ 
 class EditDonorProfileScreen extends StatefulWidget {
   final String firstName;
   final String lastName;
@@ -23,8 +31,10 @@ class EditDonorProfileScreen extends StatefulWidget {
 }
 
 class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
-  late Web3Client _web3Client;
-  late String _donorAddress;
+    late Web3Client _web3Client;
+
+   String _donorAddress = '';
+    String _profilePictureUrl = ''; 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
   final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
@@ -35,11 +45,14 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   late TextEditingController lastNameController;
   late TextEditingController emailController;
   late TextEditingController phoneController;
+  File? _imageFile;
 
+  final ImagePicker _picker = ImagePicker();  // Initialize the image picker
   @override
   void initState() {
     super.initState();
     _initializeWeb3();
+    _web3Client = Web3Client(rpcUrl, Client());
 
     // ✅ Directly initialize controllers with provided values
     firstNameController = TextEditingController(text: widget.firstName);
@@ -53,6 +66,86 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     _donorAddress = prefs.getString('walletAddress') ?? '';
   }
+
+
+Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+      _uploadImageToFirebase();
+    }
+  }
+
+  Future<void> _takePicture() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+      _uploadImageToFirebase();
+    }
+  }
+
+  
+Future<void> _uploadImageToFirebase() async {
+  if (_imageFile == null || _donorAddress.isEmpty) {
+    print('⚠️ No image selected or donor address is empty.');
+    return;
+  }
+
+  try {
+    print('🔄 Starting image upload process...');
+    FirebaseStorage storage = FirebaseStorage.instance;
+    String filePath = 'profile_pictures/$_donorAddress.jpg';
+    Reference storageRef = storage.ref(filePath);
+
+    print('📂 Uploading image to Firebase Storage at: $filePath');
+
+    UploadTask uploadTask = storageRef.putFile(_imageFile!);
+
+    uploadTask.snapshotEvents.listen((taskSnapshot) {
+      if (taskSnapshot.totalBytes > 0) {
+        double progress = (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) * 100;
+        print('📡 Upload Progress: ${progress.toStringAsFixed(2)}%');
+      } else {
+        print('⚠️ Upload progress unavailable.');
+      }
+    });
+
+    // Wait for upload to complete and check for errors
+    TaskSnapshot snapshot = await uploadTask.whenComplete(() => null);
+    
+    if (snapshot.state == TaskState.success) {
+      print('✅ Image successfully uploaded.');
+
+      // Retrieve download URL
+      try {
+        String downloadUrl = await storageRef.getDownloadURL();
+        print('✅ Download URL: $downloadUrl');
+
+        // Save URL to Firestore
+        await FirebaseFirestore.instance.collection('users').doc(_donorAddress).set({
+          'profile_picture': downloadUrl
+        }, SetOptions(merge: true));
+
+        print('✅ Profile image URL saved to Firestore.');
+
+        setState(() {
+          _profilePictureUrl = downloadUrl;
+        });
+      } catch (e) {
+        print('❌ Error retrieving download URL: $e');
+      }
+    } else {
+      print('❌ Upload failed with state: ${snapshot.state}');
+    }
+  } catch (e) {
+    print('❌ Error uploading image: $e');
+  }
+}
+
 
   Future<void> _getDonorData() async {
     if (_donorAddress.isEmpty) {
@@ -180,7 +273,7 @@ print("✅ Private key : $privateKey");
   // 📝 Send transaction and get the transaction hash
   String txHash = await _web3Client.sendTransaction(
     credentials,
-    Transaction.callContract(
+     web3.Transaction.callContract(
       contract: contract,
       function: function,
       parameters: [
@@ -190,7 +283,7 @@ print("✅ Private key : $privateKey");
         emailController.text,
         phoneController.text,
       ],
-      gasPrice: EtherAmount.inWei(BigInt.from(30000000000)),
+      gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
       maxGas: 1000000,
     ),
     chainId: 11155111,
@@ -239,14 +332,61 @@ print("✅ Private key : $privateKey");
         child: Form(
           key: _formKey,
           child: ListView(
-            children: [
+            children: [ Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey,
+                      backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
+                      child: _imageFile == null ? Icon(Icons.account_circle, size: 100, color: Colors.white) : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: IconButton(
+                        icon: Icon(Icons.edit, color: Colors.blue[900]),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            builder: (context) {
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: Icon(Icons.camera),
+                                    title: Text('Take a Picture'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _takePicture();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: Icon(Icons.photo_album),
+                                    title: Text('Select from Gallery'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _pickImage();
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
               _buildTextField(firstNameController, 'First Name'),
               _buildTextField(lastNameController, 'Last Name'),
               _buildTextField(emailController, 'Email', isEmail: true),
               _buildTextField(phoneController, 'Phone', isPhone: true),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _updateDonorData,
+                onPressed: _updateDonorData, 
                 child: Text('Save Changes'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[900],

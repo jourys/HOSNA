@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.waad.hosna</string>
+	<string>com.example.hosna</string>
 	<key>PROJECT_ID</key>
 	<string>hosna2</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:242559262635:ios:b4617e3865982df688bcee</string>
+	<string>1:242559262635:ios:984d42497bbfeb7b88bcee</string>
 </dict>
 </plist>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 
 class ProjectDetails extends StatefulWidget {
   final String projectName;
@@ -331,6 +332,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                 color: stateColor, fontWeight: FontWeight.bold),
                           ),
                         ),
+                        
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -394,6 +396,32 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                   color: Colors.white)),
                         ),
                       ),
+                      const SizedBox(height: 20),
+               
+if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
+  GestureDetector(
+    onTap: () {
+      print("View all donors");
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ViewDonorsPage(
+            projectId: widget.projectId, // replace with the actual project ID
+          ),
+        ),
+      );
+    },
+    child: const Text(
+      'View All Donors',
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.blue, // Makes it look like a link
+        decoration: TextDecoration.underline, // Underline for emphasis
+      ),
+    ),
+  ),
+
                   ],
                 ),
               ),
@@ -554,7 +582,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       // Load the DonationContract
       final donationContract = DeployedContract(
         ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0x95a20778c2713a11ff61695e57cd562f78f75754'),
+        EthereumAddress.fromHex('0x32f97b92AC3478baed8ee2784351870bA4c5f9DF'),
       );
 
       // Get the function reference

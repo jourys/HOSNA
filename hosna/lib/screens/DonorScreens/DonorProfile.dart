@@ -4,6 +4,9 @@ import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart'; // To make HTTP requests
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -14,7 +17,7 @@ class ProfileScreenTwo extends StatefulWidget {
 
 class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   late Web3Client _web3Client; // For blockchain connection
-  late String _donorAddress; // Wallet address of the donor
+String _donorAddress = '';
   String _firstName = '';
   String _lastName = '';
   String _email = '';
@@ -23,6 +26,8 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
   final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
+String? _profilePictureUrl;
+
 
   @override
   void initState() {
@@ -30,7 +35,50 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
     _getUserType();
     _initializeWeb3();
     _getDonorData();
+    _fetchProfilePicture(); // Fetch profile picture on init
   }
+Future<void> _fetchProfilePicture() async {
+  print('🔄 Fetching profile picture for donor: $_donorAddress');
+
+  if (_donorAddress.isEmpty) {
+    print('⚠️ Donor address is empty. Cannot fetch profile picture.');
+    return;
+  }
+
+  try {
+    print('📡 Querying Firestore for user profile...');
+    DocumentSnapshot donorDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_donorAddress)
+        .get();
+
+    print('📄 Firestore query completed.');
+
+    if (donorDoc.exists) {
+      print('✅ Donor document found in Firestore.');
+
+      if (donorDoc.data() != null && donorDoc.data() is Map<String, dynamic>) {
+        Map<String, dynamic> donorData = donorDoc.data() as Map<String, dynamic>;
+
+        if (donorData.containsKey('profile_picture') && donorData['profile_picture'] != null) {
+          setState(() {
+            _profilePictureUrl = donorData['profile_picture'];
+          });
+          print("🖼️ Profile picture URL loaded: $_profilePictureUrl");
+        } else {
+          print("⚠️ Profile picture field is missing or null in Firestore for $_donorAddress.");
+        }
+      } else {
+        print("⚠️ Firestore document data is empty or invalid.");
+      }
+    } else {
+      print("⚠️ No donor document found in Firestore for $_donorAddress.");
+    }
+  } catch (e) {
+    print("❌ Error fetching profile picture: $e");
+  }
+}
+
 
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -197,12 +245,15 @@ Future<void> _getDonorData() async {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 38,
-                backgroundColor:
-                    Colors.transparent, // Removes the background color
-                child:
-                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
-              ),
+              radius: 38,
+              backgroundColor: Colors.transparent,
+              backgroundImage: _profilePictureUrl != null
+                  ? NetworkImage(_profilePictureUrl!)
+                  : null,
+              child: _profilePictureUrl == null
+                  ? Icon(Icons.account_circle, size: 100, color: Colors.grey)
+                  : null,
+            ),
               SizedBox(height: 30),
               Text('$_firstName $_lastName',
                   style: TextStyle(
