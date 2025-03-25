@@ -95,79 +95,81 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
       );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          Expanded(child: _pages[_selectedIndex]), 
+  return Scaffold(
+  resizeToAvoidBottomInset: false, // Prevent resizing when the keyboard is visible
+  body: Column(
+    children: [
+      Expanded(child: _pages[_selectedIndex]),
 
-          if (isSuspended) 
-            Container(
-              color: Colors.red,
-              padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(
-                    child: Text(
-                      "Your account has been suspended. You cannot make any operation.",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+      if (isSuspended)
+        Container(
+          color: Colors.red,
+          padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text(
+                  "Your account has been suspended. You cannot make any operation.",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-                  TextButton(
-                    onPressed: () {
-                      _onItemTapped(2); // Navigate to NotificationsPage
-                    },
-                    child: const Text(
-                      "More",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-            selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
-            unselectedItemColor: Colors.black,
-            type: BottomNavigationBarType.fixed,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home, size: 38),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Image.asset(
-                  _selectedIndex == 1
-                      ? 'assets/BlueProjects.png'
-                      : 'assets/Projects.png',
-                  width: 30,
-                  height: 30,
                 ),
-                label: 'Projects',
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.notifications, size: 38),
-                label: 'Notifications',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.apartment, size: 38),
-                label: 'Organizations',
+             
+              TextButton(
+                onPressed: () {
+                  _onItemTapped(2); // Navigate to NotificationsPage
+                },
+                child: const Text(
+                  "More",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
+        ),
+
+      BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
+        unselectedItemColor: Colors.black,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home, size: 38),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              _selectedIndex == 1
+                  ? 'assets/BlueProjects.png'
+                  : 'assets/Projects.png',
+              width: 30,
+              height: 30,
+            ),
+            label: 'Projects',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.notifications, size: 38),
+            label: 'Notifications',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.apartment, size: 38),
+            label: 'Organizations',
+          ),
         ],
       ),
-
-      floatingActionButton: isSuspended
+    ],
+  ),
+  
+  floatingActionButton: isSuspended
     ? null
     : Padding(
         padding: const EdgeInsets.only(bottom: 22), // Adjust this value as needed
@@ -178,8 +180,8 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
           child: const Icon(Icons.add, color: Colors.white, size: 40),
         ),
       ),
-floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+  floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+);
 
-    );
   }
 }

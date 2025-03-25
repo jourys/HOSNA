@@ -71,8 +71,7 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
-  }
-@override
+  }@override
 Widget build(BuildContext context) {
   if (walletAddress == null) {
     return const Scaffold(
@@ -81,6 +80,7 @@ Widget build(BuildContext context) {
   }
 
   return Scaffold(
+    resizeToAvoidBottomInset: false, // Prevents resizing when the keyboard appears
     body: Column(
       children: [
         Expanded(child: _pages[_selectedIndex]), // Main page content
@@ -115,40 +115,41 @@ Widget build(BuildContext context) {
               ],
             ),
           ),
-        BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
-          unselectedItemColor: Colors.black,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 38),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Image.asset(
-                _selectedIndex == 1
-                    ? 'assets/BlueProjects.png'
-                    : 'assets/Projects.png',
-                width: 30,
-                height: 30,
-              ),
-              label: 'Projects',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.notifications, size: 35),
-              label: 'Notifications',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.apartment, size: 35),
-              label: 'Organizations',
-            ),
-          ],
+      ],
+    ),
+    bottomNavigationBar: BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
+      unselectedItemColor: Colors.black,
+      type: BottomNavigationBarType.fixed,
+      items: [
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.home, size: 38),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            _selectedIndex == 1
+                ? 'assets/BlueProjects.png'
+                : 'assets/Projects.png',
+            width: 30,
+            height: 30,
+          ),
+          label: 'Projects',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.notifications, size: 35),
+          label: 'Notifications',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.apartment, size: 35),
+          label: 'Organizations',
         ),
       ],
     ),
   );
 }
+
 
 }
