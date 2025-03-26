@@ -27,7 +27,7 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
   List<BigInt> donorAmounts = [];
 
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura project ID
-  final String donationContractAddress = '0x32f97b92AC3478baed8ee2784351870bA4c5f9DF';
+  final String donationContractAddress = '0xd34FbeEdc4f69AcAE08d271D577Cb7EAED0E5Eb4';
   final String donorRegistryAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
 
   @override
@@ -84,50 +84,69 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
     await _fetchDonors();
   }
 
-  Future<void> _fetchDonors() async {
-    try {
-      print("Fetching donors for project ID: ${widget.projectId}");
+Future<void> _fetchDonors() async {
+  try {
+    print("Starting _fetchDonors function...");
 
-      final List<dynamic> results = await _web3Client.call(
-        contract: _donationContract,
-        function: _getProjectDonorsWithAmounts,
-        params: [BigInt.from(widget.projectId)],
-      );
+    print("Fetching donors for project ID: ${widget.projectId}");
 
-      print("Results from contract call: $results");
+    final List<dynamic> results = await _web3Client.call(
+      contract: _donationContract,
+      function: _getProjectDonorsWithAmounts,
+      params: [BigInt.from(widget.projectId)],
+    );
 
-      if (results.isNotEmpty && results[0] is List && results[1] is List) {
-        final List<dynamic> addresses = results[0];
-        final List<dynamic> amounts = results[1];
+    print("Results from contract call: $results");
 
-        print("Addresses: $addresses");
-        print("Amounts: $amounts");
+    if (results.isNotEmpty && results[0] is List && results[1] is List) {
+      final List<dynamic> addresses = results[0];
+      final List<dynamic> amounts = results[1];
 
-        List<String> namesList = [];
-        List<BigInt> amountsList = [];
+      print("Raw Addresses List: $addresses");
+      print("Raw Amounts List: $amounts");
 
-        for (int i = 0; i < addresses.length; i++) {
-          if (addresses[i] is EthereumAddress) {
+      List<String> namesList = [];
+      List<BigInt> amountsList = [];
+
+      for (int i = 0; i < addresses.length; i++) {
+        print("Processing donor $i: ${addresses[i]}");
+
+        if (addresses[i] is EthereumAddress) {
+          print("Fetching profile for donor address: ${addresses[i]}");
+
+          try {
             final donorProfile = await _getDonorProfile(addresses[i]);
+            print("Fetched donor name: $donorProfile");
+
             namesList.add(donorProfile);
+          } catch (profileError) {
+            print("Error fetching profile for ${addresses[i]}: $profileError");
+            namesList.add("Unknown Donor");
           }
-          amountsList.add(amounts[i]);
+        } else {
+          print("Invalid address format at index $i: ${addresses[i]}");
         }
 
-        setState(() {
-          donorNames = namesList;
-          donorAmounts = amountsList;
-        });
-
-        print("Donor Names: $donorNames");
-        print("Donor Amounts: $donorAmounts");
-      } else {
-        print("No donors found or unexpected structure.");
+        print("Adding donation amount: ${amounts[i]}");
+        amountsList.add(amounts[i]);
       }
-    } catch (e) {
-      print("Error fetching donors: $e");
+
+      setState(() {
+        donorNames = namesList;
+        donorAmounts = amountsList;
+      });
+
+      print("Final Donor Names List: $donorNames");
+      print("Final Donor Amounts List: $donorAmounts");
+    } else {
+      print("No donors found or unexpected structure. Results: $results");
     }
+  } catch (e, stackTrace) {
+    print("Error fetching donors: $e");
+    print("StackTrace: $stackTrace");
   }
+}
+
 
   Future<String> _getDonorProfile(EthereumAddress address) async {
     try {
@@ -249,7 +268,7 @@ class _DonorProfilePageState extends State<DonorProfilePage> {
     ]
     '''; 
 
-    final contractAddress = EthereumAddress.fromHex('YOUR_DONOR_REGISTRY_CONTRACT_ADDRESS'); 
+    final contractAddress = EthereumAddress.fromHex('0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc'); 
     _contract = DeployedContract(
       ContractAbi.fromJson(abi, 'DonorRegistry'),
       contractAddress,

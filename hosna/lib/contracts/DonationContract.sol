@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.29;
 
 import "./postProject.sol"; // Import the PostProject contract
 
@@ -8,10 +8,12 @@ contract DonationContract {
 
     struct Donor {
         uint256 totalDonated;
+        bool exists; // Track if donor is already added to projectDonors
     }
 
     mapping(address => Donor) private donors; // Track total donations by each donor
     mapping(uint256 => uint256) public projectDonations; // Track donations for each project
+    mapping(uint256 => address[]) public projectDonors; // Track unique donor addresses per project
 
     event DonationReceived(
         address indexed donor,
@@ -39,7 +41,7 @@ contract DonationContract {
             uint256 donatedAmount,
             address organization,
             ,
-            PostProject.ProjectState state 
+            PostProject.ProjectState state
         ) = postProject.getProject(projectId);
         state;
 
@@ -50,11 +52,17 @@ contract DonationContract {
             "Donation exceeds total amount"
         );
 
-        // Update donor information
+        // Update donor's total donated amount
         donors[msg.sender].totalDonated += msg.value;
 
         // Update project donations
         projectDonations[projectId] += msg.value;
+
+        // **Ensure donor is only added once to projectDonors**
+        if (!donors[msg.sender].exists) {
+            projectDonors[projectId].push(msg.sender);
+            donors[msg.sender].exists = true;
+        }
 
         // Update the donated amount in the PostProject contract **before** transferring funds
         postProject.updateDonatedAmount(projectId, msg.value);
@@ -67,9 +75,21 @@ contract DonationContract {
         emit FundsTransferred(organization, msg.value);
     }
 
-    // Get donor details
-    function getDonorInfo(address donor) external view returns (uint256) {
-        return donors[donor].totalDonated;
+    // **Get all donor addresses & their total donated amount for a project**
+    function getProjectDonorsWithAmounts(
+        uint256 projectId
+    ) external view returns (address[] memory, uint256[] memory) {
+        uint256 donorCount = projectDonors[projectId].length;
+        address[] memory addresses = new address[](donorCount);
+        uint256[] memory amounts = new uint256[](donorCount);
+
+        for (uint256 i = 0; i < donorCount; i++) {
+            address donor = projectDonors[projectId][i];
+            addresses[i] = donor;
+            amounts[i] = donors[donor].totalDonated;
+        }
+
+        return (addresses, amounts);
     }
 
     // Get total donations for a project
@@ -77,6 +97,11 @@ contract DonationContract {
         uint256 projectId
     ) external view returns (uint256) {
         return projectDonations[projectId];
+    }
+
+    // Get total amount donated by a specific donor
+    function getDonorInfo(address donor) external view returns (uint256) {
+        return donors[donor].totalDonated;
     }
 
     // Check contract balance (for debugging)
