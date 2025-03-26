@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
+import 'package:hosna/AdminScreens/charityRequests.dart';
 import 'AdminSidebar.dart'; //
 
 class AdminHomePage extends StatefulWidget {
@@ -67,7 +68,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
   );
 }),
 
-          _buildDashboardCard(context, "Total new complains", () {}),
+          _buildDashboardCard(context, "Total new charity requests", () { // The navigation happens here
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) =>  CharityRequests(),
+    ),
+  );}),
           _buildDashboardCard(context, "Total new complaints", () {}),
         ],
       ),

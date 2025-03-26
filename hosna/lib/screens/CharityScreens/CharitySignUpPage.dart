@@ -207,6 +207,57 @@ _storePrivateKey(charityWallet.toString(), charityPrivateKey);
     }
   }
 
+Future<void> _checkAccountStatusAndNavigate(BuildContext context, String walletAddress) async {
+  try {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(walletAddress).get();
+
+    if (userDoc.exists) {
+      String accountStatus = userDoc['accountStatus'];
+
+      if (accountStatus == 'approved') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CharityLogInPage(),
+          ),
+        );
+      } else {
+        String message = accountStatus == 'pending'
+            ? "Your account is pending approval. Please wait."
+            : "Your account has been rejected. Contact support for details.";
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("User not found. Please register."),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  } catch (e) {
+    print("❌ Error checking account status: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("An error occurred. Please try again."),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+}
+
+
+
+
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
   try {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -233,14 +284,17 @@ Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
     await FirebaseFirestore.instance.collection('users').doc(walletAddress).set({
       'walletAddress': walletAddress,
       'email': email,
-      'userType': 1, // 0 means donor
+      'userType': 1, // 1 means charity
       'isSuspend': false,
+      'accountStatus': 'pending', // Default status is 'pending'
     });
-    print("✅ charity data successfully stored in Firebase! 🎉");
+    print("✅ Charity data successfully stored in Firebase! 🎉");
   } catch (e) {
     print("❌ Error storing charity in Firebase: $e ");
   }
 }
+
+
   Future<void> getCharityDetails() async {
     final contract = DeployedContract(
       ContractAbi.fromJson(

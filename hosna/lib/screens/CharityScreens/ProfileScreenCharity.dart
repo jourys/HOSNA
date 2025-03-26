@@ -147,6 +147,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         ),
         title: Text('Profile',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
@@ -183,7 +184,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
-          padding: EdgeInsets.all(50),
+          padding: EdgeInsets.all(30),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -199,8 +200,8 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                       color: Colors.blue[900],
                       fontSize: 22,
                       fontWeight: FontWeight.bold)),
-              SizedBox(height: 10),
-              SizedBox(height: 50),
+              SizedBox(height: 4),
+              SizedBox(height: 30),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -212,7 +213,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                       infoRow('Website : ', _organizationURL),
                       infoRow('Establishment Date : ', _establishmentDate),
                       infoRow('Description : ', _description),
-                      SizedBox(height: 200),
+                      SizedBox(height: 100),
                       Center(
                         child: SizedBox(
                             height: MediaQuery.of(context).size.height * .066,

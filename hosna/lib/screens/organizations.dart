@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
@@ -9,6 +10,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:web3dart/web3dart.dart' as web3;
+
 
 class OrganizationsPage extends StatefulWidget {
   final String walletAddress;
@@ -70,6 +73,29 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
     super.dispose();
   }
 
+
+
+Future<List<String>> fetchApprovedCharities() async {
+  List<String> walletAddresses = [];
+
+  try {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('accountStatus', isEqualTo: 'approved')
+        .where('userType', isEqualTo: 1)
+        .get();
+
+    snapshot.docs.forEach((doc) {
+      walletAddresses.add(doc['walletAddress']);
+    });
+  } catch (e) {
+    print("Error fetching charity wallet addresses: $e");
+  }
+
+  return walletAddresses;
+}
+
+
   Future<void> _loadContract() async {
     try {
       var abi = jsonDecode(abiString);
@@ -83,52 +109,61 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
     }
   }
 
-  Future<void> _fetchCharities() async {
-    try {
-      final function = _contract.function("getAllCharities");
-      final result = await _client.call(
-        contract: _contract,
-        function: function,
-        params: [],
-      );
+ Future<void> _fetchCharities() async {
+  try {
+    // Fetch approved wallet addresses from Firestore
+    List<String> approvedWallets = await fetchApprovedCharities();
 
-      List<dynamic> wallets = result[0];
-      List<dynamic> names = result[1];
-      List<dynamic> emails = result[2];
-      List<dynamic> phones = result[3];
-      List<dynamic> cities = result[4];
-      List<dynamic> websites = result[5];
-      List<dynamic> descriptions = result[6]; // New field
-      List<dynamic> licenseNumbers = result[7]; // New field
-      List<dynamic> establishmentDates = result[8]; // New field
+    // Fetch all organizations from the smart contract
+    final function = _contract.function("getAllCharities");
+    final result = await _client.call(
+      contract: _contract,
+      function: function,
+      params: [],
+    );
 
-      List<Map<String, dynamic>> tempOrganizations = [];
-      for (int i = 0; i < wallets.length; i++) {
+    List<dynamic> wallets = result[0];
+    List<dynamic> names = result[1];
+    List<dynamic> emails = result[2];
+    List<dynamic> phones = result[3];
+    List<dynamic> cities = result[4];
+    List<dynamic> websites = result[5];
+    List<dynamic> descriptions = result[6];
+    List<dynamic> licenseNumbers = result[7];
+    List<dynamic> establishmentDates = result[8];
+
+    List<Map<String, dynamic>> tempOrganizations = [];
+    
+    for (int i = 0; i < wallets.length; i++) {
+      String wallet = wallets[i].toString();
+
+      // Only include charities that are approved in Firestore
+      if (approvedWallets.contains(wallet)) {
         tempOrganizations.add({
-          "wallet": wallets[i].toString(),
+          "wallet": wallet,
           "name": names[i],
           "email": emails[i],
           "phone": phones[i],
           "city": cities[i],
           "website": websites[i],
-          "description": descriptions[i], // Adding description
-          "licenseNumber": licenseNumbers[i], // Adding license number
-          "establishmentDate":
-              establishmentDates[i], // Adding establishment date
+          "description": descriptions[i],
+          "licenseNumber": licenseNumbers[i],
+          "establishmentDate": establishmentDates[i],
         });
       }
-
-      setState(() {
-        organizations = tempOrganizations;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching charities: $e");
-      setState(() {
-        isLoading = false;
-      });
     }
+
+    setState(() {
+      organizations = tempOrganizations;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Error fetching charities: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {
@@ -179,154 +214,160 @@ Widget build(BuildContext context) {
   body: SingleChildScrollView( // Wrap the entire body content in SingleChildScrollView
     child: Column(
       children: [
-        Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)), // Round top corners
-          ),
+      ClipRRect(
+  borderRadius: BorderRadius.vertical(top: Radius.circular(20)), // Rounded top corners only
+  child: Container(
+    color: Colors.white, // Set the background to white
+    width: double.infinity, // Make it stretch across the full width
+    height: MediaQuery.of(context).size.height, // Make it fill the screen height
+    child: Column(
+      children: [
+        // Search bar at the top
+        Padding(
           padding: const EdgeInsets.all(6.0),
-          child: Column(
-            children: [
-              // Search bar at the top
-              Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: TextField(
-                  controller: _searchController, // Bind the controller to the search bar
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search Organizations',
-                    hintStyle: TextStyle(color: Colors.black),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                      borderSide: BorderSide(
-                          color: Color.fromRGBO(24, 71, 137, 1), width: 2),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                      borderSide: BorderSide(
-                          color: Color.fromRGBO(24, 71, 137, 1), width: 2),
-                    ),
-                    prefixIcon: Icon(Icons.search, color: Colors.black),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, color: Colors.black),
-                            onPressed: () {
-                              _searchController.clear(); // Clears the text input
-                              _onSearchChanged(''); // Reset search filter
-                            },
-                          )
-                        : null,
-                  ),
-                  style: TextStyle(color: Colors.black),
-                ),
+          child: TextField(
+            controller: _searchController, // Bind the controller to the search bar
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Search Organizations',
+              hintStyle: TextStyle(color: Colors.black),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30.0),
+                borderSide: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), width: 2),
               ),
-              // Loading or organizations list
-              isLoading
-                   ? Container(
-        color: Colors.white, // Set the background to white
-        width: double.infinity, // Make it stretch across the full width
-        height: 600, // Set the height as needed
-        child: const Center(
-          child: CircularProgressIndicator(),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30.0),
+                borderSide: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+              ),
+              prefixIcon: Icon(Icons.search, color: Colors.black),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear, color: Colors.black),
+                      onPressed: () {
+                        _searchController.clear(); // Clears the text input
+                        _onSearchChanged(''); // Reset search filter
+                      },
+                    )
+                  : null,
+            ),
+            style: TextStyle(color: Colors.black),
+          ),
         ),
-      )
-                  : _getFilteredOrganizations().isEmpty
-                      ? const Center(child: Text("No registered charities found."))
-                      : ListView.builder(
-                          shrinkWrap: true, // Prevents infinite scrolling
-                          physics: NeverScrollableScrollPhysics(), // Disable scrolling for ListView inside SingleChildScrollView
-                          itemCount: _getFilteredOrganizations().length,
-                          itemBuilder: (context, index) {
-                            var charity = _getFilteredOrganizations()[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12), // Rounded corners
-                                side: BorderSide(
-                                    color: Color.fromRGBO(24, 71, 137, 1),
-                                    width: 2),
+        // Increased white space under the search bar
+
+        // Loading or organizations list
+        isLoading
+             ? Expanded(
+                 child: Center(
+                   child: CircularProgressIndicator(),
+                 ),
+               )
+        : _getFilteredOrganizations().isEmpty
+            ? Expanded(
+                child: const Center(child: Text("No registered charities found.")),
+              )
+            : Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true, // Prevents infinite scrolling
+                  physics: NeverScrollableScrollPhysics(), // Disable scrolling for ListView inside SingleChildScrollView
+                  itemCount: _getFilteredOrganizations().length,
+                  itemBuilder: (context, index) {
+                    var charity = _getFilteredOrganizations()[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12), // Rounded corners
+                        side: BorderSide(
+                            color: Color.fromRGBO(24, 71, 137, 1),
+                            width: 2),
+                      ),
+                      color: Color.fromARGB(255, 239, 236, 236),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        leading: SizedBox(
+                          width: 60, // Increased width
+                          height: 100, // Increased height
+                          child: CircleAvatar(
+                            radius: 40, // Increased avatar size
+                            backgroundColor: Colors.transparent,
+                            child: Icon(Icons.account_circle,
+                                size: 75, color: Colors.grey),
+                          ),
+                        ),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              charity["name"],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20, // Increased font size
                               ),
-                              color: Color.fromARGB(255, 239, 236, 236),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                leading: SizedBox(
-                                  width: 60, // Increased width
-                                  height: 100, // Increased height
-                                  child: CircleAvatar(
-                                    radius: 40, // Increased avatar size
-                                    backgroundColor: Colors.transparent,
-                                    child: Icon(Icons.account_circle,
-                                        size: 75, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.location_on,
+                                    size: 25, color: Colors.grey),
+                                SizedBox(width: 4),
+                                Text(
+                                  " ${charity["city"]}",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                title: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      charity["name"],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20, // Increased font size
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.email, size: 25, color: Colors.grey),
+                                SizedBox(width: 4),
+                                Text(
+                                  " ${charity["email"]}",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on,
-                                            size: 25, color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          " ${charity["city"]}",
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.email, size: 25, color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          " ${charity["email"]}",
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  // Navigate to Organization Profile Page
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          OrganizationProfilePage(organization: charity),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
+                              ],
+                            ),
+                          ],
                         ),
-            ],
-          ),
-        ),
+                        onTap: () {
+                          // Navigate to Organization Profile Page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  OrganizationProfilePage(organization: charity),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+      ],
+    ),
+  ),
+)
+
+,
       ],
     ),
   ),
@@ -1193,10 +1234,11 @@ class _ReportPopupState extends State<ReportPopup> {
         false;
   }
   void showSuccessPopup(BuildContext context) {
+
   // Show dialog
   showDialog(
     context: context,
-    barrierDismissible: true, // allow closing the dialog by tapping outside
+    barrierDismissible: true, // Allow closing the dialog by tapping outside
     builder: (BuildContext context) {
       return AlertDialog(
         backgroundColor: Colors.white,
@@ -1217,7 +1259,7 @@ class _ReportPopupState extends State<ReportPopup> {
               ),
               SizedBox(height: 20), // Add spacing between the icon and text
               Text(
-                'Complaint Sent Successfully!',
+                'Complaint send successfully!',
                 style: TextStyle(
                   color: const Color.fromARGB(255, 54, 142, 57), 
                   fontWeight: FontWeight.bold, 
@@ -1232,16 +1274,11 @@ class _ReportPopupState extends State<ReportPopup> {
     },
   );
 
-  // Dismiss the dialog after 2 seconds
-  Future.delayed(Duration(seconds: 2), () {
-    if (context.mounted) { // Check if the context is still mounted
-      try {
-        Navigator.of(context).pop(); // Close the dialog after 2 seconds
-      } catch (e) {
-        print("Error when closing the dialog: $e");
-      }
-    }
-  });
+  // Automatically dismiss the dialog after 3 seconds
+  Future.delayed(const Duration(seconds: 3), () {
+    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+  Navigator.of(context, rootNavigator: true).pop(); 
+   });
 }
 
 
@@ -1351,7 +1388,7 @@ class ComplaintService {
 
     final transaction = await _web3Client.sendTransaction(
       credentials,
-      Transaction.callContract(
+      web3.Transaction.callContract(
         contract: _complaintContract,
         function: _submitComplaint,
         parameters: params,

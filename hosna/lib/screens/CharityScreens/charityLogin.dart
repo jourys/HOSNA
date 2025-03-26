@@ -11,6 +11,8 @@ import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class CharityLogInPage extends StatefulWidget {
   const CharityLogInPage({super.key});
@@ -106,17 +108,17 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
  
 
 SuspensionListener(walletAddress);
-
+_checkAccountStatusAndNavigate(context, walletAddress.toString());
           // Navigate to main screen
-          Future.delayed(const Duration(seconds: 1), () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    CharityMainScreen(walletAddress: walletAddress),
-              ),
-            );
-          });
+          // Future.delayed(const Duration(seconds: 1), () {
+          //   Navigator.pushReplacement(
+          //     context,
+          //     MaterialPageRoute(
+          //       builder: (context) =>
+          //           CharityMainScreen(walletAddress: walletAddress),
+          //     ),
+          //   );
+          // });
         } else {
           print("❌ No wallet address found!");
           ScaffoldMessenger.of(context).showSnackBar(
@@ -237,6 +239,58 @@ SuspensionListener(walletAddress);
     }
   }
 
+Future<void> _checkAccountStatusAndNavigate(BuildContext context, String walletAddress) async {
+  try {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(walletAddress).get();
+
+    if (userDoc.exists) {
+      String accountStatus = userDoc['accountStatus'];
+
+      if (accountStatus == 'approved') {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CharityMainScreen(walletAddress: walletAddress),
+    ),
+  );
+}
+  else if (accountStatus == 'pending') {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => WaitingPage(), // Navigate to a waiting page
+    ),
+  );
+} else if (accountStatus == 'rejected') {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("Your account has been rejected. Contact support for details."),
+      backgroundColor: Colors.red,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("User not found. Please register."),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  } catch (e) {
+    print("❌ Error checking account status: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("An error occurred. Please try again."),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -309,6 +363,53 @@ SuspensionListener(walletAddress);
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class WaitingPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Account Pending Approval") ,
+        centerTitle: true,
+         
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Dark blue header
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 55.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.hourglass,
+              size: 80,
+              color: const Color.fromARGB(159, 68, 113, 150)), // Hourglass icon
+            
+            const SizedBox(height: 20),
+            const Text(
+              "Your account is under review.",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF184789), // Dark blue text
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              "We are verifying your information.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.black87),
+            ),
+            
+          
+          ],
         ),
       ),
     );

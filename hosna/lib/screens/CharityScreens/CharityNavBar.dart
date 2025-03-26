@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
 import 'package:hosna/screens/CharityScreens/PostProject.dart';
+
 import 'package:hosna/screens/organizations.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:url_launcher/url_launcher.dart';
+
 
 class CharityMainScreen extends StatefulWidget {
   final String? walletAddress;
@@ -92,15 +96,20 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
     if (walletAddress == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+
       );
     }
 
   return Scaffold(
   resizeToAvoidBottomInset: false, // Prevent resizing when the keyboard is visible
-  body: Column(
+  body: Stack(
+        children: [
+   Column(
+    
     children: [
+      
       Expanded(child: _pages[_selectedIndex]),
-
+          
       if (isSuspended)
         Container(
           color: Colors.red,
@@ -108,6 +117,7 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              
               const Expanded(
                 child: Text(
                   "Your account has been suspended. You cannot make any operation.",
@@ -134,7 +144,7 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
             ],
           ),
         ),
-
+  
       BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -166,9 +176,14 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
           ),
         ],
       ),
+      
     ],
   ),
-  
+ DraggableContactUsButton(),
+
+  ],
+      ),
+
   floatingActionButton: isSuspended
     ? null
     : Padding(
@@ -181,7 +196,94 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
         ),
       ),
   floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+  
 );
 
   }
 }
+
+
+
+class DraggableContactUsButton extends StatefulWidget {
+  const DraggableContactUsButton({Key? key}) : super(key: key);
+
+  @override
+  _DraggableContactUsButtonState createState() =>
+      _DraggableContactUsButtonState();
+}
+
+class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
+   double _top = 650; // Default position (adjust as needed)
+  double _left = 350;
+
+  void _launchEmail() async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'Hosna@gmail.com', // Replace with actual support email
+      queryParameters: {'subject': 'Support Request'},
+    );
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    } else {
+      debugPrint("Could not launch email");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned(
+          top: _top,
+          left: _left,
+          child: Draggable(
+            feedback: FloatingActionButton(
+              onPressed: _launchEmail,
+               backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Remove background color
+ // Add subtle shadow for elevation
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(50), // Circular button with no background
+  ),
+              // Keeps color during dragging
+              elevation: 8,
+              child: const Icon(Icons.mail, color:Color.fromRGBO(24, 71, 137, 1), size: 32),
+            ),
+            childWhenDragging: const SizedBox(), // Hides original when dragging
+            onDraggableCanceled: (velocity, offset) {
+              setState(() {
+                // Snap to the nearest edge
+                double screenWidth = MediaQuery.of(context).size.width;
+                double rightEdge = screenWidth - 56; // The width of the button
+
+                // Determine whether to snap to the left or right edge
+                if (offset.dx < screenWidth / 2) {
+                  _left = 16; // Snap to left edge
+                } else {
+                  _left = rightEdge; // Snap to right edge
+                }
+
+                // Clamp the top value to ensure the button stays within the screen
+                _top = offset.dy.clamp(0.0, MediaQuery.of(context).size.height - 80);
+              });
+            },
+           child: FloatingActionButton(
+  onPressed: _launchEmail,
+  backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Remove background color
+  elevation: 5, // Add subtle shadow for elevation
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(50), // Circular button with no background
+  ),
+  child: const Icon(
+    Icons.mail,
+    color: Color.fromRGBO(24, 71, 137, 1), // Icon color matching border
+    size: 35, // Icon size
+  ),
+),
+
+          ),
+        ),
+      ],
+    );
+  }
+}
+

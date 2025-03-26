@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart'; // Assuming this is your home page import
@@ -69,6 +70,28 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
     super.dispose();
   }
 
+
+Future<List<String>> fetchApprovedCharities() async {
+  List<String> walletAddresses = [];
+
+  try {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('accountStatus', isEqualTo: 'approved')
+        .where('userType', isEqualTo: 1)
+        .get();
+
+    snapshot.docs.forEach((doc) {
+      walletAddresses.add(doc['walletAddress']);
+    });
+  } catch (e) {
+    print("Error fetching charity wallet addresses: $e");
+  }
+
+  return walletAddresses;
+}
+
+
   Future<void> _loadContract() async {
     try {
       var abi = jsonDecode(abiString);
@@ -82,52 +105,62 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
     }
   }
 
-  Future<void> _fetchCharities() async {
-    try {
-      final function = _contract.function("getAllCharities");
-      final result = await _client.call(
-        contract: _contract,
-        function: function,
-        params: [],
-      );
+ 
+ Future<void> _fetchCharities() async {
+  try {
+    // Fetch approved wallet addresses from Firestore
+    List<String> approvedWallets = await fetchApprovedCharities();
 
-      List<dynamic> wallets = result[0];
-      List<dynamic> names = result[1];
-      List<dynamic> emails = result[2];
-      List<dynamic> phones = result[3];
-      List<dynamic> cities = result[4];
-      List<dynamic> websites = result[5];
-      List<dynamic> descriptions = result[6]; // New field
-      List<dynamic> licenseNumbers = result[7]; // New field
-      List<dynamic> establishmentDates = result[8]; // New field
+    // Fetch all organizations from the smart contract
+    final function = _contract.function("getAllCharities");
+    final result = await _client.call(
+      contract: _contract,
+      function: function,
+      params: [],
+    );
 
-      List<Map<String, dynamic>> tempOrganizations = [];
-      for (int i = 0; i < wallets.length; i++) {
+    List<dynamic> wallets = result[0];
+    List<dynamic> names = result[1];
+    List<dynamic> emails = result[2];
+    List<dynamic> phones = result[3];
+    List<dynamic> cities = result[4];
+    List<dynamic> websites = result[5];
+    List<dynamic> descriptions = result[6];
+    List<dynamic> licenseNumbers = result[7];
+    List<dynamic> establishmentDates = result[8];
+
+    List<Map<String, dynamic>> tempOrganizations = [];
+    
+    for (int i = 0; i < wallets.length; i++) {
+      String wallet = wallets[i].toString();
+
+      // Only include charities that are approved in Firestore
+      if (approvedWallets.contains(wallet)) {
         tempOrganizations.add({
-          "wallet": wallets[i].toString(),
+          "wallet": wallet,
           "name": names[i],
           "email": emails[i],
           "phone": phones[i],
           "city": cities[i],
           "website": websites[i],
-          "description": descriptions[i], // Adding description
-          "licenseNumber": licenseNumbers[i], // Adding license number
-          "establishmentDate":
-              establishmentDates[i], // Adding establishment date
+          "description": descriptions[i],
+          "licenseNumber": licenseNumbers[i],
+          "establishmentDate": establishmentDates[i],
         });
       }
-
-      setState(() {
-        organizations = tempOrganizations;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching charities: $e");
-      setState(() {
-        isLoading = false;
-      });
     }
+
+    setState(() {
+      organizations = tempOrganizations;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Error fetching charities: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {

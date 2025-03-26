@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart'; 
 import '../firebase_options.dart';
 import 'package:flutter/gestures.dart';
@@ -15,9 +16,20 @@ import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/Terms&cond.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
-import 'AdminSidebar.dart'; //
+import 'AdminSidebar.dart'; 
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+
+
+
+
+
+
 // Define your Ethereum RPC and contract details
 const String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
 const String contractAddress = '0xc23C7DCCEFFD3CFBabED29Bd7eE28D75FF7612D4';
@@ -147,7 +159,7 @@ Future<void> _resolveComplaint(int complaintId) async {
     print("🔄 Sending transaction to resolve complaint...");
     await _web3Client.sendTransaction(
       credentials,
-      Transaction.callContract(
+      web3.Transaction.callContract(
         contract: _contract,
         function: _resolveComplaintFunction,
         parameters: [BigInt.from(complaintId)],
@@ -609,7 +621,7 @@ Future<void> _deleteComplaint(int complaintId) async {
     // Sending the transaction to delete the complaint
     var transaction = await _web3Client.sendTransaction(
       credentials,
-      Transaction.callContract(
+      web3.Transaction.callContract(
         contract: _contract,
         function: _deleteComplaintFunction,
         parameters: [BigInt.from(complaintId)],
@@ -766,6 +778,10 @@ Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
     },
   );
 
+  // Automatically dismiss the dialog after 3 seconds
+  Future.delayed(const Duration(seconds: 3), () {
+    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+  });
 
 }
 }
@@ -1011,22 +1027,61 @@ Widget build(BuildContext context) {
                       //   ),
                       // ),
                       
-                      ElevatedButton(
-                        onPressed: () {
-                          // Implement suspend account functionality
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          "Suspend Account",
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
-                      ),
+                    ElevatedButton(
+  onPressed: () async {
+    // Show the confirmation dialog
+    bool isConfirmed = await _showSuspendConfirmationDialog(context);
+    
+    if (isConfirmed) {
+      try {
+        // Suspend the account by updating the 'isSuspend' field in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.walletAddress)
+            .update({'isSuspend': true});
+        
+        // Show the success pop-up
+        showSuspendSuccessPopup(context);
+
+        // Show a SnackBar for quick feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account has been suspended successfully."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        print("✅ Account suspended successfully!");
+      } catch (e) {
+        // Handle error if suspension fails
+        print("❌ Error suspending account: $e");
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to suspend the account. Please try again."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      print("❌ Suspension cancelled by user.");
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.redAccent,
+    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+  ),
+  child: const Text(
+    "Suspend Account",
+    style: TextStyle(fontSize: 18, color: Colors.white),
+  ),
+),
+
                       const SizedBox(width: 180),
                       ElevatedButton(
                         onPressed: () {
@@ -1053,6 +1108,132 @@ Widget build(BuildContext context) {
             ),
           ),
   );
+}
+Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
+  print("🚀 Showing suspend confirmation dialog...");
+
+  return await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
+    builder: (BuildContext context) {
+      print("🔧 Building the dialog...");
+
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set background to white
+        title: const Text(
+          'Confirm Suspension',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // Make title bold
+            fontSize: 22, // Increase title font size
+          ),
+          textAlign: TextAlign.center, // Center the title text
+        ),
+        content: const Text(
+          'Are you sure you want to suspend this account?',
+          style: TextStyle(
+            fontSize: 18, // Make content text bigger
+          ),
+          textAlign: TextAlign.center, // Center the content text
+        ),
+        actions: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
+            children: [
+              OutlinedButton(
+                onPressed: () {
+                  print("❌ Cancel clicked - Suspension not confirmed.");
+                  Navigator.pop(context, false); // Return false on cancel
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), // Border color for Cancel button
+                    width: 3,
+                  ),
+                  backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Background color for Cancel button
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Colors.white, // White text color for Cancel button
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20), // Add space between the buttons
+              OutlinedButton(
+                onPressed: () {
+                  print("✅ Yes clicked - Suspension confirmed.");
+                  Navigator.pop(context, true); // Return true after confirming suspension
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(212, 63, 63, 1), // Border color for Yes button
+                    width: 3,
+                  ),
+                  backgroundColor: Color.fromRGBO(212, 63, 63, 1), // Background color for Yes button
+                ),
+                child: const Text(
+                  '   Yes   ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Colors.white, // White text color for Yes button
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
+      );
+    },
+  ) ??
+  false; // If null, default to false
+}
+
+void showSuspendSuccessPopup(BuildContext context) {
+  // Show dialog
+  showDialog(
+    context: context,
+    barrierDismissible: true, // Allow closing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        contentPadding: EdgeInsets.all(20), // Add padding around the dialog content
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // Rounded corners for a better look
+        ),
+        content: SizedBox(
+          width: 250, // Set a custom width for the dialog
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ensure the column only takes the required space
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle, 
+                color: Color.fromARGB(255, 54, 142, 57), 
+                size: 50, // Bigger icon
+              ),
+              SizedBox(height: 20), // Add spacing between the icon and text
+              Text(
+                'Account suspended successfully!',
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 54, 142, 57), 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16, // Bigger text
+                ),
+                textAlign: TextAlign.center, // Center-align the text
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  // Automatically dismiss the dialog after 3 seconds
+  Future.delayed(const Duration(seconds: 3), () {
+    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+  });
 }
 
 
