@@ -224,7 +224,7 @@ Widget build(BuildContext context) {
       children: [
         // Search bar at the top
         Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.all(16.0),
           child: TextField(
             controller: _searchController, // Bind the controller to the search bar
             onChanged: _onSearchChanged,
@@ -262,6 +262,7 @@ Widget build(BuildContext context) {
         // Loading or organizations list
         isLoading
              ? Expanded(
+              
                  child: Center(
                    child: CircularProgressIndicator(),
                  ),
@@ -271,28 +272,31 @@ Widget build(BuildContext context) {
                 child: const Center(child: Text("No registered charities found.")),
               )
             : Expanded(
+              
                 child: ListView.builder(
+                  
                   shrinkWrap: true, // Prevents infinite scrolling
                   physics: NeverScrollableScrollPhysics(), // Disable scrolling for ListView inside SingleChildScrollView
                   itemCount: _getFilteredOrganizations().length,
                   itemBuilder: (context, index) {
                     var charity = _getFilteredOrganizations()[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
+
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12), // Rounded corners
                         side: BorderSide(
                             color: Color.fromRGBO(24, 71, 137, 1),
                             width: 2),
                       ),
-                      color: Color.fromARGB(255, 239, 236, 236),
+                      color: Color.fromARGB(174, 255, 255, 255),
                       child: ListTile(
+                        
                         contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                            horizontal: 10, vertical: 8),
                         leading: SizedBox(
-                          width: 60, // Increased width
-                          height: 100, // Increased height
+                          width: 80, // Increased width
+                          height: 60, // Increased height
                           child: CircleAvatar(
                             radius: 40, // Increased avatar size
                             backgroundColor: Colors.transparent,

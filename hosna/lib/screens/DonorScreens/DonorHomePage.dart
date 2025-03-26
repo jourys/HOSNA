@@ -230,7 +230,7 @@ class _HomePageState extends State<HomePage> {
           elevation: 0,
           automaticallyImplyLeading: false,
           flexibleSpace: Padding(
-            padding: const EdgeInsets.only(left: 20, bottom: 20),
+            padding: const EdgeInsets.only(left: 25, bottom: 10),
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Row(
@@ -238,7 +238,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Padding(
                     padding:
-                        const EdgeInsets.only(top: 60), // Moves everything down
+                        const EdgeInsets.only(top: 50), // Moves everything down
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -257,10 +257,10 @@ class _HomePageState extends State<HomePage> {
                     alignment: Alignment.bottomCenter,
                     child: SizedBox(
                       width: 120, // Define an explicit width
-                      height: 80, // Define an explicit height
+                      height: 90, // Define an explicit height
                       child: IconButton(
                         icon: const Icon(Icons.account_circle,
-                            size: 85, color: Colors.white),
+                            size: 75, color: Colors.white),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -280,7 +280,7 @@ class _HomePageState extends State<HomePage> {
       body: Stack(
         children: [
           Positioned(
-            top: 16,
+            top: 1,
             left: 0,
             right: 0,
             bottom: 0,
