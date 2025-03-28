@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
@@ -53,7 +55,7 @@ bool isCanceled = false; // Default value
   @override
   void initState() {
     super.initState();
-    _loadProjectState();
+    _listenToProjectState();
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
@@ -83,25 +85,37 @@ bool isCanceled = false; // Default value
   
   }
 
- Future<void> _loadProjectState() async {
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(widget.projectId.toString())
-          .get();
-
-      if (doc.exists) {
-        setState(() {
-          isCanceled = doc['isCanceled'] ?? false;
-          projectState = isCanceled ? "canceled" : getProjectState(doc.data() as Map<String, dynamic>);
-        });
-      } else {
-        print("Document not found");
-      }
-    } catch (e) {
-      print("Error loading project state: $e");
+StreamSubscription<DocumentSnapshot>? _projectSubscription;
+void _listenToProjectState() {
+  _projectSubscription = FirebaseFirestore.instance
+      .collection('projects')
+      .doc(widget.projectId.toString())
+      .snapshots()
+      .listen((doc) {
+    if (doc.exists) {
+      setState(() {
+        isCanceled = (doc['isCanceled'] is bool) ? doc['isCanceled'] : doc['isCanceled'] == "canceled";
+        projectState = isCanceled
+            ? "canceled"
+            : getProjectState(doc.data() as Map<String, dynamic>);
+        
+        print("Firestore data: ${doc.data()}");
+        print("isCanceled: $isCanceled");
+        print("Final Project Status: $projectState");
+      });
+    } else {
+      print("Document not found");
     }
-  }
+  }, onError: (e) {
+    print("Error loading project state: $e");
+  });
+}
+
+@override
+void dispose() {
+  _projectSubscription?.cancel(); // Cancel the listener when the widget is removed
+  super.dispose();
+}
 
 
 
@@ -230,16 +244,13 @@ bool isCanceled = false; // Default value
     return getProjectState(project); // Use the utility function
   }
 
-
 String getProjectState(Map<String, dynamic> project) {
-   if (isCanceled) {
-      print("Project is canceled globally.");
-      return "canceled"; // If the project is canceled globally, return this state
-    }
+  if (isCanceled == "canceled") {
+    print("Project is canceled globally.");
+    return "canceled"; // If the project is canceled globally, return this state
+  }
 
   DateTime now = DateTime.now();
-
-
 
   // Handle startDate (could be DateTime, String, or null)
   DateTime startDate;
@@ -268,17 +279,25 @@ String getProjectState(Map<String, dynamic> project) {
   // Check if the current date is before the start date
   if (now.isBefore(startDate)) {
     return "upcoming"; // Project is upcoming
-  } else if (donatedAmount >= totalAmount) {
-    return "in-progress"; // Project reached the goal
-  } else {
-    if (now.isAfter(endDate)) {
-      return "failed"; // Project failed to reach the target
-    } else {
-      return "active"; // Project is ongoing and goal is not reached yet
-    }
   }
-}
 
+  // Check if the project has reached the goal
+  if (donatedAmount >= totalAmount) {
+    return "in-progress"; // Project reached the goal
+  }
+
+  // Check if the project failed (past the end date and not completed)
+  if (now.isAfter(endDate)) {
+    return "failed"; // Project failed to reach the target
+  }
+
+  // Check if the project is active
+  if (now.isAfter(startDate) && now.isBefore(endDate) && donatedAmount < totalAmount && isCanceled != "canceled") {
+    return "active"; // Project is ongoing and goal is not reached yet
+  }
+
+  return "unknown"; // If none of the conditions match, return an unknown state
+}
 
   Color _getStateColor(String state) {
     switch (state) {
@@ -300,6 +319,7 @@ String getProjectState(Map<String, dynamic> project) {
 
   @override
   Widget build(BuildContext context) {
+    
   String projectState = isCanceled ? "canceled" : _getProjectState();
     print("Project status: $projectState");
 
