@@ -32,7 +32,7 @@ function loginCharity(
 
 
 
-        return true;
+        return false;
     }
 
     // ✅ Debug function to verify email hash

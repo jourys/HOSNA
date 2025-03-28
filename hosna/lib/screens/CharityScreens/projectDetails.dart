@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 
 class ProjectDetails extends StatefulWidget {
   final String projectName;
@@ -39,7 +41,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   bool isAnonymous = false;
   String? globalWalletAddress;
   bool _isFetchingDonatedAmount = false;
-
+bool isCanceled = false; // Default value
+ String projectState = "";
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
@@ -50,6 +53,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   @override
   void initState() {
     super.initState();
+    _loadProjectState();
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
@@ -76,7 +80,30 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   set globalPrivateKey(String? privateKey) {
     _globalPrivateKey = privateKey;
     print('✅ Global private key set: $privateKey');
+  
   }
+
+ Future<void> _loadProjectState() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(widget.projectId.toString())
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          isCanceled = doc['isCanceled'] ?? false;
+          projectState = isCanceled ? "canceled" : getProjectState(doc.data() as Map<String, dynamic>);
+        });
+      } else {
+        print("Document not found");
+      }
+    } catch (e) {
+      print("Error loading project state: $e");
+    }
+  }
+
+
 
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -203,45 +230,55 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     return getProjectState(project); // Use the utility function
   }
 
-  String getProjectState(Map<String, dynamic> project) {
-    DateTime now = DateTime.now();
 
-    // Handle startDate (could be DateTime, String, or null)
-    DateTime startDate;
-    if (project['startDate'] == null) {
-      return "upcoming"; // If startDate is null, assume the project is upcoming
-    } else if (project['startDate'] is DateTime) {
-      startDate = project['startDate'];
-    } else {
-      startDate = DateTime.parse(project['startDate']);
+String getProjectState(Map<String, dynamic> project) {
+   if (isCanceled) {
+      print("Project is canceled globally.");
+      return "canceled"; // If the project is canceled globally, return this state
     }
 
-    // Handle endDate (could be DateTime, String, or null)
-    DateTime endDate;
-    if (project['endDate'] == null) {
-      return "active"; // If endDate is null, assume the project is active
-    } else if (project['endDate'] is DateTime) {
-      endDate = project['endDate'];
-    } else {
-      endDate = DateTime.parse(project['endDate']);
-    }
+  DateTime now = DateTime.now();
 
-    // Handle totalAmount (could be int, String, or null)
-    double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
 
-    if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount) {
-      return "in-progress"; // Project reached the goal
+
+  // Handle startDate (could be DateTime, String, or null)
+  DateTime startDate;
+  if (project['startDate'] == null) {
+    return "upcoming"; // If startDate is null, assume the project is upcoming
+  } else if (project['startDate'] is DateTime) {
+    startDate = project['startDate'];
+  } else {
+    startDate = DateTime.parse(project['startDate']);
+  }
+
+  // Handle endDate (could be DateTime, String, or null)
+  DateTime endDate;
+  if (project['endDate'] == null) {
+    return "active"; // If endDate is null, assume the project is active
+  } else if (project['endDate'] is DateTime) {
+    endDate = project['endDate'];
+  } else {
+    endDate = DateTime.parse(project['endDate']);
+  }
+
+  // Handle totalAmount (could be int, String, or null)
+  double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
+  double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
+
+  // Check if the current date is before the start date
+  if (now.isBefore(startDate)) {
+    return "upcoming"; // Project is upcoming
+  } else if (donatedAmount >= totalAmount) {
+    return "in-progress"; // Project reached the goal
+  } else {
+    if (now.isAfter(endDate)) {
+      return "failed"; // Project failed to reach the target
     } else {
-      if (now.isAfter(endDate)) {
-        return "failed"; // Project failed to reach the target
-      } else {
-        return "active"; // Project is ongoing and goal is not reached yet
-      }
+      return "active"; // Project is ongoing and goal is not reached yet
     }
   }
+}
+
 
   Color _getStateColor(String state) {
     switch (state) {
@@ -253,6 +290,9 @@ class _ProjectDetailsState extends State<ProjectDetails> {
         return Colors.purple;
       case "completed":
         return Colors.blue;
+         case "canceled":
+      return Colors.orange; // Add orange for canceled status
+
       default:
         return Colors.grey;
     }
@@ -260,7 +300,10 @@ class _ProjectDetailsState extends State<ProjectDetails> {
 
   @override
   Widget build(BuildContext context) {
-    String projectState = _getProjectState();
+  String projectState = isCanceled ? "canceled" : _getProjectState();
+    print("Project status: $projectState");
+
+
     Color stateColor = _getStateColor(projectState);
     double totalAmount = widget.totalAmount;
 
@@ -356,7 +399,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                       ),
                     const SizedBox(height: 20),
                     if (userType == 1 &&
-                        projectState == "failed" &&
+                       ( projectState == "failed" || projectState == "canceled") &&
                         widget.projectCreatorWallet == globalWalletAddress)
                       Center(
                         child: ElevatedButton(
@@ -421,6 +464,73 @@ if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
       ),
     ),
   ),
+ const SizedBox(height: 20),
+
+if (userType == 1 &&
+    projectState == "active" &&
+    widget.projectCreatorWallet == globalWalletAddress)
+  Center(
+    child: ElevatedButton(
+     onPressed: () async {
+  print("press cancel button");  // Print the projectId to check if it's correct
+
+  print("Project ID: ${widget.projectId}");  // Print the projectId to check if it's correct
+    bool confirmCancel = await _showcancelConfirmationDialog(context);
+
+if (confirmCancel) {
+  setState(() {
+    isCanceled = true; // ✅ Update global state
+    projectState = "canceled"; // ✅ Update project state
+    print("Project canceled: $isCanceled");
+  });
+
+  // ✅ Check if the document exists first
+  DocumentSnapshot document = await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(widget.projectId.toString())
+      .get();
+
+  if (document.exists) {
+    // ✅ Save to Firestore if document exists
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .update({'isCanceled': true});
+
+    print("Project state updated in Firestore.");
+  } else {
+    // Document not found, create a new document
+    print("Project document not found. Creating a new project...");
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .set({
+          'isCanceled': true,
+        });
+
+    print("New project document created and canceled.");
+  }// Show success popup
+    showCancelSuccessPopup(context);
+  } else {
+    // If cancellation is not confirmed, show that nothing happened
+    print("Cancellation not confirmed.");
+  }
+},
+
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.orange,
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: const Text('Cancel Project',
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+    ),
+  ),
+
 
                   ],
                 ),
@@ -431,6 +541,127 @@ if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
       ),
     );
   }
+// Function to show success popup after project cancellation
+void showCancelSuccessPopup(BuildContext context) {
+  // Show dialog
+  showDialog(
+    context: context,
+    barrierDismissible: true, // Allow closing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        contentPadding: EdgeInsets.all(20), // Add padding around the dialog content
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // Rounded corners for a better look
+        ),
+        content: SizedBox(
+          width: 250, // Set a custom width for the dialog
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ensure the column only takes the required space
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle, 
+                color: Color.fromARGB(255, 54, 142, 57), 
+                size: 50, // Bigger icon
+              ),
+              SizedBox(height: 20), // Add spacing between the icon and text
+              Text(
+                'Project cancelled successfully!',
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 54, 142, 57), 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16, // Bigger text
+                ),
+                textAlign: TextAlign.center, // Center-align the text
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  ).then((value) {
+    // Close the dialog after 3 seconds
+    Future.delayed(Duration(seconds: 3), () {
+      Navigator.of(context, rootNavigator: true).pop();
+    });
+  });
+}
+
+// Function to show confirmation dialog before cancellation
+Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+  return await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set background to white
+        title: const Text(
+          'Confirm cancelation',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // Make title bold
+            fontSize: 22, // Increase title font size
+          ),
+          textAlign: TextAlign.center, // Center the title text
+        ),
+        content: const Text(
+          'Are you sure you want to cancel this project and initiate voting process?',
+          style: TextStyle(
+            fontSize: 18, // Make content text bigger
+          ),
+          textAlign: TextAlign.center, // Center the content text
+        ),
+        actions: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
+            children: [
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context, false); // Return false on cancel
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1),// Border color for Cancel button
+                    width: 3,
+                  ),
+                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),// Background color
+                ),
+                child: const Text(
+                  '  No  ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Colors.white, // White text color
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20), // Add space between buttons
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context, true); // Return true after confirming save
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color:const Color.fromARGB(255, 182, 12, 12), // Border color for Save button
+                    width: 3,
+                  ),
+                  backgroundColor:const Color.fromARGB(255, 182, 12, 12), // Background color
+                ),
+                child: const Text(
+                  '  Yes  ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size
+                    color: Colors.white, // White text color
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
+      );
+    },
+  ) ?? false; // If null, default to false
+}
 
   Widget _buildDetailItem(String title, String value) {
     return Padding(
@@ -582,14 +813,14 @@ if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
       // Load the DonationContract
       final donationContract = DeployedContract(
         ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0x32f97b92AC3478baed8ee2784351870bA4c5f9DF'),
+        EthereumAddress.fromHex('0xd34FbeEdc4f69AcAE08d271D577Cb7EAED0E5Eb4'),
       );
 
       // Get the function reference
       final function = donationContract.function('donate');
 
       // Send the transaction to the DonationContract
-      final transaction = Transaction.callContract(
+      final transaction = web3.Transaction.callContract(
         contract: donationContract,
         function: function,
         parameters: [

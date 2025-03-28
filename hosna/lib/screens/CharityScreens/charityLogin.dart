@@ -29,7 +29,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
-  final String _contractAddress = "0xbCDE877f2f9043F79fc03C691E774f4289D055ED";
+  final String _contractAddress = "0x72c2A97Ce6A3733b7E11C21604d895062b324210";
   final String _lookupContractAddress =
       "0xBD732aE611e101d0aDC7A792785b07ee634adDE2";
   bool _isPasswordVisible = false; // Track password visibility
