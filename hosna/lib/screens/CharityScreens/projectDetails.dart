@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,6 @@ class ProjectDetails extends StatefulWidget {
 class _ProjectDetailsState extends State<ProjectDetails> {
   int? userType;
   final TextEditingController amountController = TextEditingController();
-  bool isAnonymous = false;
   String? globalWalletAddress;
   bool _isFetchingDonatedAmount = false;
 bool isCanceled = false; // Default value
@@ -699,279 +699,248 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
         ),
       ),
     );
-  }
+  }void _showDonationPopup(BuildContext context) {
+  TextEditingController amountController = TextEditingController();
+  bool isAnonymous = false; // Track anonymous donation state
+  String? errorMessage;
 
-  void _showDonationPopup(BuildContext context) {
-    TextEditingController amountController = TextEditingController();
-    bool isAnonymous = false;
-    String? errorMessage;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 16,
-              right: 16,
-              top: 20),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Enter Donation Amount',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: 'Amount',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      errorText: errorMessage, // Show error message if invalid
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 20),
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Enter Donation Amount',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Amount',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    errorText: errorMessage, // Show error message if invalid
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      double? amount = double.tryParse(value);
+                      errorMessage = (amount == null || amount <= 0)
+                          ? "Please enter a valid amount greater than zero"
+                          : null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isAnonymous,
+                      onChanged: (value) {
+                        setState(() {
+                          isAnonymous = value ?? false;
+                        });
+                      },
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        double? amount = double.tryParse(value);
-                        if (amount == null || amount <= 0) {
-                          errorMessage =
-                              "Please enter a valid amount greater than zero";
-                        } else {
-                          errorMessage = null;
+                    const Text('Donate anonymously'),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: errorMessage == null
+                      ? () async {
+                          await _processDonation(amountController.text, isAnonymous);
+                          Navigator.pop(context);
                         }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: isAnonymous,
-                        onChanged: (value) =>
-                            setState(() => isAnonymous = value!),
-                      ),
-                      const Text('Donate anonymously'),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: errorMessage == null
-                        ? () async {
-                            await _processDonation(amountController.text);
-                            Navigator.pop(context);
-                          }
-                        : null, // Disable if input is invalid
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 15),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Send',
-                        style: TextStyle(fontSize: 18, color: Colors.white)),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              );
-            },
-          ),
-        );
-      },
+                      : null, // Disable if input is invalid
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Send', style: TextStyle(fontSize: 18, color: Colors.white)),
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+Future<void> _processDonation(String amount, bool isAnonymous) async {
+  if (globalPrivateKey == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Private key is missing.')),
     );
+    return;
   }
 
-  Future<void> _processDonation(String amount) async {
-    if (globalPrivateKey == null) {
-      print("Error: No private key found.");
+  if (widget.projectCreatorWallet.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Project creator address is empty or invalid.')),
+    );
+    return;
+  }
+
+  try {
+    final credentials = EthPrivateKey.fromHex(globalPrivateKey!);
+    final senderAddress = await credentials.extractAddress();
+
+    if (amount.isEmpty || double.tryParse(amount) == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Private key is missing.')),
+        const SnackBar(content: Text('Invalid donation amount.')),
       );
       return;
     }
 
-    if (widget.projectCreatorWallet.isEmpty) {
-      print("Error: Invalid Ethereum address. The address is empty.");
+    final donationAmountInEth = double.parse(amount);
+    final donationAmountInWei = BigInt.from(donationAmountInEth * 1e18);
+
+    // Check balance
+    final balance = await _web3client.getBalance(senderAddress);
+    final gasPrice = await _web3client.getGasPrice();
+    final gasLimit = BigInt.from(300000); // Estimated gas limit
+    final totalGasFee = gasPrice.getInWei * gasLimit;
+
+    if (balance.getInWei < (donationAmountInWei + totalGasFee)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Project creator address is empty or invalid.')),
+        const SnackBar(content: Text('Insufficient funds for donation and gas fees.')),
       );
       return;
     }
 
-    try {
-      final credentials = EthPrivateKey.fromHex(globalPrivateKey!);
-      final senderAddress = await credentials.extractAddress();
+    // Load contract
+    final donationContract = DeployedContract(
+      ContractAbi.fromJson(_contractAbi, 'DonationContract'),
+      EthereumAddress.fromHex('0x0913167630dac537dd9477c68c3c7806159871C9'),
+    );
 
-      // Convert the donation amount from ETH to wei
-      final donationAmountInEth = double.parse(amount);
-      final donationAmountInWei = BigInt.from(donationAmountInEth * 1e18);
+    final function = donationContract.function('donate');
 
-      // Check wallet balance
-      final balance = await _web3client.getBalance(senderAddress);
+    // Send transaction
+    final transaction = web3.Transaction.callContract(
+      contract: donationContract,
+      function: function,
+      parameters: [BigInt.from(widget.projectId), isAnonymous],
+      value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmountInWei),
+      gasPrice: gasPrice,
+      maxGas: gasLimit.toInt(),
+    );
 
-      // Estimate gas fees
-      final gasPrice = await _web3client.getGasPrice();
-      final gasLimit = BigInt.from(300000); // Example gas limit
-      final totalGasFee = gasPrice.getInWei * gasLimit;
+    final result = await _web3client.sendTransaction(
+      credentials,
+      transaction,
+      chainId: 11155111, // Sepolia Testnet
+    );
 
-      // Check if the wallet has enough ETH for the donation and gas fees
-      if (balance.getInWei < (donationAmountInWei + totalGasFee)) {
-        print("Error: Insufficient funds for donation and gas fees.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Insufficient funds for donation and gas fees.')),
-        );
-        return;
-      }
+    // Print transaction hash with check emoji
+    print("Transaction successful! ✅ Hash: $result");
 
-      // Load the DonationContract
-      final donationContract = DeployedContract(
-        ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0xd34FbeEdc4f69AcAE08d271D577Cb7EAED0E5Eb4'),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Donation successful! ✅')),
+    );
 
-      // Get the function reference
-      final function = donationContract.function('donate');
+    // Store donation details
+    await _storeDonation(senderAddress.hex, donationAmountInEth, isAnonymous);
 
-      // Send the transaction to the DonationContract
-      final transaction = web3.Transaction.callContract(
-        contract: donationContract,
-        function: function,
-        parameters: [
-          BigInt.from(widget.projectId), // Pass project ID
-        ],
-        value: EtherAmount.fromUnitAndValue(EtherUnit.wei, donationAmountInWei),
-        gasPrice: gasPrice,
-        maxGas: gasLimit.toInt(),
-      );
-
-      final result = await _web3client.sendTransaction(
-        credentials,
-        transaction,
-        chainId: 11155111, // Sepolia Testnet Chain ID
-      );
-
-      print("Transaction successful: $result");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Donation successful!')),
-      );
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-
-// Use the wallet address to make the key unique for each wallet
-      String key = 'donatedProjects_$globalWalletAddress';
-
-// Retrieve the current list of donated project names (if any)
-      List<String> donatedProjects = prefs.getStringList(key) ?? [];
-
-// Check if the project name already exists for the donor
-      if (!donatedProjects.contains(widget.projectId.toString())) {
-        // Add the new project name to the list
-        donatedProjects.add(widget.projectId.toString());
-
-        // Store the updated list back in SharedPreferences
-        await prefs.setStringList(key, donatedProjects);
-
-        print(
-            "Project id for wallet $globalWalletAddress stored: ${widget.projectId}");
-        print(
-            "Project Name for wallet $globalWalletAddress stored: ${widget.projectName}");
-      } else {
-        print("Project already donated by this wallet: ${widget.projectId}");
-      }
-
-// To check the stored project names for the wallet address
-      List<String>? storedProjectNames = prefs.getStringList(key);
-      print(
-          "Stored Project Names for wallet $globalWalletAddress: $storedProjectNames");
-      // After saving the project name in SharedPreferences
-      print("All stored keys after donation: ${prefs.getKeys()}");
-      // Refresh the donated amount after a successful donation
-      //_fetchDonatedAmount();
-    } catch (e) {
-      print("Error processing donation: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error processing donation: $e')),
-      );
-    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error processing donation: $e')),
+    );
   }
 }
 
-final String _contractAbi = '''
-[
+Future<void> _storeDonation(String donorAddress, double amount, bool isAnonymous) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String key = 'donationData_$donorAddress';
+  String? existingData = prefs.getString(key);
+
+  Map<String, dynamic> donationData = existingData != null
+      ? jsonDecode(existingData)
+      : {'totalDonated': 0.0, 'isAnonymous': false};
+
+  // Update total donation amount
+  donationData['totalDonated'] = (donationData['totalDonated'] as double) + amount;
+
+  // Update anonymity status (if latest donation is anonymous, keep true)
+  if (isAnonymous) {
+    donationData['isAnonymous'] = true;
+  }
+
+  await prefs.setString(key, jsonEncode(donationData));
+
+  print("Stored Data After Donation: $donationData");
+}
+
+
+
+}final String _contractAbi = '''[
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_postProjectAddress",
-        "type": "address"
-      }
+    "constant": true,
+    "inputs": [{"name": "projectId", "type": "uint256"}],
+    "name": "getProjectDonorsWithAmounts",
+    "outputs": [
+      {"name": "addresses", "type": "address[]"},
+      {"name": "amounts", "type": "uint256[]"}
     ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{"name": "projectId", "type": "uint256"}],
+    "name": "getProjectDonations",
+    "outputs": [
+      {"name": "totalDonations", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{"name": "donor", "type": "address"}],
+    "name": "getDonorInfo",
+    "outputs": [
+      {"name": "totalDonated", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getContractBalance",
+    "outputs": [
+      {"name": "balance", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "_postProjectAddress", "type": "address"}],
+    "name": "constructor",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
   {
-    "anonymous": false,
+    "constant": false,
     "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "donor",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "projectCreator",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "projectId",
-        "type": "uint256"
-      }
-    ],
-    "name": "DonationReceived",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "projectCreator",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "FundsTransferred",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "projectId",
-        "type": "uint256"
-      }
+      {"name": "projectId", "type": "uint256"},
+      {"name": "isAnonymous", "type": "bool"}
     ],
     "name": "donate",
     "outputs": [],
@@ -979,87 +948,24 @@ final String _contractAbi = '''
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getContractBalance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
+    "anonymous": false,
     "inputs": [
-      {
-        "internalType": "address",
-        "name": "donor",
-        "type": "address"
-      }
+      {"indexed": true, "name": "donor", "type": "address"},
+      {"indexed": false, "name": "amount", "type": "uint256"},
+      {"indexed": true, "name": "projectCreator", "type": "address"},
+      {"indexed": false, "name": "projectId", "type": "uint256"}
     ],
-    "name": "getDonorInfo",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "name": "DonationReceived",
+    "type": "event"
   },
   {
+    "anonymous": false,
     "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "projectId",
-        "type": "uint256"
-      }
+      {"indexed": true, "name": "projectCreator", "type": "address"},
+      {"indexed": false, "name": "amount", "type": "uint256"}
     ],
-    "name": "getProjectDonations",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "postProject",
-    "outputs": [
-      {
-        "internalType": "contract PostProject",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "projectDonations",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "name": "FundsTransferred",
+    "type": "event"
   }
-]
-''';
+]''';
+

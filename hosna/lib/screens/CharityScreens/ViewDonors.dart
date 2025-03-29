@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart'; // Add this import for Client
 
-
-import 'package:flutter/material.dart';
-import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart';
-
 class ViewDonorsPage extends StatefulWidget {
   final int projectId;
 
@@ -19,182 +14,148 @@ class ViewDonorsPage extends StatefulWidget {
 class _ViewDonorsPageState extends State<ViewDonorsPage> {
   late Web3Client _web3Client;
   late DeployedContract _donationContract;
-  late DeployedContract _donorRegistryContract;
   late ContractFunction _getProjectDonorsWithAmounts;
   late ContractFunction _getDonor;
 
-  List<String> donorNames = [];
-  List<BigInt> donorAmounts = [];
+  List<Map<String, dynamic>> donorData = []; // List of donor data with address, amount, and anonymity
 
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura project ID
-  final String donationContractAddress = '0xd34FbeEdc4f69AcAE08d271D577Cb7EAED0E5Eb4';
-  final String donorRegistryAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
+  final String donationContractAddress = '0x0913167630dac537dd9477c68c3c7806159871C9'; // Your contract address
 
   @override
   void initState() {
     super.initState();
     _initializeContracts();
-  }
+  }Future<void> _initializeContracts() async {
+  print("Initializing contracts...");
 
-  Future<void> _initializeContracts() async {
-    _web3Client = Web3Client(rpcUrl, Client());
+  _web3Client = Web3Client(rpcUrl, Client());
 
-    final donationAbi = '''[
-      {
-        "constant": true,
-        "inputs": [{"name": "projectId", "type": "uint256"}],
-        "name": "getProjectDonorsWithAmounts",
-        "outputs": [{"name": "", "type": "address[]"}, {"name": "", "type": "uint256[]"}],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ]''';
+  // Define the ABI for the updated contract
+  final donationAbi = '''[
+    {
+      "constant": false,
+      "inputs": [
+        {"name": "projectId", "type": "uint256"},
+        {"name": "isAnonymous", "type": "bool"}
+      ],
+      "name": "donate",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [{"name": "projectId", "type": "uint256"}],
+      "name": "getProjectDonorsWithAmounts",
+      "outputs": [
+        {"name": "", "type": "address[]"},
+        {"name": "", "type": "uint256[]"},
+        {"name": "", "type": "uint256[]"}
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]''';
 
-    final donorRegistryAbi = '''[
-      {
-        "constant": true,
-        "inputs": [{"name": "_wallet", "type": "address"}],
-        "name": "getDonor",
-        "outputs": [
-          {"name": "", "type": "string"},
-          {"name": "", "type": "string"},
-          {"name": "", "type": "string"},
-          {"name": "", "type": "string"},
-          {"name": "", "type": "address"},
-          {"name": "", "type": "bool"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ]''';
+  _donationContract = DeployedContract(
+    ContractAbi.fromJson(donationAbi, 'DonationContract'),
+    EthereumAddress.fromHex(donationContractAddress),
+  );
 
-    _donationContract = DeployedContract(
-      ContractAbi.fromJson(donationAbi, 'DonationContract'),
-      EthereumAddress.fromHex(donationContractAddress),
-    );
+  _getProjectDonorsWithAmounts = _donationContract.function('getProjectDonorsWithAmounts');
 
-    _donorRegistryContract = DeployedContract(
-      ContractAbi.fromJson(donorRegistryAbi, 'DonorRegistry'),
-      EthereumAddress.fromHex(donorRegistryAddress),
-    );
+  await _fetchProjectDonors(widget.projectId);
+}
+bool _isLoading = true; // Track loading state
 
-    _getProjectDonorsWithAmounts = _donationContract.function('getProjectDonorsWithAmounts');
-    _getDonor = _donorRegistryContract.function('getDonor');
+Future<void> _fetchProjectDonors(int projectId) async {
+    setState(() {
+    _isLoading = true; // Show loading indicator
+  });
 
-    await _fetchDonors();
-  }
+  print("Fetching donors for project ID: $projectId");
 
-Future<void> _fetchDonors() async {
   try {
-    print("Starting _fetchDonors function...");
-
-    print("Fetching donors for project ID: ${widget.projectId}");
-
-    final List<dynamic> results = await _web3Client.call(
+    // Fetch donor addresses, anonymous donation amounts, and non-anonymous amounts
+    final List<dynamic> result = await _web3Client.call(
       contract: _donationContract,
       function: _getProjectDonorsWithAmounts,
-      params: [BigInt.from(widget.projectId)],
+      params: [BigInt.from(projectId)],
     );
 
-    print("Results from contract call: $results");
+    if (result.isNotEmpty && result.length == 3) {
+      final List<dynamic> addresses = result[0] as List<dynamic>;
+      final List<dynamic> anonymousAmountsRaw = result[1] as List<dynamic>;
+      final List<dynamic> nonAnonymousAmountsRaw = result[2] as List<dynamic>;
 
-    if (results.isNotEmpty && results[0] is List && results[1] is List) {
-      final List<dynamic> addresses = results[0];
-      final List<dynamic> amounts = results[1];
-
-      print("Raw Addresses List: $addresses");
-      print("Raw Amounts List: $amounts");
-
-      List<String> namesList = [];
-      List<BigInt> amountsList = [];
+      List<Map<String, dynamic>> donorsList = [];
 
       for (int i = 0; i < addresses.length; i++) {
-        print("Processing donor $i: ${addresses[i]}");
+        final String address = addresses[i].toString();
+        final BigInt anonymousAmount = BigInt.tryParse(anonymousAmountsRaw[i].toString()) ?? BigInt.zero;
+        final BigInt nonAnonymousAmount = BigInt.tryParse(nonAnonymousAmountsRaw[i].toString()) ?? BigInt.zero;
 
-        if (addresses[i] is EthereumAddress) {
-          print("Fetching profile for donor address: ${addresses[i]}");
-
-          try {
-            final donorProfile = await _getDonorProfile(addresses[i]);
-            print("Fetched donor name: $donorProfile");
-
-            namesList.add(donorProfile);
-          } catch (profileError) {
-            print("Error fetching profile for ${addresses[i]}: $profileError");
-            namesList.add("Unknown Donor");
-          }
-        } else {
-          print("Invalid address format at index $i: ${addresses[i]}");
-        }
-
-        print("Adding donation amount: ${amounts[i]}");
-        amountsList.add(amounts[i]);
+        donorsList.add({
+          'address': address,
+          'anonymousAmount': anonymousAmount,
+          'nonAnonymousAmount': nonAnonymousAmount,
+        });
       }
 
       setState(() {
-        donorNames = namesList;
-        donorAmounts = amountsList;
+        donorData = donorsList;
+        _isLoading = false; // Hide loading indicator
       });
 
-      print("Final Donor Names List: $donorNames");
-      print("Final Donor Amounts List: $donorAmounts");
+      print("Processed Donor Data: $donorData");
     } else {
-      print("No donors found or unexpected structure. Results: $results");
+      print("Unexpected result format or no data found.");
     }
-  } catch (e, stackTrace) {
-    print("Error fetching donors: $e");
-    print("StackTrace: $stackTrace");
+  } catch (e) {
+    print("Error fetching project donors: $e");
   }
 }
 
 
-  Future<String> _getDonorProfile(EthereumAddress address) async {
-    try {
-      print("Fetching donor profile for address: ${address.hex}");
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: const Text('Donors for Project')),
+    body: _isLoading
+        ? const Center(child: CircularProgressIndicator()) // Show loading indicator
+        : donorData.isEmpty
+            ? const Center(
+                child: Text(
+                  'No donations have been made for this project yet.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            : ListView.builder(
+                itemCount: donorData.length,
+                itemBuilder: (context, index) {
+                  final donor = donorData[index];
 
-      final List<dynamic> result = await _web3Client.call(
-        contract: _donorRegistryContract,
-        function: _getDonor,
-        params: [address],
-      );
+                  // Convert BigInt amounts to ETH
+                  double anonymousAmount = donor['anonymousAmount'].toDouble() / 1e18;
+                  double nonAnonymousAmount = donor['nonAnonymousAmount'].toDouble() / 1e18;
 
-      print("Donor profile result: $result");
-
-      if (result.isNotEmpty && result.length >= 2) {
-        final String firstName = result[0]?.toString() ?? 'Unknown';
-        final String lastName = result[1]?.toString() ?? '';
-        return '$firstName $lastName'.trim();
-      } else {
-        return 'Unknown Donor';
-      }
-    } catch (e) {
-      print("Error fetching donor profile: $e");
-      return 'Error retrieving donor profile';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Donors for Project')),
-      body: donorNames.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: donorNames.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(donorNames[index]),
-                  subtitle: Text('Donated: ${(donorAmounts[index] / BigInt.from(1e18)).toStringAsFixed(6)} ETH'),
-                );
-              },
-            ),
-    );
-  }
+                  return ListTile(
+                    title: Text('Donor Address: ${donor['address']}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Anonymous Donations: ${anonymousAmount.toStringAsFixed(8)} ETH'),
+                        Text('Non-Anonymous Donations: ${nonAnonymousAmount.toStringAsFixed(8)} ETH'),
+                      ],
+                    ),
+                  );
+                },
+              ),
+  );
 }
-
-
-
-
+}
 class DonorProfilePage extends StatefulWidget {
   final String walletAddress;
 
@@ -322,3 +283,6 @@ class _DonorProfilePageState extends State<DonorProfilePage> {
     );
   }
 }
+
+
+
