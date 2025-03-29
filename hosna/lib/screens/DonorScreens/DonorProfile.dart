@@ -34,10 +34,11 @@ String? _profilePictureUrl;
     super.initState();
     _getUserType();
     _initializeWeb3();
+    _fetchProfilePicture();
     _getDonorData();
-    _fetchProfilePicture(); // Fetch profile picture on init
-  }
-Future<void> _fetchProfilePicture() async {
+ }
+
+ Future<void> _fetchProfilePicture() async {
   print('🔄 Fetching profile picture for donor: $_donorAddress');
 
   if (_donorAddress.isEmpty) {
@@ -46,39 +47,38 @@ Future<void> _fetchProfilePicture() async {
   }
 
   try {
-    print('📡 Querying Firestore for user profile...');
-    DocumentSnapshot donorDoc = await FirebaseFirestore.instance
+    print('📡 Querying Firestore for user document...');
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(_donorAddress)
         .get();
 
-    print('📄 Firestore query completed.');
+    print('📄 Firestore Document Retrieved: ${userDoc.exists ? "Exists ✅" : "Not Found ❌"}');
 
-    if (donorDoc.exists) {
-      print('✅ Donor document found in Firestore.');
-
-      if (donorDoc.data() != null && donorDoc.data() is Map<String, dynamic>) {
-        Map<String, dynamic> donorData = donorDoc.data() as Map<String, dynamic>;
-
-        if (donorData.containsKey('profile_picture') && donorData['profile_picture'] != null) {
-          setState(() {
-            _profilePictureUrl = donorData['profile_picture'];
-          });
-          print("🖼️ Profile picture URL loaded: $_profilePictureUrl");
-        } else {
-          print("⚠️ Profile picture field is missing or null in Firestore for $_donorAddress.");
-        }
+    if (userDoc.exists) {
+      if (userDoc.data() != null) {
+        print('📑 Firestore Data: ${userDoc.data()}');
       } else {
-        print("⚠️ Firestore document data is empty or invalid.");
+        print('⚠️ Document exists but contains no data.');
+      }
+
+      if (userDoc['profile_picture'] != null) {
+        String profileUrl = userDoc['profile_picture'];
+        print('✅ Profile picture URL fetched: $profileUrl');
+
+        setState(() {
+          _profilePictureUrl = profileUrl;
+        });
+      } else {
+        print('⚠️ No profile picture found in Firestore document.');
       }
     } else {
-      print("⚠️ No donor document found in Firestore for $_donorAddress.");
+      print('❌ User document does not exist in Firestore.');
     }
   } catch (e) {
-    print("❌ Error fetching profile picture: $e");
+    print('❌ Error fetching profile picture: $e');
   }
 }
-
 
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -132,7 +132,7 @@ Future<void> _fetchProfilePicture() async {
   }
 Future<void> _getDonorData() async {
   print("🔄 Checking donor address: $_donorAddress");
-
+ _fetchProfilePicture();
   if (_donorAddress.isEmpty) {
     print("⚠️ No donor wallet address found.");
     return;
