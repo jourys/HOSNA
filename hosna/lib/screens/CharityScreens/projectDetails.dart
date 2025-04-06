@@ -618,7 +618,7 @@ Widget build(BuildContext context) {
                                         color: Colors.white)),
                               ),
                             ),
-                          const SizedBox(height: 100),
+                         
                           if (userType == 1 &&
                               (projectState == "failed" || projectState == "canceled") &&
                               widget.projectCreatorWallet == globalWalletAddress)
@@ -640,7 +640,7 @@ Widget build(BuildContext context) {
                               ),
                             ),
 
-                          const SizedBox(height: 100),
+                          
                           if (userType == 1 &&
                               projectState == "in-progress" &&
                               widget.projectCreatorWallet == globalWalletAddress)
