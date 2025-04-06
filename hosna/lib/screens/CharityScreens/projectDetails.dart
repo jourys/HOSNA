@@ -461,7 +461,7 @@ String getProjectState(Map<String, dynamic> project) {
                       ),
                       const SizedBox(height: 20),
                
-if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
+// if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
   GestureDetector(
     onTap: () {
       print("View all donors");
@@ -551,6 +551,72 @@ if (confirmCancel) {
     ),
   ),
 
+if ((userType == 1 &&
+        projectState == "active" &&
+        widget.projectCreatorWallet == globalWalletAddress) ||
+    (userType != 1 && userType != 0) &&  projectState == "active" ) // Admin case
+  Center(
+    child: ElevatedButton(
+     onPressed: () async {
+  print("press cancel button");  // Print the projectId to check if it's correct
+
+  print("Project ID: ${widget.projectId}");  // Print the projectId to check if it's correct
+    bool confirmCancel = await _showcancelConfirmationDialog(context);
+
+if (confirmCancel) {
+  setState(() {
+    isCanceled = true; // ✅ Update global state
+    projectState = "canceled"; // ✅ Update project state
+    print("Project canceled: $isCanceled");
+  });
+
+  // ✅ Check if the document exists first
+  DocumentSnapshot document = await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(widget.projectId.toString())
+      .get();
+
+  if (document.exists) {
+    // ✅ Save to Firestore if document exists
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .update({'isCanceled': true});
+
+    print("Project state updated in Firestore.");
+  } else {
+    // Document not found, create a new document
+    print("Project document not found. Creating a new project...");
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .set({
+          'isCanceled': true,
+        });
+
+    print("New project document created and canceled.");
+  }// Show success popup
+    showCancelSuccessPopup(context);
+  } else {
+    // If cancellation is not confirmed, show that nothing happened
+    print("Cancellation not confirmed.");
+  }
+},
+
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.orange,
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: const Text('Cancel Project',
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+    ),
+  ),
+
 
                   ],
                 ),
@@ -561,6 +627,7 @@ if (confirmCancel) {
       ),
     );
   }
+
 // Function to show success popup after project cancellation
 void showCancelSuccessPopup(BuildContext context) {
   // Show dialog
@@ -625,7 +692,7 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
           textAlign: TextAlign.center, // Center the title text
         ),
         content: const Text(
-          'Are you sure you want to cancel this project and initiate voting process?',
+          'Are you sure you want to cancel this project ?',
           style: TextStyle(
             fontSize: 18, // Make content text bigger
           ),

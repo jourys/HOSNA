@@ -30,7 +30,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   late DeployedContract _contract;
   List<Map<String, dynamic>> organizations = [];
   bool isLoading = true;
-  TextEditingController _searchController =
+  final TextEditingController _searchController =
       TextEditingController(); // Declare the controller
 
   final String abiString = '''
@@ -85,9 +85,9 @@ Future<List<String>> fetchApprovedCharities() async {
         .where('userType', isEqualTo: 1)
         .get();
 
-    snapshot.docs.forEach((doc) {
+    for (var doc in snapshot.docs) {
       walletAddresses.add(doc['walletAddress']);
-    });
+    }
   } catch (e) {
     print("Error fetching charity wallet addresses: $e");
   }
@@ -282,14 +282,12 @@ Widget build(BuildContext context) {
                     var charity = _getFilteredOrganizations()[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
-
+ elevation: 3,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12), // Rounded corners
-                        side: BorderSide(
-                            color: Color.fromRGBO(24, 71, 137, 1),
-                            width: 2),
+                       
                       ),
-                      color: Color.fromARGB(174, 255, 255, 255),
+                      color: Color.fromARGB(224, 255, 255, 255),
                       child: ListTile(
                         
                         contentPadding: EdgeInsets.symmetric(
@@ -362,6 +360,7 @@ Widget build(BuildContext context) {
                           );
                         },
                       ),
+                      
                     );
                   },
                 ),
@@ -375,6 +374,7 @@ Widget build(BuildContext context) {
       ],
     ),
   ),
+
   );
 }
 
@@ -486,13 +486,6 @@ class OrganizationProfilePage extends StatelessWidget {
                   ),
                 );
               },
-              child: const Text(
-                "View Projects",
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white, // Ensuring text is white
-                ),
-              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromRGBO(
                     24, 71, 137, 1), // Matching theme color
@@ -501,6 +494,13 @@ class OrganizationProfilePage extends StatelessWidget {
                     horizontal: 100), // Increased padding for a longer button
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                "View Projects",
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.white, // Ensuring text is white
                 ),
               ),
             ),
@@ -575,11 +575,12 @@ class OrganizationProfilePage extends StatelessWidget {
   }
 }
 
+
 class ViewProjectsPage extends StatefulWidget {
   final String orgAddress;
   final String orgName;
 
-  ViewProjectsPage({required this.orgAddress, required this.orgName});
+  const ViewProjectsPage({super.key, required this.orgAddress, required this.orgName});
 
   @override
   _ViewProjectsPageState createState() => _ViewProjectsPageState();
@@ -594,28 +595,70 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     projects = BlockchainService().fetchOrganizationProjects(widget.orgAddress);
   }
 
-  String _getProjectState(Map<String, dynamic> project) {
+  Future<String> _getProjectState(Map<String, dynamic> project) async {
     DateTime now = DateTime.now();
 
+    String projectId = project['id'].toString(); // Ensure it's a String
+    bool isCanceled = await _isProjectCanceled(projectId); // Await the async call
+
+    if (isCanceled) {
+      print("This project is canceled.");
+      return "canceled";
+    } else {
+      print("This project is active.");
+    }
+
+    // Handle startDate (could be DateTime, String, or null)
     DateTime startDate = project['startDate'] != null
-        ? DateTime.parse(project['startDate'].toString())
-        : now;
+        ? (project['startDate'] is DateTime
+            ? project['startDate']
+            : DateTime.parse(project['startDate']))
+        : DateTime.now(); // Use current time if startDate is null
 
+    // Handle endDate (could be DateTime, String, or null)
     DateTime endDate = project['endDate'] != null
-        ? DateTime.parse(project['endDate'].toString())
-        : now;
+        ? (project['endDate'] is DateTime
+            ? project['endDate']
+            : DateTime.parse(project['endDate']))
+        : DateTime.now(); // Use current time if endDate is null
 
-    double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
+    // Get totalAmount and donatedAmount, handle null or invalid values
+    double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+    double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
     if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount && now.isBefore(endDate)) {
-      return "completed";
-    } else if (now.isAfter(endDate) && donatedAmount < totalAmount) {
-      return "failed";
+      return "upcoming"; // Project is not started yet
+    } else if (donatedAmount >= totalAmount) {
+      return "in-progress"; // Project reached the goal
     } else {
-      return "active";
+      if (now.isAfter(endDate)) {
+        return "failed"; // Project failed to reach the target
+      } else {
+        return "active"; // Project is ongoing and goal is not reached yet
+      }
+    }
+  }
+
+  Future<bool> _isProjectCanceled(String projectId) async {
+    try {
+      // Fetch the project document from Firestore using the projectId
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
+
+      // Check if the document exists
+      if (doc.exists) {
+        // Retrieve the 'isCanceled' field and return true or false
+        bool isCanceled = doc['isCanceled'] ?? false;
+        return isCanceled; // Return true if canceled, false otherwise
+      } else {
+        print("Project not found");
+        return false; // If the project does not exist, return false
+      }
+    } catch (e) {
+      print("Error fetching project state: $e");
+      return false; // Return false in case of an error
     }
   }
 
@@ -625,13 +668,19 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
         return Colors.green;
       case "failed":
         return Colors.red;
+      case "in-progress":
+        return Colors.purple;
       case "completed":
         return Colors.blue;
-      case "upcoming":
+      case "canceled":
         return Colors.orange;
       default:
         return Colors.grey;
     }
+  }
+
+  double weiToEth(BigInt wei) {
+    return (wei / BigInt.from(10).pow(18)).toDouble();
   }
 
   @override
@@ -685,16 +734,16 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
                 ),
               ),
               child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: projects,
+                future: projects, // Ensure this Future is properly initialized
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator( color: Colors.white,));
                   } else if (snapshot.hasError) {
                     return Center(child: Text("Error: ${snapshot.error}"));
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(
-                        child: Text(
-                            "Currently, there are no projects available."));
+                      child: Text("Currently, there are no projects available."),
+                    );
                   }
 
                   final projectList = snapshot.data!;
@@ -704,109 +753,124 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
                     itemCount: projectList.length,
                     itemBuilder: (context, index) {
                       final project = projectList[index];
-                      final projectState = _getProjectState(project);
-                      final stateColor = _getStateColor(projectState);
-                      final deadline = project['endDate'] != null
-                          ? DateFormat('yyyy-MM-dd').format(
-                              DateTime.parse(project['endDate'].toString()))
-                          : 'No deadline available';
-                      final double progress =
-                          project['donatedAmount'] / project['totalAmount'];
 
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1), width: 3),
-                        ),
-                        elevation: 2,
-                        margin:
-                            EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                        child: ListTile(
-                          tileColor: Colors.grey[200],
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                          title: Text(
-                            project['name'] ?? 'Untitled',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: Color.fromRGBO(24, 71, 137, 1)),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: 8),
-                              RichText(
-                                text: TextSpan(
-                                  text: 'Deadline: ',
-                                  style: TextStyle(
-                                      fontSize: 17,
-                                      color: Color.fromRGBO(238, 100, 90, 1)),
-                                  children: [
-                                    TextSpan(
-                                      text: '$deadline',
-                                      style: TextStyle(
-                                          fontSize: 17, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
+                      return FutureBuilder<String>(
+                        future: _getProjectState(project), // Await the project state
+                        builder: (context, stateSnapshot) {
+                          if (stateSnapshot.connectionState == ConnectionState.waiting) {
+                            return Center(child: CircularProgressIndicator( color: Colors.white,));
+                          } else if (stateSnapshot.hasError) {
+                            return Center(child: Text("Error: ${stateSnapshot.error}"));
+                          } else if (!stateSnapshot.hasData) {
+                            return SizedBox(); // Handle no data scenario
+                          }
+
+                          final projectState = stateSnapshot.data!;
+                          final stateColor = _getStateColor(projectState);
+
+                          final deadline = project['endDate'] != null
+                              ? DateFormat('yyyy-MM-dd').format(
+                                  DateTime.parse(project['endDate'].toString()))
+                              : 'No deadline available';
+                          final double progress =
+                              project['donatedAmount'] / project['totalAmount'];
+
+                          return Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                  color: Color.fromRGBO(24, 71, 137, 1), width: 3),
+                            ),
+                            elevation: 2,
+                            margin:
+                                EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                            child: ListTile(
+                              tileColor: Colors.grey[200],
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                              title: Text(
+                                project['name'] ?? 'Untitled',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Color.fromRGBO(24, 71, 137, 1)),
                               ),
-                              SizedBox(height: 8),
-                              LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.grey[200],
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(stateColor),
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '${(progress * 100).toStringAsFixed(0)}%',
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: stateColor.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      projectState,
+                                  SizedBox(height: 8),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: 'Deadline: ',
                                       style: TextStyle(
-                                          color: stateColor,
-                                          fontWeight: FontWeight.bold),
+                                          fontSize: 17,
+                                          color: Color.fromRGBO(238, 100, 90, 1)),
+                                      children: [
+                                        TextSpan(
+                                          text: deadline,
+                                          style: TextStyle(
+                                              fontSize: 17, color: Colors.grey),
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  LinearProgressIndicator(
+                                    value: progress,
+                                    backgroundColor: Colors.grey[200],
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(stateColor),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${(progress * 100).toStringAsFixed(0)}%',
+                                        style: TextStyle(color: Colors.grey[600]),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: stateColor.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          projectState,
+                                          style: TextStyle(
+                                              color: stateColor,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProjectDetails(
-                                  projectName: project['name'],
-                                  description: project['description'],
-                                  startDate: project['startDate'].toString(),
-                                  deadline: project['endDate'].toString(),
-                                  totalAmount: project['totalAmount'],
-                                  projectType: project['projectType'],
-                                  projectCreatorWallet:
-                                      project['organization'] ?? '',
-                                  donatedAmount: project['donatedAmount'],
-                                  projectId: project['id'],
-                                  progress: progress,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ProjectDetails(
+                                      projectName: project['name'],
+                                      description: project['description'],
+                                      startDate: project['startDate'].toString(),
+                                      deadline: project['endDate'].toString(),
+                                      totalAmount: project['totalAmount'],
+                                      projectType: project['projectType'],
+                                      projectCreatorWallet:
+                                          project['organization'] ?? '',
+                                      donatedAmount: project['donatedAmount'],
+                                      projectId: project['id'],
+                                      progress: progress,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
                       );
                     },
                   );
@@ -819,9 +883,6 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     );
   }
 }
-
-
-
 
 
 
@@ -1005,9 +1066,10 @@ class _ReportPopupState extends State<ReportPopup> {
             });
           } else {
             await _showSendConfirmationDialog(context);
-            
-               Navigator.pop(context, true);
- showSuccessPopup(context); // Call the popup here
+             Navigator.pop(context, true);
+
+              
+//  showSuccessPopup(context); // Call the popup here
             
           }
         },
@@ -1076,6 +1138,7 @@ class _ReportPopupState extends State<ReportPopup> {
                 const SizedBox(width: 20),
                 OutlinedButton(
                   onPressed: () {
+                    
                     Navigator.pop(context, true);
                   },
                   style: OutlinedButton.styleFrom(
@@ -1181,7 +1244,7 @@ class _ReportPopupState extends State<ReportPopup> {
     // Create an instance of ComplaintService
     final complaintService = ComplaintService(
       rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-      contractAddress: '0xc23C7DCCEFFD3CFBabED29Bd7eE28D75FF7612D4', // Replace securely
+      contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
     );
 
     // Call the sendComplaint function and get the transaction hash
@@ -1201,8 +1264,10 @@ class _ReportPopupState extends State<ReportPopup> {
       print('Complaint sent successfully. Transaction hash: $result');
       // After the complaint is sent successfully
  
-      
-      Navigator.pop(context, true);
+             showSuccessPopup(context); // Call the popup here
+
+
+     
     }
   } catch (e) {
     print('Exception occurred: $e');
@@ -1236,9 +1301,9 @@ class _ReportPopupState extends State<ReportPopup> {
       },
     ) ??
         false;
+        
   }
   void showSuccessPopup(BuildContext context) {
-
   // Show dialog
   showDialog(
     context: context,
@@ -1263,7 +1328,7 @@ class _ReportPopupState extends State<ReportPopup> {
               ),
               SizedBox(height: 20), // Add spacing between the icon and text
               Text(
-                'Complaint send successfully!',
+                'Complaint sent successfully!',
                 style: TextStyle(
                   color: const Color.fromARGB(255, 54, 142, 57), 
                   fontWeight: FontWeight.bold, 
@@ -1280,9 +1345,12 @@ class _ReportPopupState extends State<ReportPopup> {
 
   // Automatically dismiss the dialog after 3 seconds
   Future.delayed(const Duration(seconds: 3), () {
-    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
-  Navigator.of(context, rootNavigator: true).pop(); 
-   });
+    // Check if the widget is still mounted before performing Navigator.pop
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+    }
+     Navigator.pop(context, true);
+  });
 }
 
 
