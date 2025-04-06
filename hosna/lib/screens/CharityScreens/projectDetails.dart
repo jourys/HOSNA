@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,8 @@ bool isCanceled = false; // Default value
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final EthereumAddress contractAddress =
       EthereumAddress.fromHex("0x95a20778c2713a11ff61695e57cd562f78f75754");
-
+  bool isLoading = true;
+  
   @override
   void initState() {
     super.initState();
@@ -316,317 +318,449 @@ String getProjectState(Map<String, dynamic> project) {
         return Colors.grey;
     }
   }
-
-  @override
-  Widget build(BuildContext context) {
-    
-  String projectState = isCanceled ? "canceled" : _getProjectState();
-    print("Project status: $projectState");
-
-
-    Color stateColor = _getStateColor(projectState);
-    double totalAmount = widget.totalAmount;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Project Details'),
-        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.projectName,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromRGBO(24, 71, 137, 1)),
-              ),
-              const SizedBox(height: 20),
-              Text(widget.description,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700])),
-              const SizedBox(height: 20),
-              _buildDetailItem('Start Date:', widget.startDate),
-              _buildDetailItem('Deadline:', widget.deadline),
-              _buildDetailItem(
-                  'Total Amount:', '${totalAmount.toStringAsFixed(5)} ETH'),
-              _buildDetailItem('Project Type:', widget.projectType),
-              Visibility(
-                visible: _isFetchingDonatedAmount,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              Visibility(
-                visible: !_isFetchingDonatedAmount,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailItem('Donated Amount:',
-                        '${widget.donatedAmount.toStringAsFixed(5)} ETH'), // Updated here
-                    const SizedBox(height: 20),
-                    Divider(color: Colors.grey[300]),
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: widget.progress,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(stateColor),
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${(widget.progress * 100).toStringAsFixed(0)}%',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: stateColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            projectState,
-                            style: TextStyle(
-                                color: stateColor, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    if (userType == 0 && projectState == "active")
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: () => _showDonationPopup(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Donate',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                        ),
-                      ),
-                    const SizedBox(height: 20),
-                    if (userType == 1 &&
-                       ( projectState == "failed" || projectState == "canceled") &&
-                        widget.projectCreatorWallet == globalWalletAddress)
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: () => print("voting"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Initiate Voting',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                        ),
-                      ),
-                    const SizedBox(height: 20),
-                    if (userType == 1 &&
-                        projectState == "in-progress" &&
-                        widget.projectCreatorWallet == globalWalletAddress)
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: () => print("post update"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Post Update',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-               
-// if (userType == 1 && widget.projectCreatorWallet == globalWalletAddress)
-  GestureDetector(
-    onTap: () {
-      print("View all donors");
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ViewDonorsPage(
-            projectId: widget.projectId, // replace with the actual project ID
-          ),
+Widget _buildCreativeProjectType(String type) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.blue.shade50, // Light blue background for contrast
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.blue.shade200, width: 2), // Subtle border
+      boxShadow: [
+        BoxShadow(
+          color: Colors.blue.shade100,
+          blurRadius: 8,
+          offset: Offset(2, 4), // Shadow effect
         ),
-      );
-    },
-    child: const Text(
-      'View All Donors',
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.blue, // Makes it look like a link
-        decoration: TextDecoration.underline, // Underline for emphasis
-      ),
+      ],
     ),
-  ),
- const SizedBox(height: 20),
-
-if (userType == 1 &&
-    projectState == "active" &&
-    widget.projectCreatorWallet == globalWalletAddress)
-  Center(
-    child: ElevatedButton(
-     onPressed: () async {
-  print("press cancel button");  // Print the projectId to check if it's correct
-
-  print("Project ID: ${widget.projectId}");  // Print the projectId to check if it's correct
-    bool confirmCancel = await _showcancelConfirmationDialog(context);
-
-if (confirmCancel) {
-  setState(() {
-    isCanceled = true; // ✅ Update global state
-    projectState = "canceled"; // ✅ Update project state
-    print("Project canceled: $isCanceled");
-  });
-
-  // ✅ Check if the document exists first
-  DocumentSnapshot document = await FirebaseFirestore.instance
-      .collection('projects')
-      .doc(widget.projectId.toString())
-      .get();
-
-  if (document.exists) {
-    // ✅ Save to Firestore if document exists
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString())
-        .update({'isCanceled': true});
-
-    print("Project state updated in Firestore.");
-  } else {
-    // Document not found, create a new document
-    print("Project document not found. Creating a new project...");
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString())
-        .set({
-          'isCanceled': true,
-        });
-
-    print("New project document created and canceled.");
-  }// Show success popup
-    showCancelSuccessPopup(context);
-  } else {
-    // If cancellation is not confirmed, show that nothing happened
-    print("Cancellation not confirmed.");
-  }
-},
-
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orange,
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    child: Row(
+      children: [
+        Icon(
+          Icons.label_important, // Optional: Add an icon
+          color: Colors.blue.shade600,
+          size: 20,
         ),
-      ),
-      child: const Text('Cancel Project',
+        const SizedBox(width: 10),
+        Text(
+          type,
           style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-    ),
-  ),
-
-if ((userType == 1 &&
-        projectState == "active" &&
-        widget.projectCreatorWallet == globalWalletAddress) ||
-    (userType != 1 && userType != 0) &&  projectState == "active" ) // Admin case
-  Center(
-    child: ElevatedButton(
-     onPressed: () async {
-  print("press cancel button");  // Print the projectId to check if it's correct
-
-  print("Project ID: ${widget.projectId}");  // Print the projectId to check if it's correct
-    bool confirmCancel = await _showcancelConfirmationDialog(context);
-
-if (confirmCancel) {
-  setState(() {
-    isCanceled = true; // ✅ Update global state
-    projectState = "canceled"; // ✅ Update project state
-    print("Project canceled: $isCanceled");
-  });
-
-  // ✅ Check if the document exists first
-  DocumentSnapshot document = await FirebaseFirestore.instance
-      .collection('projects')
-      .doc(widget.projectId.toString())
-      .get();
-
-  if (document.exists) {
-    // ✅ Save to Firestore if document exists
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString())
-        .update({'isCanceled': true});
-
-    print("Project state updated in Firestore.");
-  } else {
-    // Document not found, create a new document
-    print("Project document not found. Creating a new project...");
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString())
-        .set({
-          'isCanceled': true,
-        });
-
-    print("New project document created and canceled.");
-  }// Show success popup
-    showCancelSuccessPopup(context);
-  } else {
-    // If cancellation is not confirmed, show that nothing happened
-    print("Cancellation not confirmed.");
-  }
-},
-
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orange,
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: const Text('Cancel Project',
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-    ),
-  ),
-
-
-                  ],
-                ),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue.shade700,
+            letterSpacing: 1.2, // Spacing between letters
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.blue.shade300,
+                offset: Offset(1.5, 1.5),
               ),
             ],
           ),
         ),
+      ],
+    ),
+  );
+}
+
+Widget _buildTypeItem(String title, String value) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Color.fromRGBO(24, 71, 137, 1), // Project Title Color
+          ),
+        ),
+        const SizedBox(width: 10),
+      Container(
+  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), // Adjust padding to fit the text
+  decoration: BoxDecoration(
+    color: Colors.grey.shade300, // Set the background color to grey
+    borderRadius: BorderRadius.circular(12), // Make the corners circular
+  ),
+  child: Text(
+    value,
+    style: TextStyle(
+      fontSize: 16,
+      color: Colors.grey.shade700, // Text color inside the grey background
+    ),
+  ),
+)
+
+
+      ],
+    ),
+  );
+}
+
+
+  @override
+Widget build(BuildContext context) {
+  String projectState = isCanceled ? "canceled" : _getProjectState();
+  print("Project status: $projectState");
+
+  Color stateColor = _getStateColor(projectState);
+  double totalAmount = widget.totalAmount;
+
+  return Scaffold(
+    backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
+    appBar: PreferredSize(
+      preferredSize: Size.fromHeight(60), // Increases app bar height
+      child: AppBar(
+  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+  elevation: 0, // Remove shadow
+  automaticallyImplyLeading: false, // We're adding a custom back button
+  leading: IconButton(
+    icon: Icon(Icons.arrow_back, color: Colors.white , size : 30), // White back arrow
+    onPressed: () {
+      Navigator.pop(context); // Navigate back when tapped
+    },
+  ),
+  flexibleSpace: Padding(
+    padding: EdgeInsets.only(bottom: 20), // Move text down
+    child: Align(
+      alignment: Alignment.bottomCenter, // Center and move down
+      child: Text(
+        widget.projectName,
+        style: TextStyle(
+          color: Colors.white, // Make text white
+          fontSize: 24, // Increase font size
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    );
-  }
+    ),
+  ),
+),
+    ),
+    body: Column(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20), // Adjust top-left corner
+                topRight: Radius.circular(20), // Adjust top-right corner
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(18.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                                        const SizedBox(height: 10),
+
+                   Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space out the items
+  children: [
+    Align(
+      alignment: Alignment.centerLeft, // Aligns the widget to the left
+      child: _buildTypeItem(
+        '', 
+        widget.projectType, // Passing the project type here
+      ),
+    ),
+   
+       GestureDetector(
+      onTap: () {
+        // Add the function to handle the flag press here
+        print("Report Project Pressed!");
+        // You can replace the print statement with your actual logic, 
+        // such as navigating to a report page or opening a dialog.
+      },
+      
+        child: Icon(
+          Icons.flag, // Flag icon for report
+          color: Colors.grey, // White color for the icon
+          size: 40, // Icon size
+        ),
+      
+    ),
+    
+  ],
+),
+                    const SizedBox(height: 25),
+                   Text(
+  widget.description,
+  textAlign: TextAlign.center,
+  style: TextStyle(fontSize: 17, color: Colors.grey[700]),
+),
+                    const SizedBox(height: 20),
+                     LinearProgressIndicator(
+                            value: widget.progress,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${(widget.progress * 100).toStringAsFixed(0)}%',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: stateColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  projectState,
+                                  style: TextStyle(
+                                      color: stateColor, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                           SizedBox(height: 20),
+                           if (userType == 1 &&
+                              widget.projectCreatorWallet == globalWalletAddress) 
+                          GestureDetector(
+                            onTap: () {
+                              print("View all donors");
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ViewDonorsPage(
+                                    projectId: widget.projectId,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+ 
+    const Text(
+      'View All Donors',
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Color.fromRGBO(24, 71, 137, 1),
+        decoration: TextDecoration.underline,
+        letterSpacing: 0.5,
+      ),
+    ),
+     SizedBox(width: 8),
+     Icon(Icons.group, color: Color.fromRGBO(24, 71, 137, 1) , size : 30),
+   
+  ],
+),
+
+                          ), 
+                          SizedBox(height: 30),
+
+                     Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space out the items
+  children: [
+    _buildDetailItem(
+      'Funded:', '${widget.donatedAmount.toStringAsFixed(5)} ETH'),
+    _buildDetailItem(
+      'Goal:', '${totalAmount.toStringAsFixed(5)} ETH'),
+  ],
+                     ),
+
+ SizedBox(height: 15),
+                       Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Optional: Adjust alignment if needed
+   children: [
+  _buildDateItem(
+    'Begins:', 
+    parseDate(DateTime.parse(widget.startDate)),
+    valueColor: Colors.green,
+  ),
+  _buildDateItem(
+    'Ends:', 
+    parseDate(DateTime.parse(widget.deadline)),
+    valueColor: Colors.red,
+  ),
+],
+
+),
+
+                                     SizedBox(height: 15),
+                                      
+
+                    Visibility(
+                      visible: _isFetchingDonatedAmount,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    Visibility(
+                      visible: !_isFetchingDonatedAmount,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        
+                         
+                          const SizedBox(height: 100),
+                          if (userType == 0 && projectState == "active")
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () => _showDonationPopup(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 100, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15)),
+                                ),
+                                child: const Text('Donate',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              ),
+                            ),
+                          const SizedBox(height: 100),
+                          if (userType == 1 &&
+                              (projectState == "failed" || projectState == "canceled") &&
+                              widget.projectCreatorWallet == globalWalletAddress)
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () => print("voting"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 100, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15)),
+                                ),
+                                child: const Text('Initiate Voting',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              ),
+                            ),
+
+                          const SizedBox(height: 100),
+                          if (userType == 1 &&
+                              projectState == "in-progress" &&
+                              widget.projectCreatorWallet == globalWalletAddress)
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () => print("post update"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 100, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15)),
+                                ),
+                                child: const Text('Post Update',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              ),
+                            ),
+                     
+
+                    
+                          if (userType == 1 &&
+                              projectState == "active" &&
+                              widget.projectCreatorWallet == globalWalletAddress)
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  print("press cancel button");
+                                  print("Project ID: ${widget.projectId}");
+                                  bool confirmCancel =
+                                      await _showcancelConfirmationDialog(context);
+                                  if (confirmCancel) {
+                                    setState(() {
+                                      isCanceled = true;
+                                      projectState = "canceled";
+                                      print("Project canceled: $isCanceled");
+                                    });
+
+                                    DocumentSnapshot document =
+                                        await FirebaseFirestore.instance
+                                            .collection('projects')
+                                            .doc(widget.projectId.toString())
+                                            .get();
+
+                                    if (document.exists) {
+                                      await FirebaseFirestore.instance
+                                          .collection('projects')
+                                          .doc(widget.projectId.toString())
+                                          .update({'isCanceled': true});
+                                      print("Project state updated in Firestore.");
+                                    } else {
+                                      print("Project document not found. Creating a new project...");
+                                      await FirebaseFirestore.instance
+                                          .collection('projects')
+                                          .doc(widget.projectId.toString())
+                                          .set({'isCanceled': true});
+                                      print("New project document created and canceled.");
+                                    }
+                                    showCancelSuccessPopup(context);
+                                  } else {
+                                    print("Cancellation not confirmed.");
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 100, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                                child: const Text('Cancel Project',
+                                    style: TextStyle(
+                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+Widget _buildDateItem(String title, String value, {Color valueColor = Colors.grey}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: RichText(
+      text: TextSpan(
+        text: '$title ',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Color.fromRGBO(24, 71, 137, 1),
+        ),
+        children: [
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              fontWeight: FontWeight.normal,
+              color: valueColor,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String parseDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
 
 // Function to show success popup after project cancellation
 void showCancelSuccessPopup(BuildContext context) {
@@ -750,23 +884,36 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
   ) ?? false; // If null, default to false
 }
 
-  Widget _buildDetailItem(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: RichText(
-        text: TextSpan(
-          text: '$title ',
-          style: const TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
-          children: [
-            TextSpan(
-                text: value,
-                style: const TextStyle(fontWeight: FontWeight.normal))
-          ],
+ Widget _buildDetailItem(String title, String value) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: RichText(
+      text: TextSpan(
+        text: '$title ',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16, // Decrease font size here
+          color: Color.fromRGBO(24, 71, 137, 1), // Set title color
         ),
+        children: [
+          TextSpan(
+            text: value,
+            style: const TextStyle(
+              fontWeight: FontWeight.normal,
+              fontSize: 15, // Decrease font size for value
+              color: Colors.grey, // Set value color to gray
+            ),
+          ),
+        ],
       ),
-    );
-  }void _showDonationPopup(BuildContext context) {
+    ),
+  );
+}
+
+  
+  
+  
+  void _showDonationPopup(BuildContext context) {
   TextEditingController amountController = TextEditingController();
   bool isAnonymous = false; // Track anonymous donation state
   String? errorMessage;
