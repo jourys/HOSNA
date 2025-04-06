@@ -464,7 +464,7 @@ Future<Map<String, String?>> getCharityCredentials() async {
             projectType,
           ],
           gasPrice: EtherAmount.inWei(BigInt.from(20 * 1000000000)),
-          maxGas: 300000,
+          maxGas: 5000000,
         ),
         chainId: 11155111, // Sepolia Testnet Chain ID
       );
