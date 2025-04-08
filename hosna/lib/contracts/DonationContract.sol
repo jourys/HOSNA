@@ -7,31 +7,34 @@ contract DonationContract {
     PostProject public postProject; // Reference to the PostProject contract
 
     struct Donor {
-        uint256 totalDonated;
-        bool exists; // Track if donor is already added to projectDonors
+        uint256 totalDonatedAnonymous;
+        uint256 totalDonatedNonAnonymous;
+        bool exists;
     }
 
-    mapping(address => Donor) private donors; // Track total donations by each donor
-    mapping(uint256 => uint256) public projectDonations; // Track donations for each project
-    mapping(uint256 => address[]) public projectDonors; // Track unique donor addresses per project
+    // **Track donations for each donor per project**
+    mapping(uint256 => mapping(address => Donor)) private projectDonorsInfo;
+    mapping(uint256 => uint256) public projectDonations;
+    mapping(uint256 => address[]) public projectDonors; // Store donor addresses per project
 
     event DonationReceived(
         address indexed donor,
         uint256 amount,
         address indexed projectCreator,
-        uint256 projectId
+        uint256 projectId,
+        bool isAnonymous
     );
 
     event FundsTransferred(address indexed projectCreator, uint256 amount);
 
     constructor(address _postProjectAddress) {
-        postProject = PostProject(_postProjectAddress); // Initialize the PostProject contract
+        postProject = PostProject(_postProjectAddress);
     }
 
-    function donate(uint256 projectId) public payable {
+    function donate(uint256 projectId, bool isAnonymous) public payable {
         require(msg.value > 0, "Donation must be greater than zero");
 
-        // Fetch project details from the PostProject contract
+        // Fetch project details from PostProject contract
         (
             ,
             ,
@@ -43,7 +46,6 @@ contract DonationContract {
             ,
             PostProject.ProjectState state
         ) = postProject.getProject(projectId);
-        state;
 
         require(block.timestamp >= startDate, "Project has not started");
         require(block.timestamp <= endDate, "Project has ended");
@@ -52,59 +54,87 @@ contract DonationContract {
             "Donation exceeds total amount"
         );
 
-        // Update donor's total donated amount
-        donors[msg.sender].totalDonated += msg.value;
+        address donorAddress = msg.sender;
 
-        // Update project donations
-        projectDonations[projectId] += msg.value;
-
-        // **Ensure donor is only added once to projectDonors**
-        if (!donors[msg.sender].exists) {
-            projectDonors[projectId].push(msg.sender);
-            donors[msg.sender].exists = true;
+        // **Ensure donor is registered for this project**
+        if (!projectDonorsInfo[projectId][donorAddress].exists) {
+            projectDonorsInfo[projectId][donorAddress].exists = true;
+            projectDonors[projectId].push(donorAddress);
         }
 
-        // Update the donated amount in the PostProject contract **before** transferring funds
+        // **Update donation amount specific to this project**
+        if (isAnonymous) {
+            projectDonorsInfo[projectId][donorAddress]
+                .totalDonatedAnonymous += msg.value;
+        } else {
+            projectDonorsInfo[projectId][donorAddress]
+                .totalDonatedNonAnonymous += msg.value;
+        }
+
+        // **Update total project donations**
+        projectDonations[projectId] += msg.value;
+
+        // **Update the donated amount in PostProject contract**
         postProject.updateDonatedAmount(projectId, msg.value);
 
-        // Transfer funds to the project creator
+        // **Transfer funds to the organization**
         (bool success, ) = payable(organization).call{value: msg.value}("");
         require(success, "Transfer failed");
 
-        emit DonationReceived(msg.sender, msg.value, organization, projectId);
+        emit DonationReceived(
+            donorAddress,
+            msg.value,
+            organization,
+            projectId,
+            isAnonymous
+        );
         emit FundsTransferred(organization, msg.value);
     }
 
-    // **Get all donor addresses & their total donated amount for a project**
+    // **Get donor addresses and their donations for a specific project**
     function getProjectDonorsWithAmounts(
         uint256 projectId
-    ) external view returns (address[] memory, uint256[] memory) {
+    )
+        external
+        view
+        returns (address[] memory, uint256[] memory, uint256[] memory)
+    {
         uint256 donorCount = projectDonors[projectId].length;
         address[] memory addresses = new address[](donorCount);
-        uint256[] memory amounts = new uint256[](donorCount);
+        uint256[] memory amountsAnonymous = new uint256[](donorCount);
+        uint256[] memory amountsNonAnonymous = new uint256[](donorCount);
 
         for (uint256 i = 0; i < donorCount; i++) {
             address donor = projectDonors[projectId][i];
             addresses[i] = donor;
-            amounts[i] = donors[donor].totalDonated;
+            amountsAnonymous[i] = projectDonorsInfo[projectId][donor]
+                .totalDonatedAnonymous;
+            amountsNonAnonymous[i] = projectDonorsInfo[projectId][donor]
+                .totalDonatedNonAnonymous;
         }
 
-        return (addresses, amounts);
+        return (addresses, amountsAnonymous, amountsNonAnonymous);
     }
 
-    // Get total donations for a project
+    // **Get total donations for a specific project**
     function getProjectDonations(
         uint256 projectId
     ) external view returns (uint256) {
         return projectDonations[projectId];
     }
 
-    // Get total amount donated by a specific donor
-    function getDonorInfo(address donor) external view returns (uint256) {
-        return donors[donor].totalDonated;
+    // **Get donor's total donations in a project**
+    function getDonorInfo(
+        uint256 projectId,
+        address donor
+    ) external view returns (uint256, uint256) {
+        return (
+            projectDonorsInfo[projectId][donor].totalDonatedAnonymous,
+            projectDonorsInfo[projectId][donor].totalDonatedNonAnonymous
+        );
     }
 
-    // Check contract balance (for debugging)
+    // **Get contract balance (for debugging)**
     function getContractBalance() external view returns (uint256) {
         return address(this).balance;
     }
