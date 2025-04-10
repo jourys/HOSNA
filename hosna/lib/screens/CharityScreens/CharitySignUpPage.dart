@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
@@ -71,14 +72,11 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
 
   Future<void> saveCharityCredentials(
       String walletAddress, String privateKey) async {
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('walletAddress', walletAddress);
     await prefs.setString('privateKey', privateKey);
     print('✅ Saved walletAddress: $walletAddress');
     print('✅ Saved privateKey: $privateKey');
-
-
   }
 
   Uint8List hashPassword(String password) {
@@ -156,7 +154,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     try {
       final result = await _web3Client.sendTransaction(
         ownerCredentials,
-  web3.Transaction.callContract( 
+        web3.Transaction.callContract(
           contract: contract,
           function: registerCharity,
           parameters: [
@@ -181,17 +179,19 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('🎉 Account created successfully!')),
       );
-       
 
+      await _storeDonorInFirebase(charityWallet.toString(),
+          _organizationEmailController.text.toLowerCase());
+      await _storePrivateKey(charityWallet.toString(), charityPrivateKey);
+      print("private key stored in shared prefs ✅");
 
-
-await _storeDonorInFirebase(charityWallet.toString(),  _organizationEmailController.text.toLowerCase());
-
-
-_storePrivateKey(charityWallet.toString(), charityPrivateKey);
+// 🔐 Register with Firebase Auth for reset password support
+      await _registerWithFirebase(
+        _organizationEmailController.text.trim().toLowerCase(),
+        _passwordController.text.trim(),
+      );
+      _storePrivateKey(charityWallet.toString(), charityPrivateKey);
       print("private key stoooored in shared pref.");
-
-
 
       Navigator.pushReplacement(
         context,
@@ -207,93 +207,125 @@ _storePrivateKey(charityWallet.toString(), charityPrivateKey);
     }
   }
 
-Future<void> _checkAccountStatusAndNavigate(BuildContext context, String walletAddress) async {
-  try {
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(walletAddress).get();
+  Future<void> _checkAccountStatusAndNavigate(
+      BuildContext context, String walletAddress) async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .get();
 
-    if (userDoc.exists) {
-      String accountStatus = userDoc['accountStatus'];
+      if (userDoc.exists) {
+        String accountStatus = userDoc['accountStatus'];
 
-      if (accountStatus == 'approved') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CharityLogInPage(),
-          ),
-        );
+        if (accountStatus == 'approved') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CharityLogInPage(),
+            ),
+          );
+        } else {
+          String message = accountStatus == 'pending'
+              ? "Your account is pending approval. Please wait."
+              : "Your account has been rejected. Contact support for details.";
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
-        String message = accountStatus == 'pending'
-            ? "Your account is pending approval. Please wait."
-            : "Your account has been rejected. Contact support for details.";
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
+          const SnackBar(
+            content: Text("User not found. Please register."),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
-    } else {
+    } catch (e) {
+      print("❌ Error checking account status: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("User not found. Please register."),
+          content: Text("An error occurred. Please try again."),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
     }
-  } catch (e) {
-    print("❌ Error checking account status: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("An error occurred. Please try again."),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
-}
-
-
-
 
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
-  try {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    
-    // Use a unique key format for storing the private key
-    String privateKeyKey = 'privateKey_$walletAddress';
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    // Save the private key
-    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+      // Use a unique key format for storing the private key
+      String privateKeyKey = 'privateKey_$walletAddress';
 
-    if (isSaved) {
-      print('✅ Private key for wallet $walletAddress saved successfully!');
-    } else {
-      print('❌ Failed to save private key for wallet $walletAddress');
+      // Save the private key
+      bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+      if (isSaved) {
+        print('✅ Private key for wallet $walletAddress saved successfully!');
+      } else {
+        print('❌ Failed to save private key for wallet $walletAddress');
+      }
+    } catch (e) {
+      print('⚠️ Error saving private key: $e');
     }
-  } catch (e) {
-    print('⚠️ Error saving private key: $e');
   }
-}
 
-
-Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
-  try {
-    await FirebaseFirestore.instance.collection('users').doc(walletAddress).set({
-      'walletAddress': walletAddress,
-      'email': email,
-      'userType': 1, // 1 means charity
-      'isSuspend': false,
-      'accountStatus': 'pending', // Default status is 'pending'
-    });
-    print("✅ Charity data successfully stored in Firebase! 🎉");
-  } catch (e) {
-    print("❌ Error storing charity in Firebase: $e ");
+  Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .set({
+        'walletAddress': walletAddress,
+        'email': email,
+        'userType': 1, // 1 means charity
+        'isSuspend': false,
+        'accountStatus': 'pending', // Default status is 'pending'
+      });
+      print("✅ Charity data successfully stored in Firebase! 🎉");
+    } catch (e) {
+      print("❌ Error storing charity in Firebase: $e ");
+    }
   }
-}
 
+  Future<void> _registerWithFirebase(String email, String password) async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      print('✅ Firebase account created for ${userCredential.user?.email}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration successful')),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      if (e.code == 'email-already-in-use') {
+        errorMessage = 'This email is already in use.';
+      } else if (e.code == 'weak-password') {
+        errorMessage = 'Password is too weak.';
+      } else {
+        errorMessage = 'Registration failed: ${e.message}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      print('❌ Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unexpected error occurred')),
+      );
+    }
+  }
 
   Future<void> getCharityDetails() async {
     final contract = DeployedContract(

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-
+import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
+import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
@@ -9,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:web3dart/web3dart.dart' as web3;
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 
 class ProjectDetails extends StatefulWidget {
   final String projectName;
@@ -44,8 +46,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final TextEditingController amountController = TextEditingController();
   String? globalWalletAddress;
   bool _isFetchingDonatedAmount = false;
-bool isCanceled = false; // Default value
- String projectState = "";
+  bool isCanceled = false; // Default value
+  String projectState = "";
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
@@ -53,6 +55,7 @@ bool isCanceled = false; // Default value
   final EthereumAddress contractAddress =
       EthereumAddress.fromHex("0x95a20778c2713a11ff61695e57cd562f78f75754");
   bool isLoading = true;
+  final BlockchainService _blockchainService = BlockchainService();
   
   @override
   void initState() {
@@ -600,7 +603,7 @@ Widget build(BuildContext context) {
                         
                          
                           const SizedBox(height: 100),
-                          if (userType == 0 && projectState == "active")
+if (projectState == "active" && userType == 0)
                             Center(
                               child: ElevatedButton(
                                 onPressed: () => _showDonationPopup(context),
@@ -618,13 +621,76 @@ Widget build(BuildContext context) {
                                         color: Colors.white)),
                               ),
                             ),
-                         
-                          if (userType == 1 &&
+                          if (userType == 0)
+                            FutureBuilder<bool>(
+                              future: _blockchainService.hasDonatedToProject(
+                                widget.projectId,
+                                globalWalletAddress ?? '',
+                              ),
+                              builder: (context, hasDonatedSnapshot) {
+                                print("Has donated to project: ${hasDonatedSnapshot.data}");
+                                if (hasDonatedSnapshot.hasData && hasDonatedSnapshot.data == true) {
+                                  return FutureBuilder<bool>(
+                                    future: _blockchainService.hasExistingVoting(widget.projectId),
+                                    builder: (context, hasVotingSnapshot) {
+                                      print("Has existing voting: ${hasVotingSnapshot.data}");
+                                      if (hasVotingSnapshot.hasData && hasVotingSnapshot.data == true) {
+                                        return Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(top: 20),
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => DonorVoting(
+                                                      projectId: widget.projectId,
+                                                      walletAddress: globalWalletAddress ?? '',
+                                                      projectName: widget.projectName,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 100, vertical: 12),
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(15)),
+                                              ),
+                                              child: const Text('Vote',
+                                                  style: TextStyle(
+                                                      fontSize: 20,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.white)),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return SizedBox.shrink();
+                                    },
+                                  );
+                                }
+                                return SizedBox.shrink();
+                              },
+                            ),
+                        if (userType == 1 &&
                               (projectState == "failed" || projectState == "canceled") &&
                               widget.projectCreatorWallet == globalWalletAddress)
                             Center(
                               child: ElevatedButton(
-                                onPressed: () => print("voting"),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => InitiateVoting(
+                                        projectId: widget.projectId,
+                                        failedProjectAmount: widget.totalAmount,
+                                        walletAddress: globalWalletAddress ?? '',
+                                      ),
+                                    ),
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                                   padding: const EdgeInsets.symmetric(
