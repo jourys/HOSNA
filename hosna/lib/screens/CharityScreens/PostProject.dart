@@ -5,6 +5,7 @@ import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/DraftsPage.dart';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PostProject extends StatefulWidget {
   final String? walletAddress;
@@ -803,7 +804,6 @@ class _PostProjectScreenState extends State<PostProject> {
       print("   - Type: ${_selectedProjectType ?? 'Other'}");
       print("   - Wallet Address: $walletAddress");
 
-      //try {
       // Send project to blockchain
       await blockchainService.addProject(
         _projectNameController.text,
@@ -814,7 +814,25 @@ class _PostProjectScreenState extends State<PostProject> {
         _selectedProjectType ?? 'Other',
       );
 
-      print("✅ Project successfully posted!");
+      // Sync to Firestore
+      final projectCount = await blockchainService.getProjectCount();
+      final projectId = projectCount - 1; // Get the ID of the newly added project
+      
+      // Get project details from blockchain
+      final projectDetails = await blockchainService.getProjectDetails(projectId);
+      
+      await FirebaseFirestore.instance.collection('projects').doc(projectId.toString()).set({
+        'name': projectDetails['name'] ?? _projectNameController.text,
+        'description': projectDetails['description'] ?? _descriptionController.text,
+        'startDate': projectDetails['startDate'] ?? startDate,
+        'endDate': projectDetails['endDate'] ?? deadline,
+        'totalAmount': projectDetails['totalAmount'] ?? totalAmount,
+        'projectType': projectDetails['projectType'] ?? (_selectedProjectType ?? 'Other'),
+        'organization': projectDetails['organization'] ?? walletAddress,
+        'status': projectDetails['status'] ?? 'active',
+      });
+
+      print("✅ Project successfully posted and synced to Firestore!");
 
       // Navigate to project details page only after successful posting
       Navigator.pushReplacement(
@@ -825,12 +843,6 @@ class _PostProjectScreenState extends State<PostProject> {
           ), // Replace with your Browse Project page
         ),
       );
-      //} catch (e) {
-      //print("❌ Error posting project: $e");
-      // ScaffoldMessenger.of(context).showSnackBar(
-      // SnackBar(content: Text('Failed to post project. Error: $e')),
-      //);
-      //}
     } else {
       print("❌ Form validation failed!");
     }

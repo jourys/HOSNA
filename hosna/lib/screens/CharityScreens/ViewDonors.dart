@@ -124,28 +124,30 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
         final BigInt anonAmount = anonymousAmounts[i];
         final BigInt nonAnonAmount = nonAnonymousAmounts[i];
 
-        try {
-          final profile = await _web3Client.call(
-            contract: _donorContract,
-            function: _getDonor,
-            params: [addr],
-          );
+        if (anonAmount > BigInt.zero || nonAnonAmount > BigInt.zero) {
+          try {
+            final profile = await _web3Client.call(
+              contract: _donorContract,
+              function: _getDonor,
+              params: [addr],
+            );
 
-          final walletAddress = profile[4].toString();
-          final profilePic = await _fetchProfilePicture(walletAddress);
+            final walletAddress = profile[4].toString();
+            final profilePic = await _fetchProfilePicture(walletAddress);
 
-          donors.add({
-            'firstName': profile[0],
-            'lastName': profile[1],
-            'email': profile[2],
-            'phone': profile[3],
-            'wallet': walletAddress,
-            'anonymousAmount': anonAmount,
-            'nonAnonymousAmount': nonAnonAmount,
-            'profile_picture': profilePic,
-          });
-        } catch (e) {
-          print("Error fetching profile: $e");
+            donors.add({
+              'firstName': profile[0],
+              'lastName': profile[1],
+              'email': profile[2],
+              'phone': profile[3],
+              'wallet': walletAddress,
+              'anonymousAmount': anonAmount,
+              'nonAnonymousAmount': nonAnonAmount,
+              'profile_picture': profilePic,
+            });
+          } catch (e) {
+            print("Error fetching profile: $e");
+          }
         }
       }
 
