@@ -75,6 +75,10 @@ bool isCanceled = false; // Default value
   }
 
   Future<void> _fetchProjects() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final projectCount = await _blockchainService.getProjectCount();
       print("Total Projects: $projectCount");
