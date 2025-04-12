@@ -208,16 +208,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                   color: Colors.grey,
                                 ),
                                 onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DonorVoting(
-                                        projectId: notification['projectId'],
-                                        walletAddress: widget.walletAddress,
-                                        projectName: notification['projectName'],
-                                      ),
-                                    ),
-                                  );
+  //                                 Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (context) => const DonorVotePage()),
+  // );
                                 },
                               ),
                             );

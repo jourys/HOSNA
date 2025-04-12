@@ -327,45 +327,65 @@ class BlockchainService {
   }
 ]''';
 
-  BlockchainService() {
-    _web3Client = Web3Client(rpcUrl, http.Client());
-    _loadContract(); // Load contract once
-  }
   Future<void> _loadContract() async {
     _contract = DeployedContract(
       ContractAbi.fromJson(abi, "CharityContract"),
       EthereumAddress.fromHex(contractAddress),
     );
   }
+  Future<List<Map<String, dynamic>>> getFailedOrCanceledProjects(BlockchainService blockchainService) async {
+  List<Map<String, dynamic>> filteredProjects = [];
 
-  /// **Fetch the total amount of all failed projects**
-  Future<double> getTotalFailedProjectAmount() async {
-    try {
-      await _loadContract();
-      final function = _contract.function("getFailedProjects");
+  try {
+    int count = await blockchainService.getProjectCount();
 
-      final result = await _web3Client.call(
-        contract: _contract,
-        function: function,
-        params: [],
-      );
+    for (int i = 0; i < count; i++) {
+      final project = await blockchainService.getProjectDetails(i);
 
-      double totalFailedAmount = 0.0;
-      for (var projectId in result[0]) {
-        try {
-          final projectDetails = await getProjectDetails(projectId.toInt());
-          totalFailedAmount += projectDetails["totalAmount"];
-        } catch (e) {
-          print("⚠️ Error fetching details for project ID $projectId: $e");
+      if (!project.containsKey('error')) {
+        final status = project['status'].toString().toLowerCase();
+
+        if (status == 'active') {
+          filteredProjects.add(project);
         }
       }
-
-      return totalFailedAmount;
-    } catch (e) {
-      print("❌ Error fetching failed projects: $e");
-      return 0.0;
     }
+  } catch (e) {
+    print('Error while filtering projects: $e');
   }
+
+  return filteredProjects;
+}
+Future<double> getTotalFailedProjectAmount() async {
+  try {
+    await _loadContract();
+    final function = _contract.function("getFailedProjects");
+
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: function,
+      params: [],
+    );
+
+    double totalFailedAmount = 0.0;
+    final failedProjectIds = result[0] as List<dynamic>;
+
+    for (var projectId in failedProjectIds) {
+      try {
+        final projectDetails = await getProjectDetails(projectId.toInt());
+        final amount = (projectDetails["totalAmount"] ?? 0).toDouble();
+        totalFailedAmount += amount;
+      } catch (e) {
+        print("⚠️ Error fetching details for project ID $projectId: $e");
+      }
+    }
+
+    return totalFailedAmount;
+  } catch (e) {
+    print("❌ Error fetching failed projects: $e");
+    return 0.0;
+  }
+}
 
   Future<void> initiateVoting(BigInt projectId, List<BigInt> selectedProjectIds,
       BigInt startDate, BigInt endDate) async {
@@ -787,6 +807,10 @@ class BlockchainService {
     }
   }
 
+  BlockchainService() {
+    _web3Client = Web3Client(rpcUrl, http.Client());
+  }
+
   Future<void> verifyWalletBalance() async {
     final prefs = await SharedPreferences.getInstance();
     final walletAddress = prefs.getString('walletAddress');
@@ -825,69 +849,71 @@ class BlockchainService {
     }
   }
 
-  Future<Map<String, String?>> getCharityCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
+Future<Map<String, String?>> getCharityCredentials() async {
+  final prefs = await SharedPreferences.getInstance();
 
-    // Retrieve the stored wallet address first
-    final walletAddress = prefs.getString('walletAddress');
+  // Retrieve the stored wallet address first
+  final walletAddress = prefs.getString('walletAddress');
 
-    // If wallet address is null, return early
-    if (walletAddress == null) {
-      print("❌ No wallet address found in SharedPreferences!");
-      return {
-        'privateKey': null,
-        'walletAddress': null,
-      };
-    }
-
-    // Retrieve the private key using the correct key format
-    final privateKeyKey = 'privateKey_$walletAddress';
-    String? privateKey = prefs.getString(privateKeyKey);
-
-    if (privateKey == null) {
-      print("❌ No private key found for wallet: $walletAddress.");
-    } else {
-      print("✅ Retrieved Private Key for wallet: $walletAddress.");
-      print("✅ Retrieved Private Key: $privateKey.");
-    }
-
+  // If wallet address is null, return early
+  if (walletAddress == null) {
+    print("❌ No wallet address found in SharedPreferences!");
     return {
-      'privateKey': privateKey,
-      'walletAddress': walletAddress,
+      'privateKey': null,
+      'walletAddress': null,
     };
   }
 
-  Future<void> connect() async {
-    try {
-      // Retrieve the charity employee's credentials from storage
-      final credentials = await getCharityCredentials();
-      final walletAddress = credentials['walletAddress'];
-      final privateKey = credentials['privateKey'];
+  // Retrieve the private key using the correct key format
+  final privateKeyKey = 'privateKey_$walletAddress';
+  String? privateKey = prefs.getString(privateKeyKey);
 
-      print('🔍 Retrieved Wallet Address: $walletAddress');
-      print(
-          '🔍 Retrieved Private Key: ${privateKey != null ? "Exists ✅" : "Not Found ❌"}');
-
-      if (walletAddress == null) {
-        print("❌ Charity employee wallet address not found. Please log in.");
-        throw Exception("Wallet address not found.");
-      }
-
-      if (privateKey == null) {
-        print("❌ Private key not found. Cannot establish a secure connection.");
-        throw Exception("Private key not found.");
-      }
-
-      // Initialize credentials using the private key
-      _credentials = EthPrivateKey.fromHex(privateKey);
-      _ownAddress = EthereumAddress.fromHex(walletAddress);
-
-      print("✅ Successfully connected with wallet address: $_ownAddress");
-    } catch (e) {
-      print("⚠️ Error during wallet connection: $e");
-      throw Exception("Failed to connect wallet: $e");
-    }
+  if (privateKey == null) {
+    print("❌ No private key found for wallet: $walletAddress.");
+  } else {
+    print("✅ Retrieved Private Key for wallet: $walletAddress.");
+    print("✅ Retrieved Private Key: $privateKey.");
   }
+
+  return {
+    'privateKey': privateKey,
+    'walletAddress': walletAddress,
+  };
+}
+
+
+
+ Future<void> connect() async {
+  try {
+    // Retrieve the charity employee's credentials from storage
+    final credentials = await getCharityCredentials();
+    final walletAddress = credentials['walletAddress'];
+    final privateKey = credentials['privateKey'];
+
+    print('🔍 Retrieved Wallet Address: $walletAddress');
+    print('🔍 Retrieved Private Key: ${privateKey != null ? "Exists ✅" : "Not Found ❌"}');
+
+    if (walletAddress == null) {
+      print("❌ Charity employee wallet address not found. Please log in.");
+      throw Exception("Wallet address not found.");
+    }
+
+    if (privateKey == null) {
+      print("❌ Private key not found. Cannot establish a secure connection.");
+      throw Exception("Private key not found.");
+    }
+
+    // Initialize credentials using the private key
+    _credentials = EthPrivateKey.fromHex(privateKey);
+    _ownAddress = EthereumAddress.fromHex(walletAddress);
+
+    print("✅ Successfully connected with wallet address: $_ownAddress");
+  } catch (e) {
+    print("⚠️ Error during wallet connection: $e");
+    throw Exception("Failed to connect wallet: $e");
+  }
+}
+
 
   Future<void> addProject(
     String name,
@@ -959,27 +985,28 @@ class BlockchainService {
     }
   }
 
-  Future<String?> getWalletAddressFromPrivateKey() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final privateKey = prefs.getString('privateKey');
+Future<String?> getWalletAddressFromPrivateKey() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final privateKey = prefs.getString('privateKey');
 
-      if (privateKey == null || privateKey.isEmpty) {
-        print("❌ No private key found in SharedPreferences.");
-        return null; // Return null instead of an empty string
-      }
-
-      // Derive wallet address from the private key
-      final credentials = EthPrivateKey.fromHex(privateKey);
-      final walletAddress = credentials.address.hex;
-
-      print("✅ Wallet address derived from private key: $walletAddress");
-      return walletAddress;
-    } catch (e) {
-      print("❌ Error deriving wallet address: $e");
-      return null; // Return null to indicate failure
+    if (privateKey == null || privateKey.isEmpty) {
+      print("❌ No private key found in SharedPreferences.");
+      return null; // Return null instead of an empty string
     }
+
+    // Derive wallet address from the private key
+    final credentials = EthPrivateKey.fromHex(privateKey);
+    final walletAddress = credentials.address.hex;
+
+    print("✅ Wallet address derived from private key: $walletAddress");
+    return walletAddress;
+  } catch (e) {
+    print("❌ Error deriving wallet address: $e");
+    return null; // Return null to indicate failure
   }
+}
+
 
   Future<DeployedContract> _getContract() async {
     return DeployedContract(
@@ -1005,9 +1032,9 @@ class BlockchainService {
     }
   }
 
-  // Convert Wei to ETH
-  double weiToEth(BigInt wei) {
-    return wei.toDouble() / BigInt.from(10).pow(18).toDouble();
+  static double weiToEth(BigInt wei) {
+    //Use BigInt for precise division
+    return wei / BigInt.from(10).pow(18);
   }
 
   /// Get project details by ID
@@ -1043,11 +1070,10 @@ class BlockchainService {
             int.parse(result[2].toString()) * 1000),
         "endDate": DateTime.fromMillisecondsSinceEpoch(
             int.parse(result[3].toString()) * 1000),
-        "totalAmount": totalAmountInEth.toDouble(),
-        "donatedAmount": donatedAmountInEth.toDouble(),
+        "totalAmount": totalAmountInEth.toDouble(), // Display in ETH
+        "donatedAmount": donatedAmountInEth.toDouble(), // Display in ETH
         "organization": result[6].toString(),
-        "projectType": result[7].toString(),
-        "state": (result[8] as BigInt).toInt(), // ✅ Add this
+        "projectType": result[7].toString(), // New field
       };
     } catch (e) {
       print("Error fetching project details for ID $projectId: $e");

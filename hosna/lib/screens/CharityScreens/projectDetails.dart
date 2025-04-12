@@ -11,6 +11,11 @@ import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:web3dart/web3dart.dart' as web3;
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+import 'package:hosna/screens/CharityScreens/VotingDetails.dart';
+import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
+import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
+
+
 
 class ProjectDetails extends StatefulWidget {
   final String projectName;
@@ -41,13 +46,19 @@ class ProjectDetails extends StatefulWidget {
   _ProjectDetailsState createState() => _ProjectDetailsState();
 }
 
+
 class _ProjectDetailsState extends State<ProjectDetails> {
+  final donorServices = DonorServices();
+  bool canVote = false; // To store the result of whether the user can vote
+
   int? userType;
   final TextEditingController amountController = TextEditingController();
   String? globalWalletAddress;
   bool _isFetchingDonatedAmount = false;
   bool isCanceled = false; // Default value
   String projectState = "";
+   bool votingInitiated = false; // Initialize votingInitiated as false
+
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
@@ -58,9 +69,11 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final BlockchainService _blockchainService = BlockchainService();
   
   @override
-  void initState() {
+  void initState()  {
     super.initState();
+
     _listenToProjectState();
+
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
@@ -87,8 +100,71 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   set globalPrivateKey(String? privateKey) {
     _globalPrivateKey = privateKey;
     print('✅ Global private key set: $privateKey');
-  
+  _fetchVotingStatus();
   }
+
+Future<void> _fetchVotingStatus() async {
+  print('🔍 Fetching voting status for project: ${widget.projectId}');
+
+  try {
+    if (globalWalletAddress == null) {
+      print('❌ Wallet address is null. Cannot check voting eligibility.');
+      setState(() {
+        canVote = false;
+        votingInitiated = false;
+      });
+      return;
+    }
+
+    final BigInt bigProjectId = BigInt.from(widget.projectId);
+    print('🔢 Converted project ID to BigInt: $bigProjectId');
+    print('🧾 Checking if donor can vote using address: $globalWalletAddress');
+    
+
+print('🛑 isCanceled: $isCanceled');
+
+canVote = await donorServices.checkIfDonorCanVote(
+  bigProjectId,
+  globalWalletAddress.toString(),
+);
+
+    print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
+
+    print('✅ Donor voting eligibility status: $canVote');
+
+    final projectDocRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString());
+
+    final projectDoc = await projectDocRef.get();
+    print('📌 Fetched document for Project ID: ${widget.projectId}');
+
+    if (projectDoc.exists) {
+      final data = projectDoc.data();
+      print('📄 Project document exists. Data: $data');
+
+      setState(() {
+        votingInitiated = data?['votingInitiated'] ?? false;
+        print('🚦 Voting initiated status set to: $votingInitiated');
+      });
+    } else {
+      print('❌ Project document not found in Firestore. Creating default document...');
+      await projectDocRef.set({
+        'votingInitiated': false,
+      });
+
+      print('✅ Default project document created with votingInitiated = false');
+
+      setState(() {
+        votingInitiated = false;
+        print('🚦 Voting initiated status set to default (false)');
+      });
+    }
+  } catch (e) {
+    print('⚠️ Error while fetching voting status: $e');
+  }
+}
+
 
 StreamSubscription<DocumentSnapshot>? _projectSubscription;
 void _listenToProjectState() {
@@ -98,16 +174,25 @@ void _listenToProjectState() {
       .snapshots()
       .listen((doc) {
     if (doc.exists) {
-      setState(() {
-        isCanceled = (doc['isCanceled'] is bool) ? doc['isCanceled'] : doc['isCanceled'] == "canceled";
-        projectState = isCanceled
-            ? "canceled"
-            : getProjectState(doc.data() as Map<String, dynamic>);
-        
-        print("Firestore data: ${doc.data()}");
-        print("isCanceled: $isCanceled");
-        print("Final Project Status: $projectState");
-      });
+     setState(() {
+  final data = doc.data() as Map<String, dynamic>;
+  if (data.containsKey('isCanceled')) {
+    isCanceled = data['isCanceled'] is bool
+        ? data['isCanceled']
+        : data['isCanceled'] == "canceled";
+  } else {
+    isCanceled = false; // or whatever default makes sense
+  }
+
+  projectState = isCanceled
+      ? "canceled"
+      : getProjectState(data);
+
+  print("Firestore data: $data");
+  print("isCanceled: $isCanceled");
+  print("Final Project Status: $projectState");
+});
+
     } else {
       print("Document not found");
     }
@@ -115,6 +200,8 @@ void _listenToProjectState() {
     print("Error loading project state: $e");
   });
 }
+
+
 
 @override
 void dispose() {
@@ -251,57 +338,49 @@ void dispose() {
 
 String getProjectState(Map<String, dynamic> project) {
   if (isCanceled == "canceled") {
-    print("Project is canceled globally.");
-    return "canceled"; // If the project is canceled globally, return this state
+    print("📛 Project is canceled globally.");
+    return "canceled";
   }
 
   DateTime now = DateTime.now();
 
-  // Handle startDate (could be DateTime, String, or null)
+  // 🗓️ Handle startDate
   DateTime startDate;
   if (project['startDate'] == null) {
-    return "upcoming"; // If startDate is null, assume the project is upcoming
+    return "upcoming";
   } else if (project['startDate'] is DateTime) {
     startDate = project['startDate'];
+  } else if (project['startDate'] is Timestamp) {
+    startDate = (project['startDate'] as Timestamp).toDate();
   } else {
-    startDate = DateTime.parse(project['startDate']);
+    startDate = DateTime.parse(project['startDate'].toString());
   }
 
-  // Handle endDate (could be DateTime, String, or null)
+  // 🗓️ Handle endDate
   DateTime endDate;
   if (project['endDate'] == null) {
-    return "active"; // If endDate is null, assume the project is active
+    return "active";
   } else if (project['endDate'] is DateTime) {
     endDate = project['endDate'];
+  } else if (project['endDate'] is Timestamp) {
+    endDate = (project['endDate'] as Timestamp).toDate();
   } else {
-    endDate = DateTime.parse(project['endDate']);
+    endDate = DateTime.parse(project['endDate'].toString());
   }
 
-  // Handle totalAmount (could be int, String, or null)
-  double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
-  double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
+  // 💰 Handle total and donated amounts
+  double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+  double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
-  // Check if the current date is before the start date
-  if (now.isBefore(startDate)) {
-    return "upcoming"; // Project is upcoming
-  }
-
-  // Check if the project has reached the goal
-  if (donatedAmount >= totalAmount) {
-    return "in-progress"; // Project reached the goal
-  }
-
-  // Check if the project failed (past the end date and not completed)
-  if (now.isAfter(endDate)) {
-    return "failed"; // Project failed to reach the target
-  }
-
-  // Check if the project is active
+  // 🔍 Determine project status
+  if (now.isBefore(startDate)) return "upcoming";
+  if (donatedAmount >= totalAmount) return "in-progress";
+  if (now.isAfter(endDate)) return "failed";
   if (now.isAfter(startDate) && now.isBefore(endDate) && donatedAmount < totalAmount && isCanceled != "canceled") {
-    return "active"; // Project is ongoing and goal is not reached yet
+    return "active";
   }
 
-  return "unknown"; // If none of the conditions match, return an unknown state
+  return "unknown";
 }
 
   Color _getStateColor(String state) {
@@ -523,8 +602,8 @@ Widget build(BuildContext context) {
                             ],
                           ),
                            SizedBox(height: 20),
-                           if (userType == 1 &&
-                              widget.projectCreatorWallet == globalWalletAddress) 
+                          //  if (userType == 1 &&
+                          //     widget.projectCreatorWallet == globalWalletAddress) 
                           GestureDetector(
                             onTap: () {
                               print("View all donors");
@@ -621,92 +700,131 @@ if (projectState == "active" && userType == 0)
                                         color: Colors.white)),
                               ),
                             ),
-                          if (userType == 0)
-                            FutureBuilder<bool>(
-                              future: _blockchainService.hasDonatedToProject(
-                                widget.projectId,
-                                globalWalletAddress ?? '',
-                              ),
-                              builder: (context, hasDonatedSnapshot) {
-                                print("Has donated to project: ${hasDonatedSnapshot.data}");
-                                if (hasDonatedSnapshot.hasData && hasDonatedSnapshot.data == true) {
-                                  return FutureBuilder<bool>(
-                                    future: _blockchainService.hasExistingVoting(widget.projectId),
-                                    builder: (context, hasVotingSnapshot) {
-                                      print("Has existing voting: ${hasVotingSnapshot.data}");
-                                      if (hasVotingSnapshot.hasData && hasVotingSnapshot.data == true) {
-                                        return Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(top: 20),
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => DonorVoting(
-                                                      projectId: widget.projectId,
-                                                      walletAddress: globalWalletAddress ?? '',
-                                                      projectName: widget.projectName,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 100, vertical: 12),
-                                                shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(15)),
-                                              ),
-                                              child: const Text('Vote',
-                                                  style: TextStyle(
-                                                      fontSize: 20,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.white)),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return SizedBox.shrink();
-                                    },
-                                  );
-                                }
-                                return SizedBox.shrink();
-                              },
-                            ),
-                        if (userType == 1 &&
-                              (projectState == "failed" || projectState == "canceled") &&
-                              widget.projectCreatorWallet == globalWalletAddress)
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => InitiateVoting(
-                                        projectId: widget.projectId,
-                                        failedProjectAmount: widget.totalAmount,
-                                        walletAddress: globalWalletAddress ?? '',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 100, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15)),
-                                ),
-                                child: const Text('Initiate Voting',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white)),
-                              ),
-                            ),
+                        
+                        // Assuming `votingInitiated` is a boolean that tracks if the voting process has been initiated
+// You can replace this with the actual state or variable from your contract or state management
 
-                          
+if (userType == 0 &&
+    (projectState == "failed" || projectState == "canceled")
+    //  && widget.projectCreatorWallet == globalWalletAddress
+    )
+ Center(
+            child: ElevatedButton(
+              onPressed: () async {
+             if (votingInitiated) {
+  try {
+    // 🔍 Step 1: Fetch the votingId from Firestore
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .get();
+
+    if (projectSnapshot.exists) {
+      final data = projectSnapshot.data() as Map<String, dynamic>;
+      final votingId = data['votingId'].toString();
+
+      if (votingId != null) {
+        // ✅ Step 2: Navigate to VotingDetailsPage with the votingId
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VotingDetailsPage(
+              walletAddress: globalWalletAddress ?? '',
+              votingId: votingId.toString(), // 👈 Pass it here
+            ),
+          ),
+        );
+      } else {
+        print("❌ votingId is null");
+        // Optionally show a snackbar or alert to user
+      }
+    }
+  } catch (e) {
+    print("❌ Error fetching votingId: $e");
+  }
+}
+else {
+                   Navigator.push(
+                    context,
+               MaterialPageRoute(
+              builder: (context) => InitiateVoting(walletAddress: globalWalletAddress ?? '' , projectId: widget.projectId),
+            ),
+             );
+
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+              child: Text(
+                votingInitiated ? 'Check Voting' : 'Start Voting',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
+
+
+if (canVote && votingInitiated && userType == 0 )
+  Center(
+    child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+   onPressed: ()async {
+    try {
+    // 🔍 Step 1: Fetch the votingId from Firestore
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .get();
+
+    if (projectSnapshot.exists) {
+      final data = projectSnapshot.data() as Map<String, dynamic>;
+      final votingId = data['votingId'].toString();
+
+      if (votingId != null) {
+        // ✅ Step 2: Navigate to VotingDetailsPage with the votingId
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DonorVotePage(
+              walletAddress: globalWalletAddress ?? '',
+              votingId: votingId.toString(), // 👈 Pass it here
+            ),
+          ),
+        );
+      } else {
+        print("❌ votingId is null");
+        // Optionally show a snackbar or alert to user
+      }
+    }
+  } catch (e) {
+    print("❌ Error fetching votingId: $e");
+  }
+},
+
+
+      child: Text(
+        "Vote Now",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    ),
+  ), 
                           if (userType == 1 &&
                               projectState == "in-progress" &&
                               widget.projectCreatorWallet == globalWalletAddress)
@@ -1105,7 +1223,7 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     // Load contract
     final donationContract = DeployedContract(
       ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-      EthereumAddress.fromHex('0x0913167630dac537dd9477c68c3c7806159871C9'),
+      EthereumAddress.fromHex('0x725a8FA30943461C4F1A0cE33F2ac2D00fa249F1'),
     );
 
     final function = donationContract.function('donate');
@@ -1249,3 +1367,206 @@ Future<void> _storeDonation(String donorAddress, double amount, bool isAnonymous
   }
 ]''';
 
+
+class DonorServices {
+  final Web3Client _web3Client;
+  final DeployedContract _contract;
+
+  // Contract address and RPC URL as constants
+  static const String _rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
+  static const String _contractAddress = '0x0913167630dac537dd9477c68c3c7806159871C9'; // Contract address on Sepolia
+  
+  // Constructor for initializing Web3 client and contract
+  DonorServices()
+      : _web3Client = Web3Client(_rpcUrl, Client()),
+        _contract = DeployedContract(
+            ContractAbi.fromJson(_contractABI, 'DonationContract'),
+            EthereumAddress.fromHex(_contractAddress));
+
+  // Contract ABI (replace with actual ABI string)
+  static const String _contractABI = ''' 
+  [
+    {
+      "inputs": [{"internalType": "uint256", "name": "projectId", "type": "uint256"}],
+      "name": "getProjectDonorsWithAmounts",
+      "outputs": [
+        {"internalType": "address[]", "name": "", "type": "address[]"},
+        {"internalType": "uint256[]", "name": "", "type": "uint256[]"},
+        {"internalType": "uint256[]", "name": "", "type": "uint256[]"}
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"internalType": "uint256", "name": "projectId", "type": "uint256"}],
+      "name": "getProjectState",
+      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {"internalType": "uint256", "name": "projectId", "type": "uint256"},
+        {"internalType": "address", "name": "donor", "type": "address"}
+      ],
+      "name": "getDonorInfo",
+      "outputs": [
+        {"internalType": "uint256", "name": "", "type": "uint256"},
+        {"internalType": "uint256", "name": "", "type": "uint256"}
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+  ''';
+
+  // Fetch the project donors from the blockchain
+  Future<List<dynamic>> fetchProjectDonors(BigInt projectId) async {
+    final getDonorsFunction = _contract.function('getProjectDonorsWithAmounts');
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: getDonorsFunction,
+      params: [projectId],
+    );
+
+    if (result.isEmpty) {
+      print("❌ No donors found for project.");
+      return [];
+    }
+
+    return result;
+  }
+
+  // Fetch project state to check if voting has started
+  Future<String> fetchProjectState(BigInt projectId) async {
+    final getProjectStateFunction = _contract.function('getProjectState');
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: getProjectStateFunction,
+      params: [projectId],
+    );
+
+    return result[0]; // Assuming the state is a string like "VotingStarted"
+  }
+
+
+
+// Check if the user has donated to the project and if voting has started
+Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
+  try {
+    print("📌 Starting donor check for project ID: $projectId");
+    print("👤 Checking for user address: $userAddress");
+
+    if (userAddress == "null" || userAddress.isEmpty) {
+      print("❌ Invalid user address provided.");
+      return false;
+    }
+
+    final normalizedUserAddress = userAddress.toLowerCase();
+
+    // Fetch Firestore project data (to check if project is canceled)
+    final firestoreData = await fetchProjectFirestoreData(projectId);
+    print("📄 Firestore data: $firestoreData");
+
+    bool isCanceled = firestoreData['isCanceled'] ?? false;
+    if (isCanceled) {
+      print(" ✅  Project is canceled.  Voting has started.");
+      return true;
+    }
+
+    final donorsResult = await fetchProjectDonors(projectId);
+    print("📦 Donors fetched from blockchain: $donorsResult");
+
+    List<EthereumAddress> donorAddresses = List<EthereumAddress>.from(donorsResult[0]);
+    print("📜 List of donor addresses:");
+    donorAddresses.forEach((addr) => print("   ➤ ${addr.hex}"));
+
+    bool isDonor = donorAddresses.any(
+      (address) => address.hex.toLowerCase() == normalizedUserAddress,
+    );
+
+    print(isDonor
+        ? "✅ User IS a donor for this project."
+        : "❌ User is NOT a donor for this project.");
+
+    if (!isDonor) return false;
+
+    try {
+      // Fetch project state from blockchain
+      final projectState = await fetchProjectState(projectId);
+      print("📊 Project state fetched: $projectState");
+
+      if (projectState == "VotingStarted") {
+        print("🗳️ Voting has started. User can vote.");
+        return true;
+      } else {
+        print("🚫 Voting has not started yet.");
+        return false;
+      }
+    } catch (e) {
+      print("❗ Error while fetching project state: $e");
+      return false;
+    }
+  } catch (e) {
+    print("⚠️ Error in checkIfDonorCanVote: $e");
+    return false;
+  }
+}
+
+// Fetch Firestore data for project status (e.g., canceled or voting initiated)
+
+Future<Map<String, dynamic>> fetchProjectFirestoreData(BigInt projectId) async {
+  try {
+    // Reference to the Firestore collection containing project data
+    final projectDocRef = FirebaseFirestore.instance.collection('projects').doc(projectId.toString());
+
+    // Fetch the document data
+    final projectSnapshot = await projectDocRef.get();
+
+    if (projectSnapshot.exists) {
+      // Document found, returning the necessary fields
+      final projectData = projectSnapshot.data()!;
+      return {
+        'isCanceled': projectData['isCanceled'] ?? false,
+        'votingInitiated': projectData['votingInitiated'] ?? false,
+      };
+    } else {
+      print("❌ Project not found in Firestore.");
+      return {
+        'isCanceled': false,
+        'votingInitiated': false,
+      };
+    }
+  } catch (e) {
+    print("⚠️ Error fetching project data from Firestore: $e");
+    return {
+      'isCanceled': false,
+      'votingInitiated': false,
+    };
+  }
+}
+
+Future<int> getProjectDonations(BigInt projectId) async {
+  final getDonorsFunction = _contract.function('getProjectDonorsWithAmounts');
+  final result = await _web3Client.call(
+    contract: _contract,
+    function: getDonorsFunction,
+    params: [projectId],
+  );
+
+  if (result.isEmpty) {
+    print("❌ No donations found for project $projectId");
+    return 0;
+  }
+
+  try {
+    final donationAmounts = (result[1] as List).cast<BigInt>();
+    final totalAmount = donationAmounts.fold<BigInt>(BigInt.zero, (prev, element) => prev + element);
+    return totalAmount.toInt();
+  } catch (e) {
+    print("🚨 Error processing donations: $e");
+    return 0;
+  }
+}
+
+}

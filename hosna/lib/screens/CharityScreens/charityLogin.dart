@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
 import 'package:http/http.dart';
@@ -9,7 +10,7 @@ import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -99,12 +100,15 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
             } else {
               print("❌ No private key found for this wallet.");
             }
+
           } catch (e) {
             print('Error saving wallet address or retrieving private key: $e');
           }
 
-          SuspensionListener(walletAddress);
-          _checkAccountStatusAndNavigate(context, walletAddress.toString());
+ 
+
+SuspensionListener(walletAddress);
+_checkAccountStatusAndNavigate(context, walletAddress.toString());
           // Navigate to main screen
           // Future.delayed(const Duration(seconds: 1), () {
           //   Navigator.pushReplacement(
@@ -134,19 +138,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       );
     }
   }
-
 // Function to retrieve the private key from SharedPreferences
   Future<String?> _getPrivateKey(String walletAddress) async {
-    try {
-      DocumentSnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .get();
+     try {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(walletAddress)
+        .get();
 
-      if (snapshot.exists && snapshot['isSuspend'] == true) {
-        print("🚫 Access denied! Account is suspended.");
-        return null;
-      }
+    if (snapshot.exists && snapshot['isSuspend'] == true) {
+      print("🚫 Access denied! Account is suspended.");
+      return null;
+    }
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
       // Retrieve private key using the correct key format
@@ -160,10 +163,10 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       }
 
       return privateKey;
-    } catch (e) {
-      print('⚠️ Error retrieving private key: $e');
-      return null;
-    }
+      } catch (e) {
+    print('⚠️ Error retrieving private key: $e');
+    return null;
+  }
   }
 
   /// Fetch wallet address from contract using email
@@ -203,16 +206,16 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
   /// Save wallet address and private key to SharedPreferences
   Future<void> _saveWalletDetails(String walletAddress) async {
-    try {
-      DocumentSnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .get();
+     try {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(walletAddress)
+        .get();
 
-      if (snapshot.exists && snapshot['isSuspend'] == true) {
-        print("🚫 Access denied! Account is suspended.");
-        return null;
-      }
+    if (snapshot.exists && snapshot['isSuspend'] == true) {
+      print("🚫 Access denied! Account is suspended.");
+      return null;
+    }
       final blockchainService = BlockchainService();
       final credentials = await blockchainService.getCharityCredentials();
       final privateKey = credentials['privateKey'];
@@ -236,105 +239,57 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     }
   }
 
-  Future<void> _checkAccountStatusAndNavigate(
-      BuildContext context, String walletAddress) async {
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .get();
+Future<void> _checkAccountStatusAndNavigate(BuildContext context, String walletAddress) async {
+  try {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(walletAddress).get();
 
-      if (userDoc.exists) {
-        String accountStatus = userDoc['accountStatus'];
+    if (userDoc.exists) {
+      String accountStatus = userDoc['accountStatus'];
 
-        if (accountStatus == 'approved') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  CharityMainScreen(walletAddress: walletAddress),
-            ),
-          );
-        } else if (accountStatus == 'pending') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WaitingPage(), // Navigate to a waiting page
-            ),
-          );
-        } else if (accountStatus == 'rejected') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  "Your account has been rejected. Contact support for details."),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("User not found. Please register."),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Error checking account status: $e");
+      if (accountStatus == 'approved') {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CharityMainScreen(walletAddress: walletAddress),
+    ),
+  );
+}
+  else if (accountStatus == 'pending') {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => WaitingPage(), // Navigate to a waiting page
+    ),
+  );
+} else if (accountStatus == 'rejected') {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("Your account has been rejected. Contact support for details."),
+      backgroundColor: Colors.red,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("An error occurred. Please try again."),
+          content: Text("User not found. Please register."),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
     }
-  }
-
-  void _showResetPasswordDialog(BuildContext context) {
-    final TextEditingController _resetEmailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Reset Password'),
-        content: TextField(
-          controller: _resetEmailController,
-          decoration: InputDecoration(
-            labelText: 'Enter your email address',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              String email = _resetEmailController.text.trim();
-              try {
-                await FirebaseAuth.instance
-                    .sendPasswordResetEmail(email: email);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text("Password reset email sent to $email")),
-                );
-              } catch (e) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error: ${e.toString()}")),
-                );
-              }
-            },
-            child: Text('Send'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
-        ],
+  } catch (e) {
+    print("❌ Error checking account status: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("An error occurred. Please try again."),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
       ),
     );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -395,16 +350,6 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                   ),
                 ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => _showResetPasswordDialog(context),
-                  child: Text(
-                    'Forgot Password?',
-                    style: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
-                  ),
-                ),
-              ),
               SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
@@ -424,16 +369,16 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   }
 }
 
+
 class WaitingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Account Pending Approval"),
+        title: const Text("Account Pending Approval") ,
         centerTitle: true,
-
-        backgroundColor:
-            const Color.fromARGB(255, 255, 255, 255), // Dark blue header
+         
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Dark blue header
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 55.0),
@@ -441,11 +386,11 @@ class WaitingPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(LucideIcons.hourglass,
-                size: 80,
-                color:
-                    const Color.fromARGB(159, 68, 113, 150)), // Hourglass icon
-
+            Icon(
+              LucideIcons.hourglass,
+              size: 80,
+              color: const Color.fromARGB(159, 68, 113, 150)), // Hourglass icon
+            
             const SizedBox(height: 20),
             const Text(
               "Your account is under review.",
@@ -462,6 +407,8 @@ class WaitingPage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.black87),
             ),
+            
+          
           ],
         ),
       ),

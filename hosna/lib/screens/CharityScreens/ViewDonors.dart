@@ -15,7 +15,7 @@ class ViewDonorsPage extends StatefulWidget {
 
 class _ViewDonorsPageState extends State<ViewDonorsPage> {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String donationContractAddress = '0x0913167630dac537dd9477c68c3c7806159871C9';
+  final String donationContractAddress = '0x725a8FA30943461C4F1A0cE33F2ac2D00fa249F1';
   final String donorContractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
 
   late Web3Client _web3Client;
@@ -124,7 +124,6 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
         final BigInt anonAmount = anonymousAmounts[i];
         final BigInt nonAnonAmount = nonAnonymousAmounts[i];
 
-        if (anonAmount > BigInt.zero || nonAnonAmount > BigInt.zero) {
           try {
             final profile = await _web3Client.call(
               contract: _donorContract,
@@ -149,7 +148,7 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
             print("Error fetching profile: $e");
           }
         }
-      }
+      
 
       setState(() {
         donorProfiles = donors;

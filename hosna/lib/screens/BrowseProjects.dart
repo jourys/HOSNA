@@ -75,6 +75,10 @@ bool isCanceled = false; // Default value
   }
 
   Future<void> _fetchProjects() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final projectCount = await _blockchainService.getProjectCount();
       print("Total Projects: $projectCount");
@@ -187,10 +191,9 @@ bool isCanceled = false; // Default value
     }
   }
 }
-
 Future<bool> _isProjectCanceled(String projectId) async {
   try {
-    // Fetch the project document from Firestore using the projectId
+    // Fetch the project document from Firestore
     DocumentSnapshot doc = await FirebaseFirestore.instance
         .collection('projects')
         .doc(projectId)
@@ -198,18 +201,25 @@ Future<bool> _isProjectCanceled(String projectId) async {
 
     // Check if the document exists
     if (doc.exists) {
-      // Retrieve the 'isCanceled' field and return true or false
-      bool isCanceled = doc['isCanceled'] ?? false;
-      return isCanceled; // Return true if canceled, false otherwise
+      final data = doc.data() as Map<String, dynamic>?;
+
+      // Check if the 'isCanceled' field exists in the document
+      if (data != null && data.containsKey('isCanceled')) {
+        return data['isCanceled'] == true;
+      } else {
+        print("⚠️ 'isCanceled' field not found, returning false by default.");
+        return false;
+      }
     } else {
-      print("Project not found");
-      return false; // If the project does not exist, return false
+      print("❌ Project not found.");
+      return false;
     }
   } catch (e) {
-    print("Error fetching project state: $e");
-    return false; // Return false in case of an error
+    print("⚠️ Error fetching project state: $e");
+    return false;
   }
 }
+
 
   Color _getStateColor(String state) {
     switch (state) {
