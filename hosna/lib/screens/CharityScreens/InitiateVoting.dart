@@ -255,15 +255,19 @@ Future<void> _initiateVotingOnBlockchain() async {
     print('🧾 Creating transaction...');
     try {
   final txHash = await _web3Client.sendTransaction(
-    _credentials,
-    web3.Transaction(
-      to: _contract.address,
-      gasPrice: EtherAmount.fromUnitAndValue(EtherUnit.gwei, 120),  // Higher gas price
-      maxGas: 500000,
-      data: _contract.function('initiateVoting').encodeCall([votingDuration, projectIds, projectNames]),
-    ),
-    chainId: 11155111,
-  );
+  _credentials,
+  web3.Transaction(
+    to: _contract.address,
+    gasPrice: EtherAmount.fromUnitAndValue(EtherUnit.gwei, 20),
+    data: _contract.function('initiateVoting').encodeCall([
+      votingDuration,
+      projectIds,
+      projectNames,
+    ]),
+  ),
+  chainId: 11155111,
+);
+
   print("✅ Transaction sent! Hash: $txHash");
 } catch (e) {
   print("❌ Transaction failed: $e");
@@ -286,20 +290,30 @@ Future<void> _initiateVotingOnBlockchain() async {
       showWarning('⚠️ Voting counter not found.');
       return;
     }
-
+    
     final votingCounter = result[0].toString();  // The votingCounter is returned by the function
-    print('🎉 Voting Counter (ID): $votingCounter');
+print('🎉 Voting Counter (ID): $votingCounter');
 
-    // Save the voting ID and initiate status to Firebase
+// ✅ Step 1: Save voting ID and initiation status to the initiating project's Firestore document
 await FirebaseFirestore.instance
     .collection('projects')
     .doc(widget.projectId.toString()) // Use the projectId as the document ID
     .set({
-      'votingId': votingCounter, // Save the voting counter directly
-      'votingInitiated': true,    // Add the 'votingInitiated' field
-    }, SetOptions(merge: true)); // Merge to avoid overwriting existing data
+      'votingId': votingCounter,       // Save the voting counter
+      'votingInitiated': true,         // Mark the voting as initiated
+    }, SetOptions(merge: true));        // Merge to preserve existing project data
 
-print("✅ Voting ID and status saved to Firestore: $votingCounter");
+// ✅ Step 2: Create a new document in the 'votings' collection
+await FirebaseFirestore.instance
+    .collection('votings')
+    .doc(votingCounter) // Use the voting ID as the document ID
+    .set({
+      'projectIds': projectIds.map((id) => id.toInt()).toList(), // Convert BigInt list to List<int>
+      'projectNames': projectNames,                              // Save project names
+    });
+
+print("✅ Voting ID and details successfully saved to Firestore: $votingCounter");
+
 await VoteListener.listenForVotingStatus(int.parse(votingCounter) , widget.projectId);
     print("✅ listener staarttttt");
 
@@ -745,6 +759,19 @@ class VoteListener {
   late Credentials _credentials;
   late DeployedContract _contract;
 
+
+late String projectName;
+late String projectDescription;
+late DateTime startDate;
+late DateTime endDate;
+late double totalAmount;
+late double donatedAmount;
+late String organization;
+late String projectType;
+
+
+
+
   final String contractABI = '''
   [
     {
@@ -1015,7 +1042,9 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
           // Optionally, call transferFundsToWinner
           await listener.initializeCredentials();
           await listener._loadContract(); // helper to reload _contract
+          await listener.fetchAndStoreProjectDetails();
           await listener.transferFundsToWinner(votingId , projectId);
+
         }
       } catch (e) {
         print('⚠️ Error checking voting status: $e');
@@ -1067,14 +1096,13 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
     print("❌ VoteCast listener cancelled.");
   }
 
-    Future<void> transferFundsToWinner(int votingId, int projectId) async {
+Future<void> transferFundsToWinner(int votingId, int senderProjectId) async {
   try {
-    print("🚀 Starting fund transfer process for voting ID: $votingId, Project ID: $projectId");
+    print("🚀 Starting fund transfer process for voting ID: $votingId, Sender Project ID: $senderProjectId");
 
     final getVotingDetails = _contract.function('getVotingDetails');
-    final fundProject = _contract.function('fundProject');
 
-    // Fetch voting details
+    // Step 1: Fetch voting details from smart contract
     final votingDetails = await _client.call(
       contract: _contract,
       function: getVotingDetails,
@@ -1087,12 +1115,11 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
     print("📋 Retrieved Project Names: $projectNames");
     print("📊 Retrieved Percentages: $percentages");
 
-    // Find the winning project
+    // Step 2: Determine the winning project
     int winningIndex = -1;
     BigInt maxPercentage = BigInt.zero;
 
     for (int i = 0; i < percentages.length; i++) {
-      print("🔍 Checking project at index $i: ${projectNames[i]} with percentage ${percentages[i]}");
       if (percentages[i] > maxPercentage) {
         maxPercentage = percentages[i];
         winningIndex = i;
@@ -1100,38 +1127,249 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
     }
 
     if (winningIndex == -1) {
-      print("❌ No project has votes.");
+      print("❌ No winning project found (no votes cast).");
       return;
     }
 
-    final receiver = projectNames[winningIndex];
-    print("🏆 Winning project: $receiver (Index $winningIndex with ${maxPercentage.toInt()}%)");
+    final winnerName = projectNames[winningIndex];
+    print("🏆 Winning project: $winnerName");
 
-    final donorServices = DonorServices();  // Initialize DonorServices
+    // Step 3: Fetch project IDs from Firestore
+    final votingDoc = await FirebaseFirestore.instance.collection('votings').doc(votingId.toString()).get();
+    final List<dynamic>? projectIds = votingDoc.data()?['projectIds'];
 
-    // Fetch the total donations for the winning project using the provided projectId
-    final amount = await donorServices.getProjectDonations(BigInt.from(projectId));  
-    print("💰 Total donations: $amount");
+    if (projectIds == null || winningIndex >= projectIds.length) {
+      print("❌ Could not find matching project ID for winner in Firestore.");
+      return;
+    }
 
-    // Transfer funds to the winning project
-    await _client.sendTransaction(
-      _credentials,
-      web3.Transaction.callContract(
-        contract: _contract,
-        function: fundProject,
-        parameters: [BigInt.from(votingId), BigInt.from(winningIndex)],
-        value: EtherAmount.inWei(BigInt.from(amount)),
-      ),
-      chainId: 11155111, // Sepolia
+    final int winnerProjectId = projectIds[winningIndex];
+    print("🏷️ Winner project ID: $winnerProjectId");
+
+    // Step 4: Get winner wallet address
+    final winnerDetails = await BlockchainService().getProjectDetails(winnerProjectId);
+    if (winnerDetails.containsKey("error")) {
+      print("❌ Error fetching winner project details: ${winnerDetails["error"]}");
+      return;
+    }
+
+    final String receiverWalletAddress = winnerDetails["organization"];
+    print("🏦 Winner's wallet address: $receiverWalletAddress");
+
+    // Step 5: Get sender wallet address (from project ID)
+    final senderDetails = await BlockchainService().getProjectDetails(senderProjectId);
+    if (senderDetails.containsKey("error")) {
+      print("❌ Error fetching sender project details: ${senderDetails["error"]}");
+      return;
+    }
+
+    final String senderWalletAddress = senderDetails["organization"];
+    print("🏦 Sender's wallet address: $senderWalletAddress");
+
+    // Step 6: Use DonationService to perform the transaction
+    final donationService = DonationService(
+      senderAddress: senderWalletAddress,
+      receiverAddress: receiverWalletAddress,
     );
 
-    print("✅ Funds successfully transferred to the winning project: $receiver");
+    await donationService.initializeContract();
+
+    final txHash = await donationService.transferFundsBetweenProjects(senderProjectId, winnerProjectId);
+
+    print("✅ Funds successfully transferred to winning project. Transaction Hash: $txHash");
   } catch (e, stackTrace) {
-    print("🚨 Exception occurred during fund transfer: $e");
+    print("🚨 Exception during fund transfer: $e");
     print("🧯 Stacktrace: $stackTrace");
   }
 }
 
+Future<void> fetchAndStoreProjectDetails() async {
+  final blockchainService = BlockchainService();
+
+  final details = await blockchainService.getProjectDetails(projectId);
+
+  if (details.containsKey("error")) {
+    print(details["error"]);
+    return;
+  }
+
+  projectName = details["name"];
+  projectDescription = details["description"];
+  startDate = details["startDate"];
+  endDate = details["endDate"];
+  totalAmount = details["totalAmount"];
+  donatedAmount = details["donatedAmount"];
+  organization = details["organization"];
+  projectType = details["projectType"];
+
+  print("📦 Project details loaded successfully for project ID: $projectId");
+  print("📝 Name: $projectName");
+  print("📄 Description: $projectDescription");
+  print("📅 Start Date: $startDate");
+  print("📅 End Date: $endDate");
+  print("💰 Total Amount: $totalAmount");
+  print("🎁 Donated Amount: $donatedAmount");
+  print("🏢 Organization: $organization");
+  print("🏷️ Project Type: $projectType");
+}
 
 }
 
+
+class DonationService {
+  final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
+  final String contractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9'; // Replace with your actual contract address
+
+  final String senderAddress;
+  final String receiverAddress;
+
+  late Web3Client ethClient;
+  late DeployedContract contract;
+  late EthereumAddress senderEthAddress;
+  late Credentials credentials;
+
+  DonationService({
+    required this.senderAddress,
+    required this.receiverAddress,
+  }) {
+    ethClient = Web3Client(rpcUrl, Client());
+  }
+
+  Future<void> initializeContract() async {
+    final abi = '''
+    [
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "fromProjectId", "type": "uint256" },
+          { "internalType": "uint256", "name": "toProjectId", "type": "uint256" }
+        ],
+        "name": "transferProjectFundsToAnother",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ]
+    ''';
+
+    final privateKey = await _loadPrivateKey();
+    if (privateKey == null) {
+      throw Exception("Private key not found. Please ensure the wallet is connected.");
+    }
+
+    credentials = EthPrivateKey.fromHex(privateKey);
+    senderEthAddress = EthereumAddress.fromHex(senderAddress);
+
+    contract = DeployedContract(
+      ContractAbi.fromJson(abi, "DonationContract"),
+      EthereumAddress.fromHex(contractAddress),
+    );
+  }
+
+  Future<String> transferFundsBetweenProjects(int fromProjectId, int toProjectId) async {
+  final transferFunction = contract.function("transferProjectFundsToAnother");
+
+  try {
+    // Fetch current gas price and increase it for faster processing
+
+// Encode the function call manually
+final encodedData = transferFunction.encodeCall([
+  BigInt.from(fromProjectId),
+  BigInt.from(toProjectId),
+]);
+
+// Send the transaction
+final txHash = await ethClient.sendTransaction(
+  credentials,
+  web3.Transaction(
+    to: contract.address,
+    gasPrice: web3.EtherAmount.fromUnitAndValue(web3.EtherUnit.gwei, 50), // Example: 50 Gwei
+    maxGas: 300000,
+    data: encodedData,
+  ),
+  chainId: 11155111,
+  fetchChainIdFromNetworkId: false,
+);
+
+
+    print('🔗 Transaction Hash: $txHash'); // ✅ Always log for debug/monitoring
+
+    // Wait for the transaction to be mined
+    final receipt = await _waitForReceipt(txHash);
+    if (receipt == null) {
+      throw Exception("⏳ Transaction sent (hash above), but not yet mined.");
+    }
+
+    return txHash;
+  } catch (e, stack) {
+    print('🧯 Stacktrace: $stack');
+    throw Exception('❌ Failed to transfer funds: $e');
+  }
+}
+
+
+// Helper method to wait for the transaction receipt
+Future<web3.TransactionReceipt?> _waitForReceipt(
+  String txHash, {
+  int retries = 20,
+  Duration delay = const Duration(seconds: 5),
+}) async {
+  for (int i = 0; i < retries; i++) {
+    final receipt = await ethClient.getTransactionReceipt(txHash);
+    if (receipt != null) return receipt;
+    print('⏳ Waiting for transaction to be mined... Attempt $i');
+    await Future.delayed(delay);
+  }
+  print('❌ Transaction still not mined after $retries retries');
+  return null;
+}
+
+
+  // Loads private key from SharedPreferences
+  Future<String?> _loadPrivateKey() async {
+    print('🔐 Loading private key...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = await _loadWalletAddress();
+      if (walletAddress == null) {
+        print('❌ Wallet address not found.');
+        return null;
+      }
+
+      String privateKeyKey = 'privateKey_$walletAddress';
+      print('🔍 Retrieving private key for address: $walletAddress');
+
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print('✅ Private key retrieved for wallet $walletAddress');
+        return privateKey;
+      } else {
+        print('❌ Private key not found for wallet $walletAddress');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error retrieving private key: $e');
+      return null;
+    }
+  }
+
+  // Loads the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('🔄 Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("❌ Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('✅ Wallet address loaded: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("⚠️ Error loading wallet address: $e");
+      return null;
+    }
+  }
+}

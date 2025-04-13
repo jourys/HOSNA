@@ -59,7 +59,7 @@ contract DonationContract {
         // **Ensure donor is registered for this project**
         if (!projectDonorsInfo[projectId][donorAddress].exists) {
             projectDonorsInfo[projectId][donorAddress].exists = true;
-            projectDonors[projectId].push(donorAddress);
+            projectDonors[projectId].push(donorAddress); // Add donor to project
         }
 
         // **Update donation amount specific to this project**
@@ -77,9 +77,18 @@ contract DonationContract {
         // **Update the donated amount in PostProject contract**
         postProject.updateDonatedAmount(projectId, msg.value);
 
-        // **Transfer funds to the organization**
-        (bool success, ) = payable(organization).call{value: msg.value}("");
-        require(success, "Transfer failed");
+        // **If fully funded, transfer total to the organization**
+        if (projectDonations[projectId] >= totalAmount) {
+            uint256 totalDonation = projectDonations[projectId];
+            projectDonations[projectId] = 0;
+
+            (bool success, ) = payable(organization).call{value: totalDonation}(
+                ""
+            );
+            require(success, "Transfer failed");
+
+            emit FundsTransferred(organization, totalDonation);
+        }
 
         emit DonationReceived(
             donorAddress,
@@ -137,5 +146,57 @@ contract DonationContract {
     // **Get contract balance (for debugging)**
     function getContractBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+
+    function transferProjectFundsToAnother(
+        uint256 fromProjectId,
+        uint256 toProjectId
+    ) external {
+        (, , , , uint256 totalAmountFrom, , , , ) = postProject.getProject(
+            fromProjectId
+        );
+
+        (
+            ,
+            ,
+            uint startDateTo,
+            uint endDateTo,
+            uint256 totalAmountTo,
+            uint256 donatedAmountTo,
+            ,
+            ,
+
+        ) = postProject.getProject(toProjectId);
+
+        require(block.timestamp >= startDateTo, "Target project not started");
+        require(block.timestamp <= endDateTo, "Target project ended");
+
+        uint256 amountToTransfer = projectDonations[fromProjectId];
+        require(amountToTransfer > 0, "No funds to transfer");
+
+        // Reset source project donations
+        projectDonations[fromProjectId] = 0;
+
+        // Update target project donation tracking
+        projectDonations[toProjectId] += amountToTransfer;
+        postProject.updateDonatedAmount(toProjectId, amountToTransfer);
+
+        // If target project is now fully funded, transfer
+        if (projectDonations[toProjectId] >= totalAmountTo) {
+            address toOrganization;
+            (, , , , , , toOrganization, , ) = postProject.getProject(
+                toProjectId
+            );
+
+            uint256 totalDonation = projectDonations[toProjectId];
+            projectDonations[toProjectId] = 0;
+
+            (bool success, ) = payable(toOrganization).call{
+                value: totalDonation
+            }("");
+            require(success, "Transfer to target organization failed");
+
+            emit FundsTransferred(toOrganization, totalDonation);
+        }
     }
 }

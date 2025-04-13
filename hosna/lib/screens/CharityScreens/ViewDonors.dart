@@ -15,7 +15,7 @@ class ViewDonorsPage extends StatefulWidget {
 
 class _ViewDonorsPageState extends State<ViewDonorsPage> {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String donationContractAddress = '0x725a8FA30943461C4F1A0cE33F2ac2D00fa249F1';
+  final String donationContractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9';
   final String donorContractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
 
   late Web3Client _web3Client;

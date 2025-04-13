@@ -701,12 +701,10 @@ if (projectState == "active" && userType == 0)
                               ),
                             ),
                         
-                        // Assuming `votingInitiated` is a boolean that tracks if the voting process has been initiated
-// You can replace this with the actual state or variable from your contract or state management
-
-if (userType == 0 &&
+                       
+if (userType == 1 &&
     (projectState == "failed" || projectState == "canceled")
-    //  && widget.projectCreatorWallet == globalWalletAddress
+     && widget.projectCreatorWallet == globalWalletAddress
     )
  Center(
             child: ElevatedButton(
@@ -1223,7 +1221,7 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     // Load contract
     final donationContract = DeployedContract(
       ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-      EthereumAddress.fromHex('0x725a8FA30943461C4F1A0cE33F2ac2D00fa249F1'),
+      EthereumAddress.fromHex('0x74409493A94E68496FA90216fc0A40BAF98CF0B9'),
     );
 
     final function = donationContract.function('donate');
@@ -1374,7 +1372,7 @@ class DonorServices {
 
   // Contract address and RPC URL as constants
   static const String _rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
-  static const String _contractAddress = '0x0913167630dac537dd9477c68c3c7806159871C9'; // Contract address on Sepolia
+  static const String _contractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9'; // Contract address on Sepolia
   
   // Constructor for initializing Web3 client and contract
   DonorServices()
