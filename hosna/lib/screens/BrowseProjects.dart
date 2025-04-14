@@ -1,10 +1,15 @@
-import 'dart:ffi';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hosna/AdminScreens/AdminLogin.dart';
+import 'package:web3dart/web3dart.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hosna/AdminScreens/AdminSidebar.dart'; 
+
 
 class BrowseProjects extends StatefulWidget {
   final String walletAddress;
@@ -24,6 +29,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
   bool _showMyProjects = false;
 bool isCanceled = false; // Default value
  String projectState = "";
+bool isSidebarVisible = false; // To toggle the sidebar visibility
 
  
   final List<String> _projectTypes = [
@@ -36,13 +42,19 @@ bool isCanceled = false; // Default value
     'Disaster Relief',
     'Other',
   ];
+bool Loading = true;
 
   @override
   void initState() {
     super.initState();
     _getUserType();
     _fetchProjects();
- 
+ // Simulate loading delay
+  Future.delayed(Duration(seconds: 2), () {
+    setState(() {
+      Loading = false;
+    });
+  });
   }
 
 // Future<void> _loadProjectState(String projectId) async {
@@ -73,6 +85,21 @@ bool isCanceled = false; // Default value
     });
     print("All keys: ${prefs.getKeys()}");
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   Future<void> _fetchProjects() async {
     setState(() {
@@ -147,6 +174,26 @@ bool isCanceled = false; // Default value
       _showMyProjects = false;
     });
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
  Future<String> _getProjectState(Map<String, dynamic> project) async {
   DateTime now = DateTime.now();
@@ -240,253 +287,488 @@ Future<bool> _isProjectCanceled(String projectId) async {
 
   double weiToEth(BigInt wei) {
     return (wei / BigInt.from(10).pow(18));
-  }@override
+  }
+  
+  @override
 Widget build(BuildContext context) {
+  Color appBarBackgroundColor = Color.fromRGBO(24, 71, 137, 1);
+  Color appBarTitleColor = Colors.white;
+
+  if (userType != 0 && userType != 1) {
+    appBarBackgroundColor = Colors.white;
+    appBarTitleColor = Color.fromRGBO(24, 71, 137, 1);
+  }
+
   return Scaffold(
-    appBar: AppBar(
-      title: Text('Browse Projects'),
-      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-      foregroundColor: Colors.white,
-      actions: [
-        IconButton(
-          icon: Icon(Icons.refresh),
-          onPressed: _fetchProjects,
-        ),
-      ],
-    ),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search for a project name',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                ),
-              ),
-              SizedBox(width: 10),
+    appBar: userType != 0 && userType != 1
+        ? null
+        : AppBar(
+            title: Text('Browse Projects'),
+            backgroundColor: appBarBackgroundColor,
+            foregroundColor: appBarTitleColor,
+            actions: [
               IconButton(
-                icon: Icon(Icons.filter_list),
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (context) {
-                      return Container(
-                        padding: EdgeInsets.all(16),
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.5,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Filter by Project Type',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              if (userType == 1)
-                                ListTile(
-                                  title: Text('My Projects'),
-                                  onTap: () {
-                                    setState(() {
-                                      _showMyProjects = true;
-                                      _selectedProjectType = null;
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              for (String type in _projectTypes)
-                                ListTile(
-                                  title: Text(type),
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedProjectType =
-                                          type == 'All' ? null : type;
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                icon: Icon(Icons.refresh),
+                onPressed: _fetchProjects,
               ),
             ],
           ),
-        ),
-        if (_selectedProjectType != null || _showMyProjects)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+    body: userType != 0 && userType != 1
+        ? 
+        
+        Container(
+            color: Colors.white,
             child: Row(
               children: [
-                Chip(
-                  label: Text(_showMyProjects
-                      ? 'Filter: My Projects'
-                      : 'Filter: $_selectedProjectType'),
-                  onDeleted: () {
-                    setState(() {
-                      _selectedProjectType = null;
-                      _showMyProjects = false;
-                    });
-                  },
-                ),
-                SizedBox(width: 10),
-                TextButton(
-                  onPressed: _resetFilters,
-                  child: Text('Reset Filters'),
+                // Sidebar
+                Container(
+    width: 350,
+    child: Loading
+        ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white),))
+        : AdminSidebar(),
+  ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Search Bar and Filter Options
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    decoration: InputDecoration(
+                                      hintText: 'Search for a project name',
+                                      prefixIcon: Icon(Icons.search),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                IconButton(
+                                  icon: Icon(Icons.filter_list),
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      builder: (context) {
+                                        return Container(
+                                          padding: EdgeInsets.all(16),
+                                          constraints: BoxConstraints(
+                                            maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                          ),
+                                          child: SingleChildScrollView(
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  'Filter by Project Type',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 10),
+                                                if (userType == 1)
+                                                  ListTile(
+                                                    title: Text('My Projects'),
+                                                    onTap: () {
+                                                      setState(() {
+                                                        _showMyProjects = true;
+                                                        _selectedProjectType = null;
+                                                      });
+                                                      Navigator.pop(context);
+                                                    },
+                                                  ),
+                                                for (String type in _projectTypes)
+                                                  ListTile(
+                                                    title: Text(type),
+                                                    onTap: () {
+                                                      setState(() {
+                                                        _selectedProjectType = type == 'All' ? null : type;
+                                                      });
+                                                      Navigator.pop(context);
+                                                    },
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                            if (_selectedProjectType != null || _showMyProjects)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Row(
+                                  children: [
+                                    Chip(
+                                      label: Text(_showMyProjects
+                                          ? 'Filter: My Projects'
+                                          : 'Filter: $_selectedProjectType'),
+                                      onDeleted: () {
+                                        setState(() {
+                                          _selectedProjectType = null;
+                                          _showMyProjects = false;
+                                        });
+                                      },
+                                    ),
+                                    SizedBox(width: 10),
+                                    TextButton(
+                                      onPressed: _resetFilters,
+                                      child: Text('Reset Filters'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _isLoading
+                            ? Center(child: CircularProgressIndicator())
+                            : _getFilteredProjects().isEmpty
+                                ? Center(child: Text('No projects found.'))
+                                : SingleChildScrollView(
+                                    child: Column(
+                                      children: _getFilteredProjects().map((project) {
+                                        return FutureBuilder<String>(
+                                          future: _getProjectState(project),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.connectionState == ConnectionState.waiting) {
+                                              return CircularProgressIndicator(
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              );
+                                            } else if (snapshot.hasError) {
+                                              return Text('Error: ${snapshot.error}');
+                                            } else if (snapshot.hasData) {
+                                              String projectState = snapshot.data!;
+                                              Color stateColor = _getStateColor(projectState);
+
+                                              double totalAmount = project['totalAmount'] ?? 0.0;
+                                              double donatedAmount = project['donatedAmount'] ?? 0.0;
+
+                                              double progress = (donatedAmount / (totalAmount == 0 ? 1 : totalAmount));
+
+                                              return Card(
+                                                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => ProjectDetails(
+                                                          projectName: project['name'],
+                                                          description: project['description'],
+                                                          startDate: project['startDate'].toString(),
+                                                          deadline: project['endDate'].toString(),
+                                                          totalAmount: project['totalAmount'],
+                                                          projectType: project['projectType'],
+                                                          projectCreatorWallet: project['organization'] ?? '',
+                                                          donatedAmount: project['donatedAmount'],
+                                                          projectId: project['id'],
+                                                          progress: progress,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.all(16.0),
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          project['name'],
+                                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Text(
+                                                          project['description'],
+                                                          style: TextStyle(color: Colors.grey[600]),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Text(
+                                                          'Posted by: ${project['organization']}',
+                                                          style: TextStyle(color: Colors.grey[600]),
+                                                        ),
+                                                        SizedBox(height: 16),
+                                                        LinearProgressIndicator(
+                                                          value: progress,
+                                                          backgroundColor: Colors.grey[200],
+                                                          valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              '${(progress * 100).toStringAsFixed(0)}%',
+                                                              style: TextStyle(color: Colors.grey[600]),
+                                                            ),
+                                                            Container(
+                                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                              decoration: BoxDecoration(
+                                                                color: stateColor.withOpacity(0.2),
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                              child: Text(
+                                                                projectState,
+                                                                style: TextStyle(
+                                                                    color: stateColor,
+                                                                    fontWeight: FontWeight.bold),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            } else {
+                                              return Text('No data available');
+                                            }
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        Expanded(
-          child: _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : _getFilteredProjects().isEmpty
-                  ? Center(child: Text('No projects found.'))
-                  : SingleChildScrollView(
-                      child: Column(
-                        children: _getFilteredProjects().map((project) {
-                          // Wrap the project state fetching with FutureBuilder
-                          return FutureBuilder<String>(
-                            future: _getProjectState(project),
-                            builder: (context, snapshot) {
-                              // Handle loading, error, and data states
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return CircularProgressIndicator(
-  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-)
-;
-                              } else if (snapshot.hasError) {
-                                return Text('Error: ${snapshot.error}');
-                              } else if (snapshot.hasData) {
-                                String projectState = snapshot.data!;
-                                Color stateColor = _getStateColor(projectState);
-
-                                double totalAmount = project['totalAmount'] ?? 0.0;
-                                double donatedAmount = project['donatedAmount'] ?? 0.0;
-
-                                double progress = (donatedAmount /
-                                    (totalAmount == 0 ? 1 : totalAmount));
-
-                                return Card(
-                                  margin: EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 16),
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ProjectDetails(
-                                            projectName: project['name'],
-                                            description: project['description'],
-                                            startDate:
-                                                project['startDate'].toString(),
-                                            deadline: project['endDate'].toString(),
-                                            totalAmount: project['totalAmount'],
-                                            projectType: project['projectType'],
-                                            projectCreatorWallet:
-                                                project['organization'] ?? '',
-                                            donatedAmount: project['donatedAmount'],
-                                            projectId: project['id'],
-                                            progress: progress,
+          )
+        : Column(
+            children: [
+              // Search and Filter for non-admin users
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search for a project name',
+                              prefixIcon: Icon(Icons.search),
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        IconButton(
+                          icon: Icon(Icons.filter_list),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              builder: (context) {
+                                return Container(
+                                  padding: EdgeInsets.all(16),
+                                  constraints: BoxConstraints(
+                                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                  ),
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Filter by Project Type',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            project['name'],
-                                            style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold),
+                                        SizedBox(height: 10),
+                                        if (userType == 1)
+                                          ListTile(
+                                            title: Text('My Projects'),
+                                            onTap: () {
+                                              setState(() {
+                                                _showMyProjects = true;
+                                                _selectedProjectType = null;
+                                              });
+                                              Navigator.pop(context);
+                                            },
                                           ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            project['description'],
-                                            style:
-                                                TextStyle(color: Colors.grey[600]),
+                                        for (String type in _projectTypes)
+                                          ListTile(
+                                            title: Text(type),
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedProjectType = type == 'All' ? null : type;
+                                              });
+                                              Navigator.pop(context);
+                                            },
                                           ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Posted by: ${project['organization']}',
-                                            style:
-                                                TextStyle(color: Colors.grey[600]),
-                                          ),
-                                          SizedBox(height: 16),
-                                          LinearProgressIndicator(
-                                            value: progress,
-                                            backgroundColor: Colors.grey[200],
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    stateColor),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                '${(progress * 100).toStringAsFixed(0)}%',
-                                                style: TextStyle(
-                                                    color: Colors.grey[600]),
-                                              ),
-                                              Container(
-                                                padding: EdgeInsets.symmetric(
-                                                    horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      stateColor.withOpacity(0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  projectState,
-                                                  style: TextStyle(
-                                                      color: stateColor,
-                                                      fontWeight: FontWeight.bold),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 );
-                              } else {
-                                return Text('No data available');
-                              }
-                            },
-                          );
-                        }).toList(),
-                      ),
+                              },
+                            );
+                          },
+                        ),
+                      ],
                     ),
-        ),
-      ],
-    ),
+                    if (_selectedProjectType != null || _showMyProjects)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          children: [
+                            Chip(
+                              label: Text(_showMyProjects
+                                  ? 'Filter: My Projects'
+                                  : 'Filter: $_selectedProjectType'),
+                              onDeleted: () {
+                                setState(() {
+                                  _selectedProjectType = null;
+                                  _showMyProjects = false;
+                                });
+                              },
+                            ),
+                            SizedBox(width: 10),
+                            TextButton(
+                              onPressed: _resetFilters,
+                              child: Text('Reset Filters'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // List of Projects
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : _getFilteredProjects().isEmpty
+                        ? Center(child: Text('No projects found.'))
+                        : SingleChildScrollView(
+                            child: Column(
+                              children: _getFilteredProjects().map((project) {
+                                return FutureBuilder<String>(
+                                  future: _getProjectState(project),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      );
+                                    } else if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    } else if (snapshot.hasData) {
+                                      String projectState = snapshot.data!;
+                                      Color stateColor = _getStateColor(projectState);
+
+                                      double totalAmount = project['totalAmount'] ?? 0.0;
+                                      double donatedAmount = project['donatedAmount'] ?? 0.0;
+
+                                      double progress = (donatedAmount / (totalAmount == 0 ? 1 : totalAmount));
+
+                                      return Card(
+                                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                        child: InkWell(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ProjectDetails(
+                                                  projectName: project['name'],
+                                                  description: project['description'],
+                                                  startDate: project['startDate'].toString(),
+                                                  deadline: project['endDate'].toString(),
+                                                  totalAmount: project['totalAmount'],
+                                                  projectType: project['projectType'],
+                                                  projectCreatorWallet: project['organization'] ?? '',
+                                                  donatedAmount: project['donatedAmount'],
+                                                  projectId: project['id'],
+                                                  progress: progress,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  project['name'],
+                                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  project['description'],
+                                                  style: TextStyle(color: Colors.grey[600]),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  'Posted by: ${project['organization']}',
+                                                  style: TextStyle(color: Colors.grey[600]),
+                                                ),
+                                                SizedBox(height: 16),
+                                                LinearProgressIndicator(
+                                                  value: progress,
+                                                  backgroundColor: Colors.grey[200],
+                                                  valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      '${(progress * 100).toStringAsFixed(0)}%',
+                                                      style: TextStyle(color: Colors.grey[600]),
+                                                    ),
+                                                    Container(
+                                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: stateColor.withOpacity(0.2),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        projectState,
+                                                        style: TextStyle(
+                                                            color: stateColor,
+                                                            fontWeight: FontWeight.bold),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return Text('No data available');
+                                    }
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ),
+              ),
+            ],
+          ),
   );
 }
 

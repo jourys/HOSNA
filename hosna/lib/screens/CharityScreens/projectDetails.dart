@@ -103,6 +103,28 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   _fetchVotingStatus();
   }
 
+
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
+
+
 Future<void> _fetchVotingStatus() async {
   print('🔍 Fetching voting status for project: ${widget.projectId}');
 
@@ -239,12 +261,19 @@ void dispose() {
 
       String? privateKey = await _loadPrivateKey(walletAddress);
 
-      if (privateKey == null) {
+      if (privateKey == null && userType != null) {
         print("Error: Private key not found for wallet address.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Private key not found for wallet address.')),
-        );
+    ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text(
+      'Your account has been suspended. You are currently unable to perform any operations. Please contact support for further details and assistance.',
+    ),
+  // Set duration to 1 minute
+    backgroundColor: Colors.red, // Set background color to red
+  ),
+);
+
+
         return null;
       }
 
@@ -391,10 +420,14 @@ String getProjectState(Map<String, dynamic> project) {
         return Colors.red;
       case "in-progress":
         return Colors.purple;
-      case "completed":
+      case "voting":
         return Colors.blue;
          case "canceled":
-      return Colors.orange; // Add orange for canceled status
+      return Colors.orange; 
+       case "ended":
+      return Colors.grey; 
+       case "completed":
+  return Color.fromRGBO(24, 71, 137, 1);
 
       default:
         return Colors.grey;
@@ -548,14 +581,21 @@ Widget build(BuildContext context) {
         widget.projectType, // Passing the project type here
       ),
     ),
-   
+   if(userType != null && _globalPrivateKey != null )
        GestureDetector(
       onTap: () {
-        // Add the function to handle the flag press here
-        print("Report Project Pressed!");
-        // You can replace the print statement with your actual logic, 
-        // such as navigating to a report page or opening a dialog.
-      },
+  print("Report Project Pressed!");
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return ReportPopup(
+        projectCreatorWallet: widget.projectCreatorWallet,
+        projectId: widget.projectId,
+      );
+    },
+  );
+},
+
       
         child: Icon(
           Icons.flag, // Flag icon for report
@@ -602,8 +642,8 @@ Widget build(BuildContext context) {
                             ],
                           ),
                            SizedBox(height: 20),
-                          //  if (userType == 1 &&
-                          //     widget.projectCreatorWallet == globalWalletAddress) 
+                           if (userType == 1 &&
+                              widget.projectCreatorWallet == globalWalletAddress) 
                           GestureDetector(
                             onTap: () {
                               print("View all donors");
@@ -685,7 +725,8 @@ Widget build(BuildContext context) {
 if (projectState == "active" && userType == 0)
                             Center(
                               child: ElevatedButton(
-                                onPressed: () => _showDonationPopup(context),
+                                onPressed: () => _showDonationPopup(context, widget.donatedAmount, totalAmount),
+
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                                   padding: const EdgeInsets.symmetric(
@@ -846,9 +887,9 @@ if (canVote && votingInitiated && userType == 0 )
                      
 
                     
-                          if (userType == 1 &&
+                          if ((userType == 1 &&
                               projectState == "active" &&
-                              widget.projectCreatorWallet == globalWalletAddress)
+                              widget.projectCreatorWallet == globalWalletAddress) || (userType == null && projectState == "active"))
                             Center(
                               child: ElevatedButton(
                                 onPressed: () async {
@@ -1095,7 +1136,7 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
   
   
   
-  void _showDonationPopup(BuildContext context) {
+  void _showDonationPopup(BuildContext context ,  double donatedAmount, double totalAmount) {
   TextEditingController amountController = TextEditingController();
   bool isAnonymous = false; // Track anonymous donation state
   String? errorMessage;
@@ -1128,15 +1169,28 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
                     errorText: errorMessage, // Show error message if invalid
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      double? amount = double.tryParse(value);
-                      errorMessage = (amount == null || amount <= 0)
-                          ? "Please enter a valid amount greater than zero"
-                          : null;
-                    });
-                  },
+suffixIcon: Padding(
+    padding: const EdgeInsets.only(right: 10, top: 10), // move ETH downward
+    child: Text(
+      'ETH',
+      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+    ),
+  ),                  ),
+                onChanged: (value) {
+  setState(() {
+    double? amount = double.tryParse(value);
+    double remaining = totalAmount - donatedAmount;
+
+    if (amount == null || amount <= 0) {
+      errorMessage = "Please enter a valid amount greater than zero";
+    } else if (amount > remaining) {
+      errorMessage = "Amount exceeds remaining goal of ${remaining.toStringAsFixed(5)} ETH";
+    } else {
+      errorMessage = null;
+    }
+  });
+},
+
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -1176,6 +1230,7 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
     },
   );
 }
+
 Future<void> _processDonation(String amount, bool isAnonymous) async {
   if (globalPrivateKey == null) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1283,7 +1338,8 @@ Future<void> _storeDonation(String donorAddress, double amount, bool isAnonymous
 
 
 
-}final String _contractAbi = '''[
+}
+final String _contractAbi = '''[
   {
     "constant": true,
     "inputs": [{"name": "projectId", "type": "uint256"}],
@@ -1466,13 +1522,7 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
     final firestoreData = await fetchProjectFirestoreData(projectId);
     print("📄 Firestore data: $firestoreData");
 
-    bool isCanceled = firestoreData['isCanceled'] ?? false;
-    if (isCanceled) {
-      print(" ✅  Project is canceled.  Voting has started.");
-      return true;
-    }
-
-    final donorsResult = await fetchProjectDonors(projectId);
+ final donorsResult = await fetchProjectDonors(projectId);
     print("📦 Donors fetched from blockchain: $donorsResult");
 
     List<EthereumAddress> donorAddresses = List<EthereumAddress>.from(donorsResult[0]);
@@ -1483,11 +1533,22 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
       (address) => address.hex.toLowerCase() == normalizedUserAddress,
     );
 
+  if (isDonor) return true;
+    else return false;
+
     print(isDonor
         ? "✅ User IS a donor for this project."
         : "❌ User is NOT a donor for this project.");
 
-    if (!isDonor) return false;
+  
+
+
+    bool isCanceled = firestoreData['isCanceled'] ?? false;
+    if (isCanceled) {
+      print(" ✅  Project is canceled.  Voting has started.");
+    }
+
+   
 
     try {
       // Fetch project state from blockchain
@@ -1568,3 +1629,473 @@ Future<int> getProjectDonations(BigInt projectId) async {
 }
 
 }
+
+
+
+
+class ReportPopup extends StatefulWidget {
+   final String projectCreatorWallet;
+  final int projectId;
+
+  const ReportPopup({
+    super.key,
+    required this.projectCreatorWallet,
+    required this.projectId,
+  });
+  @override
+  _ReportPopupState createState() => _ReportPopupState();
+}
+
+class _ReportPopupState extends State<ReportPopup> {
+  // late String targetCharityAddress; 
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  
+  int titleLength = 0;
+  int descriptionLength = 0;
+  final int titleMax = 30;
+  final int descriptionMax = 300;
+
+  // Flags for validation
+  bool isTitleEmpty = false;
+  bool isDescriptionEmpty = false;
+
+  @override
+  void initState() {
+    super.initState();
+ // Assign the wallet address from the organization data
+    // targetCharityAddress = widget.organization["wallet"] ?? "";
+    // print("Target Charity Address: $targetCharityAddress"); // Debugging print
+    titleController.addListener(() {
+      setState(() {
+        titleLength = titleController.text.length;
+        isTitleEmpty = titleController.text.isEmpty;
+      });
+    });
+
+    descriptionController.addListener(() {
+      setState(() {
+        descriptionLength = descriptionController.text.length;
+        isDescriptionEmpty = descriptionController.text.isEmpty;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    super.dispose();
+  }
+
+ @override
+  Widget build(BuildContext context) {
+    // Get the address and validate it before passing
+    // String orgAddress = widget.organization["wallet"] ?? "Unknown";
+    // print("Organization Wallet Address: $orgAddress");
+
+
+  return AlertDialog(
+    
+    backgroundColor: Colors.white,
+   title: Stack(
+    
+  children: [
+
+
+    Center(
+      child: const Text(
+        "Report",
+        style: TextStyle(
+          color: Color.fromRGBO(24, 71, 137, 1),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+  ],
+),
+
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      
+      children: [
+        SizedBox(height: 20),
+        TextField(
+          controller: titleController,
+          maxLength: titleMax,
+          decoration: InputDecoration(
+            labelText: "Title*",
+            labelStyle: const TextStyle(color: Colors.grey),
+            floatingLabelBehavior: FloatingLabelBehavior.auto,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            counterText: "$titleLength/$titleMax", // Dynamic counter
+            counterStyle: TextStyle(color: titleLength >= titleMax ? Colors.red : Colors.grey),
+          ),
+        ),
+        const SizedBox(height: 1),
+        if (isTitleEmpty)
+          Padding(
+            padding: const EdgeInsets.only(right: 130),
+            child: Text(
+              "Title is required.",
+              style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: descriptionController,
+          maxLength: descriptionMax,
+          maxLines: 4,
+          decoration: InputDecoration(
+            labelText: "Description*",
+            labelStyle: const TextStyle(color: Colors.grey),
+            floatingLabelBehavior: FloatingLabelBehavior.auto,
+            alignLabelWithHint: true,
+            contentPadding: const EdgeInsets.only(top: 20, left: 12, right: 12, bottom: 12),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            counterText: "$descriptionLength/$descriptionMax", // Dynamic counter
+            counterStyle: TextStyle(color: descriptionLength >= descriptionMax ? Colors.red : Colors.grey),
+          ),
+        ),
+        if (isDescriptionEmpty)
+          Padding(
+            padding: const EdgeInsets.only(right: 100),
+            child: Text(
+              "Description is required.",
+              style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+      ],
+    ),
+   actions: [
+  Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      OutlinedButton(
+        onPressed: () async {
+      bool leave = await _showLeaveConfirmationDialog(context);
+      if (leave) {
+        Navigator.pop(context); // Close the report popup and leave
+      }
+    },
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1), // Border color
+            width: 2.5, // Increase the border width here
+          ),
+           backgroundColor:  Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20) ), // Rounded border
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // Padding
+        ),
+        child: const Text(
+          " Cancel ",
+          style: TextStyle(color: Color.fromRGBO(24, 71, 137, 1),  fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      const SizedBox(width: 20),
+      ElevatedButton(
+        onPressed: () async {
+          if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+            setState(() {
+              isTitleEmpty = titleController.text.isEmpty;
+              isDescriptionEmpty = descriptionController.text.isEmpty;
+            });
+          } else {
+            await _showSendConfirmationDialog(context);
+             Navigator.pop(context, true);
+
+              
+//  showSuccessPopup(context); // Call the popup here
+            
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // Rounded border
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10), // Padding
+        ),
+        child: const Text(
+          "  Send  ",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+    ],
+  ),
+],
+
+  );
+}
+
+
+  Future<bool> _showLeaveConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Confirm Leaving',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Are you sure you want to leave without sending the report?',
+            style: TextStyle(
+              fontSize: 18,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 3,
+                    ),
+                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                OutlinedButton(
+                  onPressed: () {
+                    
+                    Navigator.pop(context, true);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(212, 63, 63, 1),
+                      width: 3,
+                    ),
+                    backgroundColor: Color.fromRGBO(212, 63, 63, 1),
+                  ),
+                  child: const Text(
+                    '   Yes   ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+        );
+      },
+    ) ??
+        false;
+  }
+
+  Future<bool> _showSendConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Confirm Sending',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Are you sure you want to send the report?',
+            style: TextStyle(
+              fontSize: 18,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 3.5,
+                    ),
+                    backgroundColor:  Colors.white,
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                OutlinedButton(
+                   onPressed: () async {
+                try {
+                  final walletAddress = await _loadAddress();
+
+                  if (walletAddress == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Error: Wallet address not found. Please log in again.')),
+                    );
+                    return;
+                  }
+
+                  final title = titleController.text.trim();
+                  final description = descriptionController.text.trim();
+
+                  if (title.isEmpty || description.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter both title and description.')),
+                    );
+                    return;
+                  }
+
+                await FirebaseFirestore.instance.collection('reports').add({
+  'title': title,
+  'description': description,
+  'complainant': walletAddress,
+  'targetCharityAddress': widget.projectCreatorWallet,
+  'project_id': widget.projectId,
+  'timestamp': FieldValue.serverTimestamp(),
+  'complaintType': 'project', // ✅ Added the complaintType field
+});
+
+                  Navigator.pop(context, true);
+                  showSuccessPopup(context);
+                } catch (e) {
+                  print("❌ Error submitting complaint: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to submit complaint: $e')),
+                  );
+                }
+              },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 3,
+                    ),
+                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                  child: const Text(
+                    '   Yes   ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+        );
+      },
+    ) ??
+        false;
+        
+  }
+  void showSuccessPopup(BuildContext context) {
+  // Show dialog
+  showDialog(
+    context: context,
+    barrierDismissible: true, // Allow closing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        contentPadding: EdgeInsets.all(20), // Add padding around the dialog content
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // Rounded corners for a better look
+        ),
+        content: SizedBox(
+          width: 250, // Set a custom width for the dialog
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ensure the column only takes the required space
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle, 
+                color: Color.fromARGB(255, 54, 142, 57), 
+                size: 50, // Bigger icon
+              ),
+              SizedBox(height: 20), // Add spacing between the icon and text
+              Text(
+                'Complaint sent successfully!',
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 54, 142, 57), 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16, // Bigger text
+                ),
+                textAlign: TextAlign.center, // Center-align the text
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  // Automatically dismiss the dialog after 3 seconds
+  Future.delayed(const Duration(seconds: 3), () {
+    // Check if the widget is still mounted before performing Navigator.pop
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+    }
+     Navigator.pop(context, true);
+  });
+}
+
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
+
+}
+

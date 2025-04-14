@@ -502,7 +502,8 @@ final startDateFormatted = DateFormat('yyyy-MM-dd – HH:mm').format(_startDate)
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: Text('Initiate Voting'),
+              child: Text('Initiate Voting',  style: TextStyle(
+                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         ),
@@ -646,7 +647,8 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Initiate Voting'),
+        title: Text('Initiate Voting' ,  style: TextStyle(
+                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Color.fromRGBO(24, 71, 137, 1),
         foregroundColor: Colors.white,
       ),
@@ -737,7 +739,8 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text('Initiate Voting'),
+                    child: Text('Initiate Voting' ,  style: TextStyle(
+                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
                 ),
               ],

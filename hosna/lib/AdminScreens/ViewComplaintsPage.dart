@@ -30,7 +30,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 
 
 
@@ -100,6 +100,57 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme:ThemeData(
+  primaryColor: const Color.fromRGBO(24, 71, 137, 1), // Set primary color
+  colorScheme: ColorScheme.fromSwatch(
+    primarySwatch: const MaterialColor(
+      0xFF184787,
+      <int, Color>{
+        50: Color(0xFFE1E8F3),
+        100: Color(0xFFB3C9E1),
+        200: Color(0xFF80A8D0),
+        300: Color(0xFF4D87BF),
+        400: Color(0xFF2668A9),
+        500: Color(0xFF184787),
+        600: Color(0xFF165F75),
+        700: Color(0xFF134D63),
+        800: Color(0xFF104A52),
+        900: Color(0xFF0D3841),
+      },
+    ),
+  ).copyWith(
+    primary: const Color.fromRGBO(24, 71, 137, 1),
+    secondary: const Color.fromRGBO(24, 71, 137, 1),
+  ),
+  progressIndicatorTheme: const ProgressIndicatorThemeData(
+    color: Color.fromRGBO(24, 71, 137, 1),
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+      foregroundColor: Colors.white,
+    ),
+  ),
+   inputDecorationTheme: const InputDecorationTheme(
+    enabledBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Colors.grey),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Colors.grey),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Colors.red),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Colors.red),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+    ),
+    hintStyle: TextStyle(color: Colors.grey),
+  ),
+),
       home: ViewComplaintsPage(),
     );
   }
@@ -120,8 +171,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     late ContractFunction _deleteComplaintFunction;
   List<Map<String, dynamic>> _complaints = [];
   bool isSidebarVisible = true;
+    final BlockchainService _blockchainService = BlockchainService();
 
-  
 
   @override
   void initState() {
@@ -158,36 +209,39 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
 
   
 
-  // Function to resolve a complaint by calling the smart contract
-Future<void> _resolveComplaint(int complaintId) async {
+  Future<void> _resolveComplaint(String complaintDocId) async {
   if (!mounted) return;
 
   Navigator.pop(context); // Close modal
 
   try {
-    var credentials = await _web3Client.credentialsFromPrivateKey('9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c');
+    final docRef = FirebaseFirestore.instance.collection('reports').doc(complaintDocId);
+    final docSnapshot = await docRef.get();
 
-    print("🔄 Sending transaction to resolve complaint...");
-    await _web3Client.sendTransaction(
-      credentials,
-      web3.Transaction.callContract(
-        contract: _contract,
-        function: _resolveComplaintFunction,
-        parameters: [BigInt.from(complaintId)],
-        gasPrice: EtherAmount.inWei(BigInt.from(5000000000)),
-        maxGas: 200000,
-      ),
-      chainId: 11155111, // Sepolia testnet
-    );
+    if (!docSnapshot.exists) {
+      print('❌ Complaint document does not exist.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Complaint not found.')),
+      );
+      return;
+    }
 
-    print("✅ Complaint resolved successfully!");
+    print("🔄 Updating complaint status to resolved...");
 
-    // Fetch updated complaints to reflect changes
+    await docRef.update({'resolved': true});
+
+    print("✅ Complaint marked as resolved.");
     await _fetchComplaints();
+
   } catch (e) {
-    print('❌ Error resolving complaint: $e');
+    print('❌ Error updating complaint status in Firestore: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to resolve complaint: $e')),
+    );
   }
 }
+
+
 
 Future<String> _getUserType(String walletAddress) async {
   try {
@@ -210,114 +264,74 @@ Future<String> _getUserType(String walletAddress) async {
   }
   return 'organization'; // Default to 'organization' if error occurs
 }
-
-
-// fetch complaints 
+bool isLoading = true;
 
 Future<void> _fetchComplaints() async {
-  try {
-    print("📡 Fetching complaints from blockchain...");
-
-    // Fetch data from the contract
-    final result = await _web3Client.call(
-      contract: _contract,
-      function: _getAllComplaints,
-      params: [],
-    );
-
-    print("🔍 Raw result from blockchain:");
-    print("  ├── Total items: ${result.length}");
-    print("  ├── Data structure: ${result.runtimeType}");
-    print("  ├── Raw data: $result\n");
-
-    // Ensure the result has the expected length
-    if (result.length != 7) {
-      throw Exception("❌ Unexpected response format from fetchAllComplaints: Expected 7 fields but got ${result.length}");
-    }
-
-    // Extract values from the result
-    List<BigInt> ids = List<BigInt>.from(result[0]);
-    List<String> titles = List<String>.from(result[1]);
-    List<String> descriptions = List<String>.from(result[2]);
-    List<EthereumAddress> complainants = List<EthereumAddress>.from(result[3]);
-    List<EthereumAddress> targetCharities = List<EthereumAddress>.from(result[4]);
-    List<BigInt> timestamps = List<BigInt>.from(result[5]);
-    List<bool> resolvedStatuses = List<bool>.from(result[6]);
-
-    print("✅ Successfully extracted complaint data.");
-    print("  ├── IDs count: ${ids.length}");
-    print("  ├── Titles count: ${titles.length}");
-    print("  ├── Descriptions count: ${descriptions.length}");
-    print("  ├── Complainants count: ${complainants.length}");
-    print("  ├── Target Charities count: ${targetCharities.length}");
-    print("  ├── Timestamps count: ${timestamps.length}");
-    print("  ├── Resolved statuses count: ${resolvedStatuses.length}");
-
-    // Check for mismatched lengths
-    int expectedLength = ids.length;
-    if ([titles, descriptions, complainants, targetCharities, timestamps, resolvedStatuses]
-        .any((list) => list.length != expectedLength)) {
-      throw Exception("❌ Data inconsistency detected! Arrays have mismatched lengths.");
-    }
-
-    // Initialize the Firebase Firestore reference to fetch userType
-    final firestore = FirebaseFirestore.instance;
-
-    // Convert the extracted data into a list of maps, filtering out invalid complaints
-    List<Map<String, dynamic>> complaints = [];
-    for (int i = 0; i < expectedLength; i++) {
-      // Validate complaint data
-      if (ids[i] == BigInt.zero || titles[i].trim().isEmpty || descriptions[i].trim().isEmpty) {
-        print("⚠️ Skipping complaint #$i due to invalid or missing data.");
-        continue;
-      }
-
-      print("\n📌 Processing complaint #$i");
-      print("  ├── ID: ${ids[i]}");
-      print("  ├── Title: ${titles[i]}");
-      print("  ├── Description: ${descriptions[i]}");
-      print("  ├── Complainant: ${complainants[i].hex}");
-      print("  ├── Target Charity: ${targetCharities[i].hex}");
-      print("  ├── Timestamp (Raw BigInt): ${timestamps[i]}");
-      print("  ├── Timestamp (Converted): ${DateTime.fromMillisecondsSinceEpoch(timestamps[i].toInt() * 1000)}");
-      print("  ├── Resolved: ${resolvedStatuses[i]}\n");
-
-      // Fetch userType from Firestore based on the wallet address (targetCharity)
-      DocumentSnapshot userDoc = await firestore.collection("users").doc(targetCharities[i].hex).get();
-
-      // Check if the userType exists and get it (default to -1 if not found)
-      int userType = userDoc.exists ? userDoc.get('userType') : -1;  // Default to -1 if not found
-
-      // Determine if it's a donor-related complaint
-      bool isDonorComplaint = (userType == 0); // 0 is for donor
-
-      complaints.add({
-        'id': ids[i].toInt(),
-        'title': titles[i],
-        'description': descriptions[i],
-        'complainant': complainants[i].hex,
-        'targetCharity': targetCharities[i].hex,
-        'targetDonor': isDonorComplaint ? targetCharities[i].hex : null, // Add targetDonor if it's a donor-related complaint
-        'timestamp': DateTime.fromMillisecondsSinceEpoch(timestamps[i].toInt() * 1000),
-        'resolved': resolvedStatuses[i],
-      });
-    }
-
-    // Sort complaints by timestamp (newest first)
-    complaints.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
-
-    // Ensure the widget is still mounted before calling setState
-    if (!mounted) return;
-
-    // Update UI state
-    setState(() {
-      _complaints = complaints;
+  setState(() {
+      isLoading = true; // Set loading state to true before fetching
     });
 
-    print("🎉 All valid complaints processed successfully! Total complaints: ${_complaints.length}");
+  try {
+    print("📡 Fetching complaints from Firestore...");
+
+    final firestore = FirebaseFirestore.instance;
+    final querySnapshot = await firestore
+        .collection("reports")
+        .orderBy("timestamp", descending: true)
+        .get();
+
+    List<Map<String, dynamic>> complaints = [];
+
+ for (var doc in querySnapshot.docs) {
+  final data = doc.data();
+
+  // Skip if required fields are missing
+  if (data['title'] == null || data['description'] == null || data['targetCharityAddress'] == null) {
+    print("⚠️ Skipping document ${doc.id} due to missing fields.");
+    continue;
+  }
+
+  // Fetch user type to determine if it's a donor complaint
+  DocumentSnapshot userDoc = await firestore.collection("users").doc(data['targetCharityAddress']).get();
+  int userType = userDoc.exists ? userDoc.get('userType') : -1;
+  bool isDonor = userType == 0;
+
+  // Determine complaint type
+  String complaintType = (data.containsKey('project_id') && data['project_id'] != null)
+      ? 'project'
+      : isDonor ? 'donor' : 'other';
+
+  complaints.add({
+    'id': doc.id,
+    'title': data['title'],
+    'description': data['description'],
+    'targetCharity': data['targetCharityAddress'],
+    'targetDonor': isDonor ? data['targetCharityAddress'] : null,
+    'complainant': data['complainant'] ?? 'Unknown',
+    'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    'resolved': data['resolved'] ?? false,
+    'complaintType': complaintType,
+    if (complaintType == 'project') 'project_id': data['project_id'],
+  });
+}
+
+    // Sort: unresolved first, then newest
+    complaints.sort((a, b) {
+      int resolvedComparison = (a['resolved'] as bool ? 1 : 0).compareTo(b['resolved'] as bool ? 1 : 0);
+      if (resolvedComparison != 0) return resolvedComparison;
+      return (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime);
+    });
+
+    if (!mounted) return;
+     setState(() {
+      _complaints = complaints;
+      isLoading = false; // Set loading to false after fetching data
+    });
+
+    print("🎉 Fetched ${_complaints.length} complaints from Firestore successfully.");
 
   } catch (e, stackTrace) {
-    print("❌ Error fetching complaints: $e");
+    print("❌ Error fetching complaints from Firestore: $e");
     print("🔍 Stack trace: $stackTrace");
 
     setState(() {
@@ -327,6 +341,121 @@ Future<void> _fetchComplaints() async {
     });
   }
 }
+
+
+// Future<void> _fetchComplaints() async {
+//   try {
+//     print("📡 Fetching complaints from blockchain...");
+
+//     // Fetch data from the contract
+//     final result = await _web3Client.call(
+//       contract: _contract,
+//       function: _getAllComplaints,
+//       params: [],
+//     );
+
+//     print("🔍 Raw result from blockchain:");
+//     print("  ├── Total items: ${result.length}");
+//     print("  ├── Data structure: ${result.runtimeType}");
+//     print("  ├── Raw data: $result\n");
+
+//     // Ensure the result has the expected length
+//     if (result.length != 7) {
+//       throw Exception("❌ Unexpected response format from fetchAllComplaints: Expected 7 fields but got ${result.length}");
+//     }
+
+//     // Extract values from the result
+//     List<BigInt> ids = List<BigInt>.from(result[0]);
+//     List<String> titles = List<String>.from(result[1]);
+//     List<String> descriptions = List<String>.from(result[2]);
+//     List<EthereumAddress> complainants = List<EthereumAddress>.from(result[3]);
+//     List<EthereumAddress> targetCharities = List<EthereumAddress>.from(result[4]);
+//     List<BigInt> timestamps = List<BigInt>.from(result[5]);
+//     List<bool> resolvedStatuses = List<bool>.from(result[6]);
+
+//     print("✅ Successfully extracted complaint data.");
+//     print("  ├── IDs count: ${ids.length}");
+//     print("  ├── Titles count: ${titles.length}");
+//     print("  ├── Descriptions count: ${descriptions.length}");
+//     print("  ├── Complainants count: ${complainants.length}");
+//     print("  ├── Target Charities count: ${targetCharities.length}");
+//     print("  ├── Timestamps count: ${timestamps.length}");
+//     print("  ├── Resolved statuses count: ${resolvedStatuses.length}");
+
+//     // Check for mismatched lengths
+//     int expectedLength = ids.length;
+//     if ([titles, descriptions, complainants, targetCharities, timestamps, resolvedStatuses]
+//         .any((list) => list.length != expectedLength)) {
+//       throw Exception("❌ Data inconsistency detected! Arrays have mismatched lengths.");
+//     }
+
+//     // Initialize the Firebase Firestore reference to fetch userType
+//     final firestore = FirebaseFirestore.instance;
+
+//     // Convert the extracted data into a list of maps, filtering out invalid complaints
+//     List<Map<String, dynamic>> complaints = [];
+//     for (int i = 0; i < expectedLength; i++) {
+//       // Validate complaint data
+//       if (ids[i] == BigInt.zero || titles[i].trim().isEmpty || descriptions[i].trim().isEmpty) {
+//         print("⚠️ Skipping complaint #$i due to invalid or missing data.");
+//         continue;
+//       }
+
+//       print("\n📌 Processing complaint #$i");
+//       print("  ├── ID: ${ids[i]}");
+//       print("  ├── Title: ${titles[i]}");
+//       print("  ├── Description: ${descriptions[i]}");
+//       print("  ├── Complainant: ${complainants[i].hex}");
+//       print("  ├── Target Charity: ${targetCharities[i].hex}");
+//       print("  ├── Timestamp (Raw BigInt): ${timestamps[i]}");
+//       print("  ├── Timestamp (Converted): ${DateTime.fromMillisecondsSinceEpoch(timestamps[i].toInt() * 1000)}");
+//       print("  ├── Resolved: ${resolvedStatuses[i]}\n");
+
+//       // Fetch userType from Firestore based on the wallet address (targetCharity)
+//       DocumentSnapshot userDoc = await firestore.collection("users").doc(targetCharities[i].hex).get();
+
+//       // Check if the userType exists and get it (default to -1 if not found)
+//       int userType = userDoc.exists ? userDoc.get('userType') : -1;  // Default to -1 if not found
+
+//       // Determine if it's a donor-related complaint
+//       bool isDonorComplaint = (userType == 0); // 0 is for donor
+
+//       complaints.add({
+//         'id': ids[i].toInt(),
+//         'title': titles[i],
+//         'description': descriptions[i],
+//         'complainant': complainants[i].hex,
+//         'targetCharity': targetCharities[i].hex,
+//         'targetDonor': isDonorComplaint ? targetCharities[i].hex : null, // Add targetDonor if it's a donor-related complaint
+//         'timestamp': DateTime.fromMillisecondsSinceEpoch(timestamps[i].toInt() * 1000),
+//         'resolved': resolvedStatuses[i],
+//       });
+//     }
+
+//     // Sort complaints by timestamp (newest first)
+//     complaints.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
+
+//     // Ensure the widget is still mounted before calling setState
+//     if (!mounted) return;
+
+//     // Update UI state
+//     setState(() {
+//       _complaints = complaints;
+//     });
+
+//     print("🎉 All valid complaints processed successfully! Total complaints: ${_complaints.length}");
+
+//   } catch (e, stackTrace) {
+//     print("❌ Error fetching complaints: $e");
+//     print("🔍 Stack trace: $stackTrace");
+
+//     setState(() {
+//       _complaints = [
+//         {'title': 'Error', 'description': 'Unable to fetch complaints at the moment.'}
+//       ];
+//     });
+//   }
+// }
 
   // Sidebar button widget
    Widget _buildSidebarButton({
@@ -401,18 +530,20 @@ Future<void> _fetchComplaints() async {
                 
                 // Complaint List
               Expanded(
-  child: _complaints.isEmpty
-      ? Center(
-          child: Text(
-            'No complaints available at the moment.',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
+child: isLoading
+    ? Center(child: CircularProgressIndicator()) // Show loading while fetching data
+    : _complaints.isEmpty
+        ? Center(
+            child: Text(
+              'No complaints available at the moment.',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        )
-      : ListView.builder(
+          )
+        : ListView.builder(
   itemCount: _complaints.length,
   itemBuilder: (context, index) {
     final complaint = _complaints[index];
@@ -469,6 +600,7 @@ Future<void> _fetchComplaints() async {
     );
   }
   void _showComplaintDetails(Map<String, dynamic> complaint) {
+
   showDialog(
     context: context,
     builder: (context) {
@@ -602,6 +734,64 @@ Future<void> _fetchComplaints() async {
                               ),
                             ),
                           ),
+
+                        
+
+                        
+if (complaint['complaintType'] == 'project') 
+  SizedBox(height: 30),
+    if (complaint['complaintType'] == 'project')
+     GestureDetector(
+        onTap: () async {
+          Map<String, dynamic> projectDetails =
+              await _blockchainService.getProjectDetails(complaint['project_id']);
+
+          if (!projectDetails.containsKey('error')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProjectDetails(
+                  projectName: projectDetails['name'],
+                  description: projectDetails['description'],
+                  startDate: projectDetails['startDate'].toString().split(' ')[0],
+                  deadline: projectDetails['endDate'].toString().split(' ')[0],
+                  totalAmount: projectDetails['totalAmount'],
+                  projectType: projectDetails['projectType'],
+                  projectCreatorWallet: projectDetails['organization'],
+                  donatedAmount: projectDetails['donatedAmount'],
+                  projectId: projectDetails['id'],
+                  progress: (projectDetails['donatedAmount'] / projectDetails['totalAmount']) * 100,
+                ),
+              ),
+            );
+          } else {
+            print('Error fetching project details: ${projectDetails['error']}');
+            // Optional: Show error to user
+          }
+        },
+        child: RichText(
+          text: TextSpan(
+            text: 'project: ',
+            style: TextStyle(
+              fontSize: 20,
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
+            children: <TextSpan>[
+              TextSpan(
+                text: 'View project',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Color.fromRGBO(14, 101, 240, 1),
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+
+
                           SizedBox(height: 40),
                           Text(
                             'Date: ${_formatDate(complaint['timestamp'])}',
@@ -632,20 +822,25 @@ Future<void> _fetchComplaints() async {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color.fromARGB(255, 54, 142, 57),
-                          minimumSize: Size(120, 50),
-                          padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
-                          textStyle: TextStyle(fontSize: 18),
-                        ),
-                        onPressed: () {
-                          _resolveComplaint(complaint['id']).then((_) {
-                            Navigator.pop(context); // Go back to the previous page
-                          });
-                        },
-                        child: Text('Resolve', style: TextStyle(color: Colors.white)),
-                      ),
+                     ElevatedButton(
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Color.fromARGB(255, 54, 142, 57),
+    minimumSize: Size(120, 50),
+    padding: EdgeInsets.symmetric(vertical: 18, horizontal: 22),
+    textStyle: TextStyle(fontSize: 18),
+  ),
+  onPressed: complaint['resolved'] == true
+      ? null // Disable the button if resolved is true
+      : () {
+          _resolveComplaint(complaint['id']).then((_) {
+            Navigator.pop(context); // Go back to the previous page
+          });
+        },
+  child: Text(
+    complaint['resolved'] == true ? 'Resolved' : 'Resolve',
+    style: TextStyle(color: Colors.white),
+  ),
+),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color.fromARGB(255, 197, 47, 36),
@@ -685,51 +880,74 @@ String _formatDate(dynamic timestamp) {
   return 'N/A';
 }
 
-
-Future<void> _deleteComplaint(int complaintId) async {
+Future<void> _deleteComplaint(String complaintDocId) async {
   if (!mounted) return;
 
   try {
-    // Credentials for the sender (private key)
-    var credentials = await _web3Client.credentialsFromPrivateKey(
-      '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'
-    );
+    print("🗑️ Deleting complaint from Firestore...");
 
-    print("🗑️ Deleting complaint...");
+    // Deleting the complaint from Firestore
+    await FirebaseFirestore.instance
+        .collection('reports')
+        .doc(complaintDocId)
+        .delete();
 
-    // Sending the transaction to delete the complaint
-    var transaction = await _web3Client.sendTransaction(
-      credentials,
-      web3.Transaction.callContract(
-        contract: _contract,
-        function: _deleteComplaintFunction,
-        parameters: [BigInt.from(complaintId)],
-        gasPrice: EtherAmount.inWei(BigInt.from(5000000000)), // Set an appropriate gas price
-        maxGas: 200000, // Set the max gas limit (you might need to adjust this)
-      ),
-      chainId: 11155111, // Sepolia testnet
-    );
+    print("✅ Complaint deleted successfully!");
 
-    // Confirming the transaction receipt
-    var receipt = await _web3Client.getTransactionReceipt(transaction);
-    if (receipt == null) {
-      print('❌ Transaction failed or is pending. Please check the transaction status.');
-      return;
-    }
-
-    // Check if the transaction was successful (receipt status 1 means success)
-    if (receipt.status == 1) {
-      print("✅ Complaint deleted successfully!");
-
-      // Fetch updated complaints to reflect changes
-      await _fetchComplaints();
-    } else {
-      print('❌ Deletion failed. Transaction receipt status: ${receipt.status}');
-    }
+    // Fetch updated complaints to reflect changes
+    await _fetchComplaints();
   } catch (e) {
     print('❌ Error deleting complaint: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to delete complaint: $e')),
+    );
   }
 }
+
+// Future<void> _deleteComplaint(int complaintId) async {
+//   if (!mounted) return;
+
+//   try {
+//     // Credentials for the sender (private key)
+//     var credentials = await _web3Client.credentialsFromPrivateKey(
+//       '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'
+//     );
+
+//     print("🗑️ Deleting complaint...");
+
+//     // Sending the transaction to delete the complaint
+//     var transaction = await _web3Client.sendTransaction(
+//       credentials,
+//       web3.Transaction.callContract(
+//         contract: _contract,
+//         function: _deleteComplaintFunction,
+//         parameters: [BigInt.from(complaintId)],
+//         gasPrice: EtherAmount.inWei(BigInt.from(5000000000)), // Set an appropriate gas price
+//         maxGas: 200000, // Set the max gas limit (you might need to adjust this)
+//       ),
+//       chainId: 11155111, // Sepolia testnet
+//     );
+
+//     // Confirming the transaction receipt
+//     var receipt = await _web3Client.getTransactionReceipt(transaction);
+//     if (receipt == null) {
+//       print('❌ Transaction failed or is pending. Please check the transaction status.');
+//       return;
+//     }
+
+//     // Check if the transaction was successful (receipt status 1 means success)
+//     if (receipt.status == 1) {
+//       print("✅ Complaint deleted successfully!");
+
+//       // Fetch updated complaints to reflect changes
+//       await _fetchComplaints();
+//     } else {
+//       print('❌ Deletion failed. Transaction receipt status: ${receipt.status}');
+//     }
+//   } catch (e) {
+//     print('❌ Error deleting complaint: $e');
+//   }
+// }
 
 
 
@@ -981,11 +1199,11 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: const Color.fromARGB(255, 246, 246, 246),
+    // backgroundColor: const Color.fromARGB(255, 246, 246, 246),
     appBar: PreferredSize(
       preferredSize: const Size.fromHeight(80),
       child: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        // backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.only( top: 20 ),
@@ -1095,7 +1313,7 @@ Widget build(BuildContext context) {
               _buildSectionTitle(Icons.contact_phone, "Contact Information"),
               _buildStyledInfoRow(Icons.phone, "Phone: ", organizationData?["phone"]),
               _buildStyledInfoRow(Icons.email, "Email: ", organizationData?["email"]),
-              _buildStyledInfoRow(Icons.location_city, "City: ", organizationData?["city"]),
+              _buildStyledInfoRow(Icons.location_on, "City: ", organizationData?["city"]),
               const SizedBox(height: 16),
               _buildSectionTitle(Icons.info_outline, "About Us"),
               _buildStyledInfoRow(Icons.description, "", organizationData?["description"]),
@@ -1116,7 +1334,7 @@ Widget build(BuildContext context) {
               
               _buildSectionTitle(Icons.business, "Organization Details"),
               _buildStyledInfoRow(Icons.badge, "License No.: ", organizationData?["licenseNumber"]),
-              _buildStyledInfoRow(Icons.public, "Website: ", organizationData?["website"], isLink: true),
+              _buildStyledInfoRow(Icons.explore, "Website: ", organizationData?["website"], isLink: true),
               _buildStyledInfoRow(Icons.calendar_today, "Established date: ", organizationData?["establishmentDate"]),
             ],
           ),

@@ -7,9 +7,10 @@ import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/ViewComplaintsPage.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/BrowseProjects.dart';
 
 class AdminSidebar extends StatelessWidget {
-  final bool isSidebarVisible; // Pass visibility condition
+  final bool isSidebarVisible;
 
   const AdminSidebar({Key? key, this.isSidebarVisible = true}) : super(key: key);
 
@@ -18,16 +19,16 @@ class AdminSidebar extends StatelessWidget {
     if (!isSidebarVisible) return SizedBox(); // Hide sidebar if not visible
 
     return Container(
-      width: 350,
+      width: 350, // Can reduce this if needed for responsive design
       color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0), // Reduced padding
             child: Image.asset(
               'assets/HOSNA.jpg',
-              height: 200,
+              height: 150, // Adjusted height to fit better
               width: 350,
             ),
           ),
@@ -36,9 +37,9 @@ class AdminSidebar extends StatelessWidget {
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(context, "Organizations", () => _navigateTo(context, AdminBrowseOrganizations())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-          _buildSidebarItem(context, "Projects", () => _navigateTo(context, AdminBrowseProjects())),
+          _buildSidebarItem(context, "Projects", () => _navigateTo(context, BrowseProjects(walletAddress: ''))),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-          _buildSidebarItem(context, "Complaints", ()=> _navigateTo(context, ViewComplaintsPage())),
+          _buildSidebarItem(context, "Complaints", () => _navigateTo(context, ViewComplaintsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(context, "Terms & Conditions", () => _navigateTo(context, AdminTermsAndConditionsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
@@ -65,47 +66,45 @@ class AdminSidebar extends StatelessWidget {
     );
   }
 
-   Widget _buildSidebarItem(BuildContext context, String title, VoidCallback onTap, {Color color = const Color.fromRGBO(24, 71, 137, 1)}) {
-  return ListTile(
-    title: Center( // Center the text
-      child: Text(
-        title,
-        style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ),
-    onTap: onTap,
-  );
-}
-
-  // Sidebar button widget
-   Widget _buildSidebarButton({
-  required String title,
-  required VoidCallback onTap,
-  required Color backgroundColor,
-  required Color borderColor,
-  required Color textColor,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-    child: SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          side: BorderSide(color: borderColor, width: 2), // Set border thickness here
-          padding: EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onPressed: onTap,
+  Widget _buildSidebarItem(BuildContext context, String title, VoidCallback onTap, {Color color = const Color.fromRGBO(24, 71, 137, 1)}) {
+    return ListTile(
+      title: Center( // Center the text
         child: Text(
           title,
-          style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-    ),
-  );
-}
+      onTap: onTap,
+    );
+  }
 
+  Widget _buildSidebarButton({
+    required String title,
+    required VoidCallback onTap,
+    required Color backgroundColor,
+    required Color borderColor,
+    required Color textColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            side: BorderSide(color: borderColor, width: 2),
+            padding: EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          onPressed: onTap,
+          child: Text(
+            title,
+            style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
 
   void _navigateTo(BuildContext context, Widget page, {bool replace = false}) {
     if (replace) {
@@ -115,3 +114,4 @@ class AdminSidebar extends StatelessWidget {
     }
   }
 }
+

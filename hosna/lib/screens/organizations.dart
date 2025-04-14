@@ -11,6 +11,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:web3dart/web3dart.dart' as web3;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // For formatted date (optional)
 
 
 class OrganizationsPage extends StatefulWidget {
@@ -234,12 +236,12 @@ Widget build(BuildContext context) {
               filled: true,
               fillColor: Colors.white.withOpacity(0.8),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30.0),
+                borderRadius: BorderRadius.circular(12.0),
                 borderSide: BorderSide(
                     color: Color.fromRGBO(24, 71, 137, 1), width: 2),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30.0),
+                borderRadius: BorderRadius.circular(12.0),
                 borderSide: BorderSide(
                     color: Color.fromRGBO(24, 71, 137, 1), width: 2),
               ),
@@ -384,9 +386,55 @@ class OrganizationProfilePage extends StatelessWidget {
   final Map<String, dynamic> organization;
 
   const OrganizationProfilePage({super.key, required this.organization});
+// Method to load the wallet address from SharedPreferences
+ 
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
 
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
 
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
+Future<String?> _loadPrivateKey() async {
+    print('Loading private key...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = await _loadWalletAddress();
+      if (walletAddress == null) {
+        print('Error: Wallet address not found.');
+        return null;
+      }
 
+      String privateKeyKey = 'privateKey_$walletAddress';
+      print('Retrieving private key for address: $walletAddress');
+
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print('✅ Private key retrieved for wallet $walletAddress');
+        print('✅ Private key $privateKey');
+        return privateKey;
+      } else {
+        print('❌ Private key not found for wallet $walletAddress');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error retrieving private key: $e');
+      return null;
+    }
+  }
   @override
   Widget build(BuildContext context) {
     // Get the address and validate it before passing
@@ -451,14 +499,14 @@ class OrganizationProfilePage extends StatelessWidget {
           _buildSectionTitle(Icons.contact_phone, "Contact Information"),
           _buildInfoRow(Icons.phone, "Phone", organization["phone"]),
           _buildInfoRow(Icons.email, "Email", organization["email"]),
-          _buildInfoRow(Icons.location_city, "City", organization["city"]),
+          _buildInfoRow(Icons.location_on, "City", organization["city"]),
 
           const SizedBox(height: 16),
 
           _buildSectionTitle(Icons.business, "Organization Details"),
           _buildInfoRow(
               Icons.badge, "License Number", organization["licenseNumber"]),
-          _buildInfoRow(Icons.public, "Website", organization["website"],
+          _buildInfoRow(Icons.explore, "Website", organization["website"],
               isLink: true),
           _buildInfoRow(Icons.calendar_today, "Established",
               organization["establishmentDate"]),
@@ -510,22 +558,41 @@ class OrganizationProfilePage extends StatelessWidget {
         ],
       ),
     ),
-    Positioned(
-      top: 16,
-      right: 16,
-      child: IconButton(
-        icon: const Icon(Icons.flag, color: Colors.grey, size: 40), // Increased icon size
-        iconSize: 38, // Ensures the button itself is larger
-        onPressed: () {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return ReportPopup(organization: organization); // Pass organization data
-        },
+
+FutureBuilder<String?>(
+  future: _loadPrivateKey(), // Call the asynchronous function
+  builder: (context, snapshot) {
+    // Handle loading state
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return Container(); // or some loading indicator
+    }
+
+    // Check if the private key is available (not null)
+    if (snapshot.hasData && snapshot.data != null) {
+      return Positioned(
+        top: 16,
+        right: 16,
+        child: IconButton(
+          icon: const Icon(Icons.flag, color: Colors.grey, size: 40), // Increased icon size
+          iconSize: 38, // Ensures the button itself is larger
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return ReportPopup(organization: organization); // Pass organization data
+              },
+            );
+          },
+        ),
       );
-    },
-      ),
-    ),
+    }
+
+    // If private key is null or not found, do not show the icon
+    return Container();
+  },
+),
+
+
   ],
 ),
     );
@@ -1212,7 +1279,7 @@ class _ReportPopupState extends State<ReportPopup> {
                 ),
                 const SizedBox(width: 20),
                 OutlinedButton(
-                onPressed: () async {
+             onPressed: () async {
   // Validate input fields
   if (titleController.text.trim().isEmpty || descriptionController.text.trim().isEmpty) {
     print("Title or description is empty");
@@ -1240,35 +1307,28 @@ class _ReportPopupState extends State<ReportPopup> {
     return;
   }
 
+  // Load the complainant wallet address
+  String? complainantAddress = await _loadWalletAddress();
+  if (complainantAddress == null || complainantAddress.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Error: Could not load your wallet address. Please log in again.')),
+    );
+    return;
+  }
+
   try {
-    // Create an instance of ComplaintService
-    final complaintService = ComplaintService(
-      rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-      contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
-    );
+    // Create the complaint document
+    await FirebaseFirestore.instance.collection('reports').add({
+      'title': title,
+      'description': description,
+      'targetCharityAddress': targetCharityAddress,
+      'complainant': complainantAddress,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
 
-    // Call the sendComplaint function and get the transaction hash
-    String result = await complaintService.sendComplaint(
-      title: title,
-      description: description,
-      targetCharityAddress: targetCharityAddress,
-    );
+    print('Complaint stored successfully in Firestore.');
+    showSuccessPopup(context); // Show confirmation popup
 
-    // Handle the response
-    if (result.startsWith('Error')) {
-      print('Failed to send complaint: $result');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send complaint: $result')),
-      );
-    } else {
-      print('Complaint sent successfully. Transaction hash: $result');
-      // After the complaint is sent successfully
- 
-             showSuccessPopup(context); // Call the popup here
-
-
-     
-    }
   } catch (e) {
     print('Exception occurred: $e');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1276,6 +1336,72 @@ class _ReportPopupState extends State<ReportPopup> {
     );
   }
 },
+
+
+//                 onPressed: () async {
+//   // Validate input fields
+//   if (titleController.text.trim().isEmpty || descriptionController.text.trim().isEmpty) {
+//     print("Title or description is empty");
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('Please enter both title and description')),
+//     );
+//     return;
+//   }
+
+//   // Prepare the complaint details
+//   String title = titleController.text.trim();
+//   String description = descriptionController.text.trim();
+//   String targetCharityAddress = widget.organization["wallet"] ?? "";
+
+//   print("Submitting complaint...");
+//   print("Title: $title");
+//   print("Description: $description");
+//   print("Target Charity Address: $targetCharityAddress");
+
+//   if (targetCharityAddress.isEmpty) {
+//     print("Error: Charity wallet address is missing!");
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('Error: Charity wallet address is missing!')),
+//     );
+//     return;
+//   }
+
+//   try {
+//     // Create an instance of ComplaintService
+//     final complaintService = ComplaintService(
+//       rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
+//       contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
+//     );
+
+//     // Call the sendComplaint function and get the transaction hash
+//     String result = await complaintService.sendComplaint(
+//       title: title,
+//       description: description,
+//       targetCharityAddress: targetCharityAddress,
+//     );
+
+//     // Handle the response
+//     if (result.startsWith('Error')) {
+//       print('Failed to send complaint: $result');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Failed to send complaint: $result')),
+//       );
+//     } else {
+//       print('Complaint sent successfully. Transaction hash: $result');
+//       // After the complaint is sent successfully
+ 
+//              showSuccessPopup(context); // Call the popup here
+
+
+     
+//     }
+//   } catch (e) {
+//     print('Exception occurred: $e');
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('An error occurred: $e')),
+//     );
+//   }
+// },
 
 
                   style: OutlinedButton.styleFrom(
@@ -1353,7 +1479,25 @@ class _ReportPopupState extends State<ReportPopup> {
   });
 }
 
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
 
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
 
 }
 

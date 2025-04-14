@@ -3,6 +3,8 @@ import 'package:hosna/screens/organizations.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class ViewDonorsPage extends StatefulWidget {
   final int projectId;
@@ -186,7 +188,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: Text(
-        "Donations",
+        "Donors",
         style: TextStyle(
           color: Color.fromRGBO(24, 71, 137, 1),
           fontWeight: FontWeight.bold,
@@ -574,38 +576,88 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                   ),
                   const SizedBox(width: 20),
                   OutlinedButton(
-                    onPressed: () async {
-                      if (targetDonorAddress.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Error: Donor wallet address is missing!')),
-                        );
-                        return;
-                      }
-
-                      try {
-                        final complaintService = ComplaintService(
-                        rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-      contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
+onPressed: () async {
+  if (targetDonorAddress.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Error: Donor wallet address is missing!')),
     );
+    return;
+  }
 
-                        String result = await complaintService.sendComplaint(
-                          title: titleController.text.trim(),
-                          description: descriptionController.text.trim(),
-                          targetCharityAddress: targetDonorAddress, // It's the donor this time
-                        );
+  try {
+    final walletAddress = await _loadWalletAddress();
 
-                        if (result.startsWith('Error')) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to send complaint: $result')),
-                          );
-                        } else {
-                          Navigator.pop(context, true);
-                          showSuccessPopup(context);
-                        }
-                      } catch (e) {
-                        print("Exception: $e");
-                      }
-                    },
+    if (walletAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Wallet address not found. Please log in again.')),
+      );
+      return;
+    }
+
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+
+    if (title.isEmpty || description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both title and description.')),
+      );
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('reports').add({
+      'title': title,
+      'description': description,
+      'targetCharityAddress': targetDonorAddress,
+      'complainant': walletAddress,
+      'timestamp': FieldValue.serverTimestamp(),
+      'resolved': false,
+    });
+
+    Navigator.pop(context, true);
+    showSuccessPopup(context);
+  } catch (e) {
+    print("❌ Error submitting complaint: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to submit complaint: $e')),
+    );
+  }
+},
+
+
+
+
+    //                 onPressed: () async {
+    //                   if (targetDonorAddress.isEmpty) {
+    //                     ScaffoldMessenger.of(context).showSnackBar(
+    //                       const SnackBar(content: Text('Error: Donor wallet address is missing!')),
+    //                     );
+    //                     return;
+    //                   }
+
+    //                   try {
+    //                     final complaintService = ComplaintService(
+    //                     rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
+    //   contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
+    // );
+
+    //                     String result = await complaintService.sendComplaint(
+    //                       title: titleController.text.trim(),
+    //                       description: descriptionController.text.trim(),
+    //                       targetCharityAddress: targetDonorAddress, // It's the donor this time
+    //                     );
+
+    //                     if (result.startsWith('Error')) {
+    //                       ScaffoldMessenger.of(context).showSnackBar(
+    //                         SnackBar(content: Text('Failed to send complaint: $result')),
+    //                       );
+    //                     } else {
+    //                       Navigator.pop(context, true);
+    //                       showSuccessPopup(context);
+    //                     }
+    //                   } catch (e) {
+    //                     print("Exception: $e");
+    //                   }
+    //                 },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 3.5),
                       backgroundColor: Color.fromRGBO(24, 71, 137, 1),
@@ -620,6 +672,25 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
         false;
   }
 
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
   void showSuccessPopup(BuildContext context) {
 
   // Show dialog
