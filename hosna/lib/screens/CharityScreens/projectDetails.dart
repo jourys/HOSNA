@@ -18,6 +18,7 @@ import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
 
 
+
 class ProjectDetails extends StatefulWidget {
   final String projectName;
   final String description;
@@ -59,8 +60,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   bool isCanceled = false; // Default value
   String projectState = "";
    bool votingInitiated = false; // Initialize votingInitiated as false
-   bool isCompleted = false;
-
+bool isEnded = false;
+bool isCompleted = false;
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
@@ -68,14 +69,14 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final EthereumAddress contractAddress =
       EthereumAddress.fromHex("0x95a20778c2713a11ff61695e57cd562f78f75754");
   bool isLoading = true;
+
   final BlockchainService _blockchainService = BlockchainService();
-  
+  bool _isLoadingState = true;
   @override
   void initState()  {
     super.initState();
-
-    _listenToProjectState();
-
+_loadProjectState();
+   
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
@@ -102,10 +103,23 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   set globalPrivateKey(String? privateKey) {
     _globalPrivateKey = privateKey;
     print('✅ Global private key set: $privateKey');
-  _fetchVotingStatus();
+
+//  checkVotingStatus() ;
+  // _fetchVotingStatus();
+     _listenToProjectState();
+    
   }
 
-
+Future<void> _loadProjectState() async {
+   setState(() {
+    _isLoadingState = true;
+  });
+  final state = await determineProjectState(widget.projectId.toString());
+ setState(() {
+    projectState = state;
+    _isLoadingState = false;
+  });
+}
  // Method to load the wallet address from SharedPreferences
   Future<String?> _loadAddress() async {
     print('Loading wallet address...');
@@ -127,104 +141,115 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   }
 
 
-Future<void> _fetchVotingStatus() async {
-  print('🔍 Fetching voting status for project: ${widget.projectId}');
+// Future<void> _fetchVotingStatus() async {
+//   print('🔍 Fetching voting status for project: ${widget.projectId}');
 
-  try {
-    if (globalWalletAddress == null) {
-      print('❌ Wallet address is null. Cannot check voting eligibility.');
-      setState(() {
-        canVote = false;
-        votingInitiated = false;
-      });
-      return;
-    }
+//   try {
+//     if (globalWalletAddress == null) {
+//       print('❌ Wallet address is null. Cannot check voting eligibility.');
+//       setState(() {
+//         canVote = false;
+//         votingInitiated = false;
+//       });
+//       return;
+//     }
 
-    final BigInt bigProjectId = BigInt.from(widget.projectId);
-    print('🔢 Converted project ID to BigInt: $bigProjectId');
-    print('🧾 Checking if donor can vote using address: $globalWalletAddress');
+//     final BigInt bigProjectId = BigInt.from(widget.projectId);
+//     print('🔢 Converted project ID to BigInt: $bigProjectId');
+//     print('🧾 Checking if donor can vote using address: $globalWalletAddress');
     
 
-print('🛑 isCanceled: $isCanceled');
+// print('🛑 isCanceled: $isCanceled');
 
-canVote = await donorServices.checkIfDonorCanVote(
-  bigProjectId,
-  globalWalletAddress.toString(),
-);
+// canVote = await donorServices.checkIfDonorCanVote(
+//   bigProjectId,
+//   globalWalletAddress.toString(),
+// );
 
-    print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
+//     print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
 
-    print('✅ Donor voting eligibility status: $canVote');
+//     print('✅ Donor voting eligibility status: $canVote');
 
-    final projectDocRef = FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString());
+//     final projectDocRef = FirebaseFirestore.instance
+//         .collection('projects')
+//         .doc(widget.projectId.toString());
 
-    final projectDoc = await projectDocRef.get();
-    print('📌 Fetched document for Project ID: ${widget.projectId}');
+//     final projectDoc = await projectDocRef.get();
+//     print('📌 Fetched document for Project ID: ${widget.projectId}');
 
-    if (projectDoc.exists) {
-      final data = projectDoc.data();
-      print('📄 Project document exists. Data: $data');
+//     if (projectDoc.exists) {
+//       final data = projectDoc.data();
+//       print('📄 Project document exists. Data: $data');
+//   // Check if project is completed
+//         if (isCompleted) {
+//           projectState = "completed";
+//         } else {
+//           projectState = votingInitiated && (!isCompleted) && (!isEnded)
+//               ? "voting"
+//               : isCanceled && (!votingInitiated) && (!isEnded)
+//                   ? "canceled"
+//                   : getProjectState(data!, votingInitiated, isCanceled, isEnded, isCompleted);
+//         }
+//     } else {
+//       print('❌ Project document not found in Firestore. Creating default document...');
+//       await projectDocRef.set({
+//         'votingInitiated': false,
+//       });
 
-      setState(() {
-        votingInitiated = data?['votingInitiated'] ?? false;
-        print('🚦 Voting initiated status set to: $votingInitiated');
-      });
-    } else {
-      print('❌ Project document not found in Firestore. Creating default document...');
-      await projectDocRef.set({
-        'votingInitiated': false,
-      });
+//       print('✅ Default project document created with votingInitiated = false');
 
-      print('✅ Default project document created with votingInitiated = false');
-
-      setState(() {
-        votingInitiated = false;
-        print('🚦 Voting initiated status set to default (false)');
-      });
-    }
-  } catch (e) {
-    print('⚠️ Error while fetching voting status: $e');
-  }
-}
-
+//     //   setState(() {
+//     //     votingInitiated = false;
+//     //     print('🚦 Voting initiated status set to default (false)');
+//     //   });
+//     }
+//   } catch (e) {
+//     print('⚠️ Error while fetching voting status: $e');
+//   }
+// }
 
 StreamSubscription<DocumentSnapshot>? _projectSubscription;
+
 void _listenToProjectState() {
   _projectSubscription = FirebaseFirestore.instance
       .collection('projects')
       .doc(widget.projectId.toString())
       .snapshots()
-      .listen((doc) {
+      .listen((doc) async {
     if (doc.exists) {
-     setState(() {
-  final data = doc.data() as Map<String, dynamic>;
-  if (data.containsKey('isCanceled')) {
-    isCanceled = data['isCanceled'] is bool
-        ? data['isCanceled']
-        : data['isCanceled'] == "canceled";
-  } else {
-    isCanceled = false; // or whatever default makes sense
-  }
+      setState(() {
+        final data = doc.data() as Map<String, dynamic>;
 
-  projectState = isCanceled
-      ? "canceled"
-      : getProjectState(data);
+        // Ensure 'isCanceled' exists in the document
+        if (!data.containsKey('isCanceled')) {
+          FirebaseFirestore.instance
+              .collection('projects')
+              .doc(widget.projectId.toString())
+              .update({'isCanceled': false});
+          isCanceled = false;
+        } else {
+          isCanceled = data['isCanceled'];
+        }
 
-      isCompleted = data['isCompleted'] == true;
+if (isEnded) {
+      projectState = "ended";
+       print("is ended : $isEnded");
+      return;}
+        // Check if project is completed
+        if (isCompleted) {
+          projectState = "completed";
+        } else {
+          projectState = votingInitiated && (!isCompleted) && (!isEnded)
+              ? "voting"
+              : isCanceled && (!votingInitiated) && (!isEnded)
+                  ? "canceled"
+                  : getProjectState(data, votingInitiated, isCanceled, isEnded, isCompleted);
+        }
 
-          projectState = isCanceled
-              ? "canceled"
-              : isCompleted
-                  ? "completed"
-                  : getProjectState(data);
-
-  print("Firestore data: $data");
-  print("isCanceled: $isCanceled");
-  print("Final Project Status: $projectState");
-});
-
+        print("Firestore data: $data");
+        print("isCanceled: $isCanceled");
+        print("Final Project Status: $projectState");
+      });
     } else {
       print("Document not found");
     }
@@ -365,25 +390,126 @@ void dispose() {
   }
 
   String _getProjectState() {
-    Map<String, dynamic> project = {
-      'startDate': widget.startDate,
-      'endDate': widget.deadline,
-      'totalAmount': widget.totalAmount,
-      'donatedAmount': widget.donatedAmount,
-      'isCompleted': isCompleted,
-    };
+  Map<String, dynamic> project = {
+    'startDate': widget.startDate,
+    'endDate': widget.deadline,
+    'totalAmount': widget.totalAmount,
+    'donatedAmount': widget.donatedAmount,
+    
+  };
 
-    return getProjectState(project); // Use the utility function
+  return getProjectState(project, votingInitiated, isCanceled , isEnded , isCompleted );
+}
+
+
+// void checkVotingStatus() async {
+//  _projectSubscription = FirebaseFirestore.instance
+//     .collection('projects')
+//     .doc(widget.projectId.toString())
+//     .snapshots()
+//     .listen((doc) {
+//   if (doc.exists) {
+//     setState(() {
+//       final data = doc.data() as Map<String, dynamic>;
+
+//       // Load isCanceled (optional, based on your use case)
+//       if (data.containsKey('isCanceled')) {
+//         isCanceled = data['isCanceled'] is bool
+//             ? data['isCanceled']
+//             : data['isCanceled'] == "canceled";
+//       } else {
+//         isCanceled = false;
+//       }
+
+//       // Load votingInitiated
+//       votingInitiated = data['votingInitiated'] ?? false;
+
+//       // Set project state
+//       projectState = votingInitiated ? "voting" : "canceled";
+
+//       print("📢 VOTING INITIATED: $votingInitiated");
+//       print("📛 Project State: $projectState");
+//     });
+//   }
+// });
+
+// }
+
+
+
+Future<String> determineProjectState(String projectId) async {
+  print("📥 Fetching project with ID: $projectId");
+final docRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
+DocumentSnapshot doc = await docRef.get();
+
+if (!doc.exists) {
+  print("⚠️ Document does not exist for project ID: $projectId");
+
+  // Create the document with default fields
+  await docRef.set({
+    'isCanceled': false,
+    'isCompleted': false,
+    'votingInitiated': false,
+    'isEnded': false,
+  });
+
+  print("✅ Created default document for project ID: $projectId");
+
+  // Re-fetch the document after creating it
+  doc = await docRef.get();
+}
+
+// Now it's safe to cast
+final data = doc.data() as Map<String, dynamic>;
+
+  print("📄 Project data fetched: $data");
+
+  votingInitiated = data['votingInitiated'] ?? false;
+  isCanceled = data['isCanceled'] == true || data['isCanceled'] == "canceled";
+
+  print("🗳️ votingInitiated: $votingInitiated");
+  print("❌ isCanceled: $isCanceled");
+
+  // 🆕 Get votingId and check if endedisEnded = false;
+final votingId = data['votingId'];
+if (votingId != null) {
+  final votingDocRef = FirebaseFirestore.instance
+      .collection("votings")
+      .doc(votingId.toString());
+
+  final votingDoc = await votingDocRef.get();
+  final votingData = votingDoc.data();
+
+  if (votingDoc.exists) {
+    // If 'IsEnded' is missing, create it with default false
+    if (!votingData!.containsKey('IsEnded')) {
+      await votingDocRef.update({'IsEnded': false});
+      print("✅ 'IsEnded' field added to voting document $votingId.");
+    }
+
+    isEnded = votingData['IsEnded'] ?? false;
+  } else {
+    print("⚠️ Voting document not found for ID: $votingId.");
   }
+}
 
-String getProjectState(Map<String, dynamic> project) {
-  if (isCanceled == "canceled") {
-    print("📛 Project is canceled globally.");
-    return "canceled";
-  }
 
-  if (project['isCompleted'] == true) return "completed";
 
+
+ print("is ended : $isEnded");
+
+
+// Set the global isCompleted value if it exists in Firestore
+if (data.containsKey('isCompleted')) {
+  isCompleted = data['isCompleted'] ;
+}
+
+        
+
+  return getProjectState(data, votingInitiated, isCanceled, isEnded , isCompleted);
+}
+
+String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool isCanceled, bool isEnded, bool isCompleted) {
   DateTime now = DateTime.now();
 
   // 🗓️ Handle startDate
@@ -410,40 +536,52 @@ String getProjectState(Map<String, dynamic> project) {
     endDate = DateTime.parse(project['endDate'].toString());
   }
 
-  // 💰 Handle total and donated amounts
+  // 💰 Handle amounts
   double totalAmount = (project['totalAmount'] ?? 0).toDouble();
   double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
-  // 🔍 Determine project status
+  // ✅ PRIORITY ORDER (Highest to Lowest)
+   if ((donatedAmount >= totalAmount) && (isCompleted))  return "completed";
+  if (isEnded) return "ended";                // 🟢 ended status added
+  if (votingInitiated && (!isEnded)) return "voting";       // 🔵 voting comes next
+  if (isCanceled && (!votingInitiated)) return "canceled"; // 🟠 then canceled
   if (now.isBefore(startDate)) return "upcoming";
-  if (donatedAmount >= totalAmount) return "in-progress";
+  if ((donatedAmount >= totalAmount) && (!isCompleted)) return "in-progress";
   if (now.isAfter(endDate)) return "failed";
-  if (now.isAfter(startDate) && now.isBefore(endDate) && donatedAmount < totalAmount && isCanceled != "canceled") {
-    return "active";
-  }
+  if (now.isAfter(startDate) && now.isBefore(endDate) && (!isCanceled) && (!votingInitiated)) return "active";
 
   return "unknown";
 }
 
-  Color _getStateColor(String state) {
-    switch (state) {
-      case "active":
-        return Colors.green;
-      case "failed":
-        return Colors.red;
-      case "in-progress":
-        return Colors.purple;
-      case "voting":
-        return Colors.blue;
-         case "canceled":
-      return Colors.orange; 
-       case "ended":
-      return Colors.grey; 
-       case "completed":
-  return Color.fromRGBO(24, 71, 137, 1);
-
-      default:
-        return Colors.grey;
+ Color _getStateColor(String state) {
+  switch (state) {
+    case "active":
+      return Colors.green;
+    case "failed":
+      return Colors.red;
+    case "in-progress":
+      return Colors.purple;
+    case "voting":
+      return Colors.blue;
+    case "canceled":
+      return Colors.orange;
+    case "ended":
+      return Colors.grey;
+    case "completed":
+      return const Color.fromRGBO(24, 71, 137, 1);
+    default:
+      return Colors.grey;
+  }
+}
+Future<void> _markProjectAsCompleted() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(widget.projectId.toString())
+          .update({'isCompleted': true});
+      print("Project marked as completed.");
+    } catch (e) {
+      print("Error marking project as completed: $e");
     }
   }
 Widget _buildCreativeProjectType(String type) {
@@ -526,22 +664,17 @@ Widget _buildTypeItem(String title, String value) {
   );
 }
 
-Future<void> _markProjectAsCompleted() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(widget.projectId.toString())
-          .update({'isCompleted': true});
-      print("Project marked as completed.");
-    } catch (e) {
-      print("Error marking project as completed: $e");
-    }
-  }
 
   @override
 Widget build(BuildContext context) {
-  String projectState = isCanceled ? "canceled" : _getProjectState();
-  print("Project status: $projectState");
+    String projectState = _getProjectState();
+print("Project status: $projectState");
+
+//   String projectState = (isCanceled && !votingInitiated) ? "canceled" : _getProjectState();
+//   print("Project status: $projectState");
+
+//  projectState = (isCanceled && votingInitiated) ? "voting" : _getProjectState();
+//   print("Project status: $projectState");
 
   Color stateColor = _getStateColor(projectState);
   double totalAmount = widget.totalAmount;
@@ -651,21 +784,45 @@ Widget build(BuildContext context) {
                                 '${(widget.progress * 100).toStringAsFixed(0)}%',
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: stateColor.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  projectState,
-                                  style: TextStyle(
-                                      color: stateColor, fontWeight: FontWeight.bold),
-                                ),
-                              ),
+                         Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _isLoadingState
+            ? Colors.white.withOpacity(0.2)
+            : _getStateColor(projectState).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: _isLoadingState
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 0),
+            )
+          : Text(
+              projectState,
+              style: TextStyle(
+                color: _getStateColor(projectState),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+    ),
+
+
+  ],
+
+  
+
+),
+
+   
                             ],
                           ),
-                           SizedBox(height: 20),
+SizedBox(height: 15),
+    
+                           SizedBox(height: 30),
                            if (userType == 1 &&
                               widget.projectCreatorWallet == globalWalletAddress) 
                           GestureDetector(
@@ -832,6 +989,67 @@ else {
             ),
           ),
 
+                 
+if (userType == 1 &&
+    (projectState == "voting")
+     && widget.projectCreatorWallet == globalWalletAddress
+    )
+ Center(
+            child: ElevatedButton(
+              onPressed: () async {
+             if (votingInitiated) {
+  try {
+    // 🔍 Step 1: Fetch the votingId from Firestore
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .get();
+
+   
+      final data = projectSnapshot.data() as Map<String, dynamic>;
+      final votingId = data['votingId'].toString();
+
+      if (votingId != null) {
+        // ✅ Step 2: Navigate to VotingDetailsPage with the votingId
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VotingDetailsPage(
+              walletAddress: globalWalletAddress ?? '',
+              votingId: votingId.toString(), // 👈 Pass it here
+            ),
+          ),
+        );
+      } else {
+        print("❌ votingId is null");
+        // Optionally show a snackbar or alert to user
+      }
+    
+  } catch (e) {
+    print("❌ Error fetching votingId: $e");
+  }
+}
+
+               
+
+               
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+              child: Text(
+                'Check Voting',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
 
 
 if (canVote && votingInitiated && userType == 0 )
@@ -888,7 +1106,7 @@ if (canVote && votingInitiated && userType == 0 )
       ),
     ),
   ), 
-                          if (userType == 1 &&
+                            if (userType == 1 &&
                                 projectState == "in-progress" &&
                                 widget.projectCreatorWallet ==
                                     globalWalletAddress)
@@ -922,13 +1140,12 @@ if (canVote && votingInitiated && userType == 0 )
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
-                                        ),
-                                      ),
+                                        ),  ),
                                     ),
                                   ),
                                   const SizedBox(height: 15),
                                   // Mark as Completed button
-                                  if (!isCompleted)
+                                  if (!isCompleted && widget.projectCreatorWallet == globalWalletAddress)
                                     Center(
                                       child: ElevatedButton(
                                         onPressed: () async {
@@ -957,8 +1174,7 @@ if (canVote && votingInitiated && userType == 0 )
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
+                                ],  ),
                             if (userType == 0 &&
                                 (projectState == "in-progress" ||
                                     projectState == "completed"))
@@ -992,11 +1208,7 @@ if (canVote && votingInitiated && userType == 0 )
                                       color: Colors.white,
                                     ),
                                   ),
-                                ),
-                              ),
-
-                              
-                     
+                                ), ),
 
                     
                           if ((userType == 1 &&
@@ -1417,20 +1629,7 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     );
 
     // Store donation details
-    await _storeDonationInfo(
-      {
-        'id': widget.projectId,
-        'name': widget.projectName,
-        'description': widget.description,
-        'startDate': widget.startDate,
-        'endDate': widget.deadline,
-        'totalAmount': widget.totalAmount,
-        'projectType': widget.projectType,
-        'projectCreatorWallet': widget.projectCreatorWallet,
-        'donatedAmount': donationAmountInEth,
-      },
-      donationAmountInEth
-    );
+    await _storeDonation(senderAddress.hex, donationAmountInEth, isAnonymous);
 
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1439,57 +1638,29 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
   }
 }
 
-Future<void> _storeDonationInfo(Map<String, dynamic> projectDetails, double donatedAmount) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final address = prefs.getString('walletAddress');
-    
-    if (address == null) {
-      print("❌ No wallet address found");
-      return;
-    }
+Future<void> _storeDonation(String donorAddress, double amount, bool isAnonymous) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String key = 'donationData_$donorAddress';
+  String? existingData = prefs.getString(key);
 
-    // Get existing donations
-    final donationsKey = 'donations_${address}';
-    final donationsJson = prefs.getString(donationsKey) ?? '[]';
-    final List<dynamic> donations = json.decode(donationsJson);
+  Map<String, dynamic> donationData = existingData != null
+      ? jsonDecode(existingData)
+      : {'totalDonated': 0.0, 'isAnonymous': false};
 
-    print("📌 Current donations count: ${donations.length}");
+  // Update total donation amount
+  donationData['totalDonated'] = (donationData['totalDonated'] as double) + amount;
 
-    // Create donation info with all necessary details
-    final donationInfo = {
-      'id': projectDetails['id'],
-      'name': projectDetails['name'],
-      'description': projectDetails['description'],
-      'donatedAmount': donatedAmount,
-      'totalAmount': double.parse(projectDetails['totalAmount'].toString()),
-      'projectType': projectDetails['projectType'],
-      'endDate': projectDetails['endDate'] is int 
-          ? projectDetails['endDate'] 
-          : DateTime.parse(projectDetails['endDate'].toString()).millisecondsSinceEpoch,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'projectCreatorWallet': projectDetails['projectCreatorWallet'],
-      'donorWallet': address,
-    };
-
-    // Check if donation already exists
-    final existingIndex = donations.indexWhere((d) => d['id'].toString() == projectDetails['id'].toString());
-    if (existingIndex >= 0) {
-      donations[existingIndex] = donationInfo;
-      print("✅ Updated existing donation for project ${projectDetails['name']}");
-    } else {
-      donations.add(donationInfo);
-      print("✅ Added new donation for project ${projectDetails['name']}");
-    }
-
-    // Save updated donations
-    await prefs.setString(donationsKey, json.encode(donations));
-    print("✅ Successfully stored ${donations.length} donations for wallet $address");
-
-  } catch (e) {
-    print("❌ Error storing donation info: $e");
+  // Update anonymity status (if latest donation is anonymous, keep true)
+  if (isAnonymous) {
+    donationData['isAnonymous'] = true;
   }
+
+  await prefs.setString(key, jsonEncode(donationData));
+
+  print("Stored Data After Donation: $donationData");
 }
+
+
 
 }
 final String _contractAbi = '''[
@@ -1758,27 +1929,26 @@ Future<Map<String, dynamic>> fetchProjectFirestoreData(BigInt projectId) async {
   }
 }
 
-Future<double> getProjectDonations(BigInt projectId) async {
+Future<int> getProjectDonations(BigInt projectId) async {
+  final getDonorsFunction = _contract.function('getProjectDonorsWithAmounts');
+  final result = await _web3Client.call(
+    contract: _contract,
+    function: getDonorsFunction,
+    params: [projectId],
+  );
+
+  if (result.isEmpty) {
+    print("❌ No donations found for project $projectId");
+    return 0;
+  }
+
   try {
-    final getDonorsFunction = _contract.function('getProjectDonations');
-    final result = await _web3Client.call(
-      contract: _contract,
-      function: getDonorsFunction,
-      params: [projectId],
-    );
-
-    if (result.isEmpty) {
-      print("No donations found for project $projectId");
-      return 0.0;
-    }
-
-    final donationAmountInWei = result[0] as BigInt;
-    final donationAmountInEth = donationAmountInWei.toDouble() / 1e18;
-    print("✅ Project $projectId donation amount: $donationAmountInEth ETH");
-    return donationAmountInEth;
+    final donationAmounts = (result[1] as List).cast<BigInt>();
+    final totalAmount = donationAmounts.fold<BigInt>(BigInt.zero, (prev, element) => prev + element);
+    return totalAmount.toInt();
   } catch (e) {
-    print("❌ Error fetching donation amount for project $projectId: $e");
-    return 0.0;
+    print("🚨 Error processing donations: $e");
+    return 0;
   }
 }
 
@@ -2252,3 +2422,4 @@ class _ReportPopupState extends State<ReportPopup> {
   }
 
 }
+

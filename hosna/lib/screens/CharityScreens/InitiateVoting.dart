@@ -318,10 +318,11 @@ await VoteListener.listenForVotingStatus(int.parse(votingCounter) , widget.proje
     print("✅ listener staarttttt");
 
     print("✅ Voting ID saved to Firestore: $votingCounter");
-    showWarning('🗳️ Voting started successfully!');
+               
 
     // Navigate back after successful voting initiation
     Navigator.pop(context, true);
+       showVotingSuccessPopup(context);
     print('✅ Voting initiation process complete.');
 
   } catch (e) {
@@ -418,97 +419,297 @@ void _pickEndDate() async {
   });
 }
 
+Future<bool> _showInitiateVotingConfirmationDialog(BuildContext context) async {
+  return await showDialog<bool>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set background to white
+        title: const Text(
+          'Confirm Voting Initiation',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // Make title bold
+            fontSize: 22, // Increase title font size
+          ),
+          textAlign: TextAlign.center, // Center the title text
+        ),
+        content: const Text(
+          'Are you sure you want to initiate the voting process?',
+          style: TextStyle(
+            fontSize: 18, // Make content text bigger
+          ),
+          textAlign: TextAlign.center, // Center the content text
+        ),
+        actions: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
+            children: [
+              OutlinedButton(
+                onPressed: () {
+                  print("Cancel clicked - Voting not initiated.");
+                  Navigator.pop(context, false); // Return false on cancel
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), // Border color for Cancel button
+                    width: 3,
+                  ),
+                  backgroundColor: Colors.white, // Background color for Cancel button
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Color.fromRGBO(24, 71, 137, 1), // White text color for Cancel button
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20), // Add space between the buttons
+              OutlinedButton(
+                onPressed: () {
+                  print("Yes clicked - Initiating voting...");
+                  _initiateVoting(); // Trigger the voting process
+                  Navigator.pop(context, true); // Return true after initiation
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), // Border color for Yes button
+                    width: 3,
+                  ),
+                  backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Background color for Yes button
+                ),
+                child: const Text(
+                  '   Yes   ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Colors.white, // White text color for Yes button
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
+      );
+    },
+  ) ?? false; // If null, default to false
+}
+
+void showVotingSuccessPopup(BuildContext context) {
+  // Show dialog
+  showDialog(
+    context: context,
+    barrierDismissible: true, // Allow closing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        contentPadding: EdgeInsets.all(20), // Add padding around the dialog content
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // Rounded corners for a better look
+        ),
+        content: SizedBox(
+          width: 250, // Set a custom width for the dialog
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ensure the column only takes the required space
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle, 
+                color: Color.fromARGB(255, 54, 142, 57), 
+                size: 50, // Bigger icon
+              ),
+              SizedBox(height: 20), // Add spacing between the icon and text
+              Text(
+                'Voting process initiated successfully!',
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 54, 142, 57), 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16, // Bigger text
+                ),
+                textAlign: TextAlign.center, // Center-align the text
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  // Automatically dismiss the dialog after 3 seconds
+  Future.delayed(const Duration(seconds: 3), () {
+    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+  });
+}
+
   @override
   Widget build(BuildContext context) {
 final startDateFormatted = DateFormat('yyyy-MM-dd – HH:mm').format(_startDate);
     final endDateFormatted = _endDate != null
         ? DateFormat('yyyy-MM-dd – HH:mm').format(_endDate!)
         : 'Select End Date';
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Initiate Voting'),
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        foregroundColor: Colors.white,
+return Scaffold(
+  appBar: AppBar(
+  title: Align(
+    alignment: Alignment.center, // Align the text to the right
+    child: Text(
+      'Initiate Voting        ',
+      style: TextStyle(
+        fontSize: 24, // Make text bigger
+        fontWeight: FontWeight.bold, // Make text bold
+        color: Color.fromRGBO(24, 71, 137, 1), // Text color
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+    ),
+  ),
+  backgroundColor: Colors.white,
+  elevation: 0, // Optional, to remove the shadow
+),
+
+  body: Padding(
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+         SizedBox(height: 24),
+        // 🧾 Instructions
+        Text(
+          'Please select 3 projects to initiate a voting session. Set a voting period and press "Initiate Voting" when ready.',
+          style: TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+        SizedBox(height: 24),
+
+        // 🔍 Project Selection Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 🔍 Search Icon
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                icon: Icon(Icons.search, size: 30),
-                onPressed: _openProjectSelection,
+            Text(
+              'Selected Projects',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(24, 71, 137, 1),
               ),
             ),
+           IconButton(
+  icon: Icon(Icons.search, size: 32, color: Color.fromRGBO(24, 71, 137, 1)),
+  tooltip: 'Tap to search and select projects',
+  onPressed: _openProjectSelection,
+),
 
-            // 🧱 Selected Projects Fields
-            ...List.generate(3, (index) {
-              return Container(
-                width: double.infinity,
-                margin: EdgeInsets.symmetric(vertical: 8),
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _selectedProjects.length > index
-                      ? _selectedProjects[index]['name']
-                      : 'Select Project ${index + 1}',
-                  style: TextStyle(fontSize: 16),
-                ),
-              );
-            }),
-
-            SizedBox(height: 20),
-
-            // 📅 Start Date (disabled)
-            TextFormField(
-              initialValue: startDateFormatted,
-              decoration: InputDecoration(
-                labelText: 'Start Date',
-                border: OutlineInputBorder(),
-              ),
-              readOnly: true,
-            ),
-
-            SizedBox(height: 16),
-
-            // ⏳ End Date Picker
-            GestureDetector(
-              onTap: _pickEndDate,
-              child: AbsorbPointer(
-                child: TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'End Date (with time)',
-                    border: OutlineInputBorder(),
-                  ),
-                  controller: TextEditingController(text: endDateFormatted),
-                ),
-              ),
-            ),
-
-            Spacer(),
-
-            ElevatedButton(
-              onPressed: _initiateVoting,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text('Initiate Voting',  style: TextStyle(
-                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
           ],
         ),
-      ),
-    );
+
+        // 🧱 Selected Projects Fields (Tappable)
+        ...List.generate(3, (index) {
+          return GestureDetector(
+            onTap: _openProjectSelection,
+            child: Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(vertical: 6),
+              padding: EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.grey),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _selectedProjects.length > index
+                          ? _selectedProjects[index]['name']
+                          : 'Select Project ${index + 1}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        SizedBox(height: 25),
+
+        // 📅 Start Date (disabled)
+        Text(
+          'Voting Start Date',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 6),
+        TextFormField(
+  initialValue: startDateFormatted,
+  decoration: InputDecoration(
+    border: OutlineInputBorder(),
+    filled: true,
+    fillColor: Colors.grey.shade300, // Light gray color to indicate read-only
+    prefixIcon: Icon(Icons.date_range, color: Colors.grey), // Gray icon
+    hintText: 'Start Date', // Optional hint text
+    hintStyle: TextStyle(color: Colors.grey), // Gray hint text color
+  ),
+  style: TextStyle(color: Colors.grey), // Gray text color to match the read-only state
+  readOnly: true,
+),
+
+        SizedBox(height: 20),
+
+        // ⏳ End Date Picker
+        Text(
+          'Voting End Date',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 6),
+        GestureDetector(
+          onTap: _pickEndDate,
+          child: AbsorbPointer(
+            child: TextFormField(
+              controller: TextEditingController(text: endDateFormatted),
+              decoration: InputDecoration(
+                hintText: 'Select end date',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                prefixIcon: Icon(Icons.timer),
+              ),
+            ),
+          ),
+        ),
+
+        Spacer(),
+
+        // 🚀 CTA Button
+        Center(
+          child: ElevatedButton.icon(
+             onPressed: () async {
+    bool confirm = await _showInitiateVotingConfirmationDialog(context);
+    
+
+             },
+            icon: Icon(Icons.how_to_vote),
+            label: Text(
+              'Initiate Voting',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+              padding: EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 3,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+);
+
   }
 }
 
@@ -646,106 +847,199 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Initiate Voting' ,  style: TextStyle(
-                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        foregroundColor: Colors.white,
+  appBar: AppBar(
+  title: Align(
+    alignment: Alignment.center, // Align the text to the right
+    child: Text(
+      'Select Voting Options    ',
+      style: TextStyle(
+        fontSize: 22, // Make text bigger
+        fontWeight: FontWeight.bold, // Make text bold
+        color: Color.fromRGBO(24, 71, 137, 1), // Text color
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Select 3 Projects to Start a Voting Round',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _projects.length,
-                    itemBuilder: (context, index) {
-                      final project = _projects[index];
-                      final selected = _selectedProjectIndices.contains(index);
-                      return GestureDetector(
-                        onTap: () => _toggleSelection(index),
-                        child: Card(
-                          margin:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 4,
-                          color: selected
-                              ? Colors.blue.shade50
-                              : Colors.white,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        project['name'],
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+    ),
+  ),
+  backgroundColor: Colors.white,
+  elevation: 0, // Optional, to remove the shadow
+),
+
+  body: _isLoading
+      ? Center(child: CircularProgressIndicator())
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🌈 Intro Banner
+            // Container(
+            //   width: double.infinity,
+            //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            //   decoration: BoxDecoration(
+            //     gradient: LinearGradient(
+            //       colors: [Color(0xFF184789), Color(0xFF2B69C4)],
+            //       begin: Alignment.topLeft,
+            //       end: Alignment.bottomRight,
+            //     ),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       Icon(Icons.info_outline, color: Colors.white),
+            //       SizedBox(width: 10),
+            //       Expanded(
+            //         child: Text(
+            //           'Select 3 projects you’d like to include in this voting round.',
+            //           style: TextStyle(color: Colors.white, fontSize: 15),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+
+            // 📌 Section Header
+            SizedBox(height: 16),
+            Padding(
+              
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Available Projects',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF184789)),
+              ),
+            ),
+SizedBox(height: 2),
+            // 📋 Project List
+            Expanded(
+              child: ListView.builder(
+                itemCount: _projects.length,
+                itemBuilder: (context, index) {
+                  final project = _projects[index];
+                  final selected = _selectedProjectIndices.contains(index);
+
+                  return AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: GestureDetector(
+                      onTap: () => _toggleSelection(index),
+                      child: Card(
+                        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: selected ? 8 : 4,
+                        color: selected ? Colors.blue.shade50 : Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+//                                   // 👤 Avatar Icon
+//                                   CircleAvatar(
+//   backgroundColor: Colors.grey, // A fresh green to show activity
+//   child: Icon(Icons.rocket_launch, color: Colors.white),
+// ),
+
+//                                   SizedBox(width: 12),
+
+                                  // 📛 Project Name
+                                  Expanded(
+                                    child: Text(
+                                      project['name'],
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    Icon(
-                                      selected
-                                          ? Icons.check_circle
-                                          : Icons.radio_button_unchecked,
-                                      color: selected
-                                          ? Colors.green
-                                          : Colors.grey,
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  project['description'],
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: 8),
-                                Chip(
-                                  label: Text(project['status']),
-                                  backgroundColor:
-                                      _getStateColor(project['status']),
-                                  labelStyle: TextStyle(color: Colors.white),
-                                ),
-                              ],
-                            ),
+                                  ),
+
+                                  // ✅ Selection Icon
+                                  Icon(
+                                    selected ? Icons.check_circle : Icons.circle_outlined,
+                                    color: selected ? Colors.green : Colors.grey,
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10),
+
+                              // 📝 Project Description
+                              Text(
+                                project['description'],
+                                style: TextStyle(fontSize: 14, color: Colors.black87),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 10),
+
+                              Align(
+  alignment: Alignment.bottomRight,
+  child: Container(
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: _getStateColor(project['status']).withOpacity(0.15),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Text(
+      project['status'],
+      style: TextStyle(
+        color: _getStateColor(project['status']),
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        letterSpacing: 0.3,
+      ),
+    ),
+  ),
+),
+
+
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton(
-                    onPressed: _initiateVotingProcess,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text('Initiate Voting' ,  style: TextStyle(
-                                        fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-    );
+
+            // 🚀 Voting Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Column(
+                children: [
+                  // 📊 Selection Summary
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_selectedProjectIndices.length}/3 selected',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
+                      // Icon(Icons.how_to_vote, color: Color(0xFF184789)),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+
+                  ElevatedButton.icon(
+  onPressed: _initiateVotingProcess,
+  // icon: Icon(Icons.check_circle_outline),
+  label: Text(
+    'Confirm Projects Selection',
+    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  ),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Color(0xFF184789),
+    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 12),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 4,
+  ),
+),
+                ],
+              ),
+            ),
+          ],
+        ),
+);
+
   }
 }
 
@@ -772,7 +1066,7 @@ late double donatedAmount;
 late String organization;
 late String projectType;
 
-
+bool isEnded = false;
 
 
   final String contractABI = '''
@@ -1034,6 +1328,7 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
             '${remainingHours.toInt()} hours, '
             '${remainingMinutes.toInt()} minutes');
 
+ 
         // If all values are zero or less, consider voting as ended
         if (remainingMonths <= BigInt.zero &&
             remainingDays <= BigInt.zero &&
@@ -1041,6 +1336,10 @@ static Future<void> listenForVotingStatus(int votingId, int projectId) async {
             remainingMinutes <= BigInt.zero) {
           print('🛑 Voting ended for ID: $votingId');
           timer.cancel();
+await FirebaseFirestore.instance
+    .collection('votings')
+    .doc(votingId.toString())
+    .set({'IsEnded': true}, SetOptions(merge: true));
 
           // Optionally, call transferFundsToWinner
           await listener.initializeCredentials();
@@ -1376,3 +1675,4 @@ Future<web3.TransactionReceipt?> _waitForReceipt(
     }
   }
 }
+
