@@ -5,6 +5,10 @@ import 'package:http/http.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hosna/screens/DonorScreens/DonationHistoryPage.dart';
 
 import 'DonorProfile.dart';
 
@@ -16,8 +20,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Web3Client _web3Client;
+  final BlockchainService _blockchainService = BlockchainService();
+  String? walletAddress;
   String _firstName = '';
+  List<Map<String, dynamic>> votingProjects = [];
+  List<Map<String, dynamic>> donationHistory = [];
+  bool isLoading = true;
+  bool hasError = false;
+  String errorMessage = '';
   String _walletAddress = '';
 
   final String rpcUrl =
@@ -34,185 +44,551 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _initializeWeb3();
-    _loadWalletAddress();
-    printUserType();
-    _loadDonatedProjectIds(); // Load the projects when the page is initialized
+    _loadWalletAndData();
+    _loadUserName();
   }
 
-  Future<void> _loadDonatedProjectIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? storedIds =
-        prefs.getStringList('donatedProjects_$_walletAddress');
-
-    if (storedIds != null) {
-      setState(() {
-        projectIds = storedIds
-            .where((id) =>
-                RegExp(r'^\d+$').hasMatch(id)) // Ensure it's a valid number
-            .map((id) => int.parse(id))
-            .toList();
-        donatedProjects = _fetchDonatedProjects();
-      });
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchDonatedProjects() async {
-    List<Map<String, dynamic>> projects = [];
-
-    for (int projectId in projectIds) {
-      Map<String, dynamic> projectDetails =
-          await BlockchainService().getProjectDetails(projectId);
-      projects.add(projectDetails);
-    }
-
-    return projects;
-  }
-
-  void _loadWalletAddress() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String walletAddress = prefs.getString('walletAddress') ?? '';
-    print("Wallet Address from SharedPreferences: $walletAddress");
-
-    if (walletAddress.isNotEmpty) {
-      setState(() {
-        _walletAddress = walletAddress;
-      });
-    } else {
-      print("⚠️ Wallet address is not available!");
-    }
-  }
-
-  Future<void> _getDonorData() async {
+  Future<void> _loadUserName() async {
     try {
-      final contract = await _loadContract();
-      final result = await _web3Client.call(
-        contract: contract,
-        function: contract.function('getDonor'),
-        params: [EthereumAddress.fromHex(_walletAddress)],
-      );
+      final prefs = await SharedPreferences.getInstance();
+      final address = prefs.getString('walletAddress');
+      final firstName = prefs.getString('firstName') ?? '';
 
-      if (mounted) {
-        // Check if the widget is still mounted
+      if (firstName.isNotEmpty) {
         setState(() {
-          _firstName = result[0]; // First name from blockchain
+          _firstName = firstName;
         });
       }
     } catch (e) {
-      print("Error fetching donor data: $e");
+      print("Error loading user name: $e");
     }
   }
 
-  Future<void> _initializeWeb3() async {
-    print("Initializing Web3 client...");
-    _web3Client = Web3Client(rpcUrl, Client());
+  Future<void> _storeDonationInfo(
+      Map<String, dynamic> projectDetails, double donatedAmount) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final address = prefs.getString('walletAddress');
 
-    final prefs = await SharedPreferences.getInstance();
-    _walletAddress = prefs.getString('walletAddress') ?? '';
-    print("Wallet address from SharedPreferences: $_walletAddress");
-
-    if (_walletAddress.isNotEmpty) {
-      await _getDonorData();
-    }
-  }
-
-  Future<void> printUserType() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userType = prefs.getInt('userType'); // 0 = Donor, 1 = Charity
-
-    if (userType != null) {
-      if (userType == 0) {
-        print("User Type: Donor");
-      } else if (userType == 1) {
-        print("User Type: Charity Employee");
+      if (address == null) {
+        print("❌ No wallet address found");
+        return;
       }
-    } else {
-      print("No user type found in SharedPreferences");
+
+      // Create a unique key for this donation using wallet address and project ID
+      final donationKey = 'donation_${address}_${projectDetails['id']}';
+
+      // Create donation info with all necessary details
+      final donationInfo = {
+        'id': projectDetails['id'],
+        'name': projectDetails['name'],
+        'description': projectDetails['description'],
+        'donatedAmount': donatedAmount,
+        'totalAmount': double.parse(projectDetails['totalAmount'].toString()),
+        'projectType': projectDetails['projectType'],
+        'endDate': projectDetails['deadline'] is int
+            ? projectDetails['deadline']
+            : DateTime.parse(projectDetails['deadline'].toString())
+                .millisecondsSinceEpoch,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'projectCreatorWallet': projectDetails['projectCreatorWallet'],
+        'donorWallet': address, // Store the donor's wallet address
+      };
+
+      // Store the donation with its unique key
+      await prefs.setString(donationKey, json.encode(donationInfo));
+      print(
+          "✅ Stored donation for project ${projectDetails['name']} with key: $donationKey");
+
+      // Also store the donation key in a list of all donations for this wallet
+      final donationsListKey = 'donations_list_$address';
+      final existingList = prefs.getStringList(donationsListKey) ?? [];
+      if (!existingList.contains(donationKey)) {
+        existingList.add(donationKey);
+        await prefs.setStringList(donationsListKey, existingList);
+        print("✅ Updated donations list for wallet $address");
+      }
+    } catch (e) {
+      print("❌ Error storing donation info: $e");
     }
   }
 
-  Future<DeployedContract> _loadContract() async {
-    final contractAbi = '''[
-      {
-        "constant": true,
-        "inputs": [{"name": "_wallet", "type": "address"}],
-        "name": "getDonor",
-        "outputs": [
-          {"name": "firstName", "type": "string"},
-          {"name": "lastName", "type": "string"},
-          {"name": "email", "type": "string"},
-          {"name": "phone", "type": "string"},
-          {"name": "walletAddress", "type": "address"},
-          {"name": "registered", "type": "bool"}
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ]''';
+  Future<void> _loadWalletAndData() async {
+    if (!mounted) return;
 
-    final contract = DeployedContract(
-      ContractAbi.fromJson(contractAbi, 'DonorRegistry'),
-      EthereumAddress.fromHex(contractAddress),
+    setState(() {
+      isLoading = true;
+      hasError = false;
+      errorMessage = '';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final address = prefs.getString('walletAddress');
+
+      if (address == null || address.isEmpty) {
+        throw Exception('Wallet address not found');
+      }
+
+      setState(() {
+        walletAddress = address;
+      });
+
+      await _loadUserName();
+
+      // Get all projects
+      final allProjects = await _blockchainService.fetchAllProjects();
+      List<Map<String, dynamic>> eligibleVotingProjects = [];
+
+      for (var project in allProjects) {
+        // Check if project is failed or canceled
+        final projectDoc = await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(project['id'].toString())
+            .get();
+
+        if (projectDoc.exists) {
+          final data = projectDoc.data() as Map<String, dynamic>;
+          final isCanceled = data['isCanceled'] ?? false;
+          final votingInitiated = data['votingInitiated'] ?? false;
+
+          // Check if project is failed or canceled and has voting initiated
+          if ((isCanceled || project['state'] == 4) && votingInitiated) {
+            // Check if donor has donated to this project
+            final hasDonated = await _blockchainService.hasDonatedToProject(
+                project['id'], address);
+
+            // Check if donor has already voted
+            final hasVoted =
+                await _blockchainService.hasDonorVoted(project['id'], address);
+
+            // Only add if donor has donated but hasn't voted yet
+            if (hasDonated && !hasVoted) {
+              // Add project details
+              project['votingId'] = project['id'];
+              project['votingDeadline'] =
+                  DateTime.fromMillisecondsSinceEpoch(project['endTime'] * 1000)
+                      .toString();
+              eligibleVotingProjects.add(project);
+            }
+          }
+        }
+      }
+
+      setState(() {
+        votingProjects = eligibleVotingProjects;
+      });
+
+      // Get donation history from SharedPreferences
+      List<Map<String, dynamic>> historyList = [];
+      final donationsKey = 'donations_${address}';
+      final donationsJson = prefs.getString(donationsKey);
+
+      print("📌 Attempting to load donations for wallet: $address");
+      print("📌 Donations JSON: $donationsJson");
+
+      if (donationsJson != null) {
+        try {
+          final List<dynamic> donations = json.decode(donationsJson);
+          // Filter donations to only include those made by the current user
+          final filteredDonations = donations.where((donation) {
+            final donorWallet =
+                donation['donorWallet']?.toString().toLowerCase();
+            final isCurrentUserDonation = donorWallet == address.toLowerCase();
+            print(
+                "📌 Checking donation - Donor: $donorWallet, Current User: ${address.toLowerCase()}, Match: $isCurrentUserDonation");
+            return isCurrentUserDonation;
+          }).toList();
+
+          historyList = List<Map<String, dynamic>>.from(filteredDonations);
+          print(
+              "✅ Successfully loaded ${historyList.length} donations from storage for current user");
+
+          // Process each donation
+          for (var donation in historyList) {
+            try {
+              print("📌 Processing donation: ${donation['name']}");
+
+              // Handle endDate conversion
+              dynamic endDate = donation['endDate'];
+              int endDateMillis;
+
+              if (endDate is DateTime) {
+                endDateMillis = endDate.millisecondsSinceEpoch;
+              } else if (endDate is String) {
+                try {
+                  endDateMillis =
+                      DateTime.parse(endDate).millisecondsSinceEpoch;
+                } catch (e) {
+                  print("⚠️ Error parsing endDate string: $e");
+                  endDateMillis = DateTime.now().millisecondsSinceEpoch;
+                }
+              } else if (endDate is int) {
+                endDateMillis = endDate;
+              } else {
+                endDateMillis = DateTime.now().millisecondsSinceEpoch;
+              }
+
+              // Update the donation with proper date format
+              donation['endDate'] = endDateMillis;
+
+              // Get current project status from Firestore
+              try {
+                final projectDoc = await FirebaseFirestore.instance
+                    .collection('projects')
+                    .doc(donation['id'].toString())
+                    .get();
+
+                if (projectDoc.exists) {
+                  final data = projectDoc.data() as Map<String, dynamic>;
+
+                  // Check if project is canceled
+                  if (data['isCanceled'] == true) {
+                    donation['status'] = 'canceled';
+                  } else {
+                    // Calculate status based on dates and amounts
+                    final now = DateTime.now();
+                    final startDate = data['startDate']?.toDate() ?? now;
+                    final endDate = data['endDate']?.toDate();
+                    final donatedAmount = data['donatedAmount'] ?? 0.0;
+                    final totalAmount = data['totalAmount'] ?? 0.0;
+
+                    if (donatedAmount >= totalAmount) {
+                      donation['status'] = 'completed';
+                    } else if (endDate != null && now.isAfter(endDate)) {
+                      donation['status'] = 'ended';
+                    } else if (now.isBefore(startDate)) {
+                      donation['status'] = 'upcoming';
+                    } else {
+                      donation['status'] = 'active';
+                    }
+                  }
+                } else {
+                  donation['status'] = 'unknown';
+                }
+                print("✅ Got project status: ${donation['status']}");
+              } catch (e) {
+                print("⚠️ Error getting project status: $e");
+                donation['status'] = 'unknown';
+              }
+
+              // Use the stored donation amount
+              final storedAmount = donation['donatedAmount'] ?? 0.0;
+              donation['anonymousAmount'] = storedAmount;
+              donation['nonAnonymousAmount'] = storedAmount;
+
+              print("✅ Successfully processed donation: ${donation['name']}");
+            } catch (e) {
+              print("❌ Error processing donation: $e");
+              continue;
+            }
+          }
+        } catch (e) {
+          print("❌ Error parsing donations JSON: $e");
+          historyList = [];
+        }
+      } else {
+        print("⚠️ No donations found for wallet: $address");
+      }
+
+      // Sort donations by timestamp in descending order (newest first)
+      historyList
+          .sort((a, b) => (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
+
+      print("📊 Final history list length: ${historyList.length}");
+
+      if (!mounted) return;
+      setState(() {
+        donationHistory = historyList;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("❌ Error loading data: $e");
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        hasError = true;
+        errorMessage = 'Failed to load data. Please try again.';
+      });
+    }
+  }
+
+  Widget _buildVotingSection() {
+    if (hasError) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          errorMessage,
+          style: TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Projects Awaiting Your Vote',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue[900],
+            ),
+          ),
+        ),
+        if (isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (votingProjects.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('No projects currently need your vote'),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: votingProjects.length,
+            itemBuilder: (context, index) {
+              final project = votingProjects[index];
+              final progress = ((project['donatedAmount'] ?? 0.0) /
+                      (project['totalAmount'] ?? 1.0) *
+                      100)
+                  .toStringAsFixed(1);
+
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: ListTile(
+                  title: Text(project['name'] ?? 'Unnamed Project'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Progress: $progress%'),
+                      if (project['votingDeadline'] != null)
+                        Text('Voting Deadline: ${project['votingDeadline']}'),
+                    ],
+                  ),
+                  trailing: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/donor_voting',
+                        arguments: {
+                          'projectId': project['id'],
+                          'projectName': project['name'],
+                        },
+                      );
+                    },
+                    child: Text('Vote'),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
-
-    return contract;
   }
 
-  // Future<void> _getDonorData() async {
-  //   try {
-  //     print("Fetching donor data for wallet: $_walletAddress");
-  //     final contract = await _loadContract();
-  //     final result = await _web3Client.call(
-  //       contract: contract,
-  //       function: contract.function('getDonor'),
-  //       params: [EthereumAddress.fromHex(_walletAddress)],
-  //     );
-
-  //     if (result.isNotEmpty) {
-  //       setState(() {
-  //         _firstName = result[0]; // First name from blockchain
-  //       });
-  //       print("Donor first name: $_firstName");
-  //     }
-  //   } catch (e) {
-  //     print("Error fetching donor data: $e");
-  //   }
-  // }
-  String _getProjectState(Map<String, dynamic> project) {
-    DateTime now = DateTime.now();
-
-    DateTime startDate = project['startDate'] != null
-        ? DateTime.parse(project['startDate'].toString())
-        : now;
-
-    DateTime endDate = project['endDate'] != null
-        ? DateTime.parse(project['endDate'].toString())
-        : now;
-
-    double totalAmount = (project['totalAmount'] ?? 0.0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0.0).toDouble();
-
-    if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount && now.isBefore(endDate)) {
-      return "completed";
-    } else if (now.isAfter(endDate) && donatedAmount < totalAmount) {
-      return "failed";
-    } else {
-      return "active";
+  Widget _buildDonationHistorySection() {
+    if (hasError) {
+      return const SizedBox.shrink();
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DonationHistoryPage(),
+                ),
+              );
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'View Donation History',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward,
+                  color: Colors.blue[900],
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (donationHistory.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('No donation history found'),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: donationHistory.length,
+            itemBuilder: (context, index) {
+              final donation = donationHistory[index];
+              final totalAmount = (donation['totalAmount'] ?? 0.0).toDouble();
+              final donatedAmount =
+                  (donation['donatedAmount'] ?? 0.0).toDouble();
+              final progress = totalAmount > 0
+                  ? (donatedAmount / totalAmount * 100).toStringAsFixed(1)
+                  : '0.0';
+
+              // Safely format the date
+              String formattedDate = 'No end date';
+              if (donation['endDate'] != null) {
+                try {
+                  final timestamp = donation['endDate'] is int
+                      ? donation['endDate']
+                      : int.parse(donation['endDate'].toString());
+                  final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+                  formattedDate = DateFormat('yyyy-MM-dd').format(date);
+                } catch (e) {
+                  print("Error formatting date: $e");
+                }
+              }
+
+              // Get status color
+              Color statusColor =
+                  _getStatusColor(donation['status'] ?? 'unknown');
+
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: ListTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          donation['name'] ?? 'Unnamed Project',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          donation['status'] ?? 'unknown',
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 8),
+                      Text(
+                        'Donated: ${donatedAmount.toStringAsFixed(5)} ETH',
+                        style: TextStyle(
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Total Goal: ${totalAmount.toStringAsFixed(5)} ETH',
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Progress: $progress%',
+                        style: TextStyle(
+                          color: Colors.orange[700],
+                        ),
+                      ),
+                      Text(
+                        'End Date: $formattedDate',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        'Project Type: ${donation['projectType'] ?? 'Unknown'}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProjectDetails(
+                          projectId: int.parse(donation['id'].toString()),
+                          projectName: donation['name'] ?? 'Unnamed Project',
+                          description: donation['description'] ?? '',
+                          startDate: DateTime.now().toString(),
+                          deadline: formattedDate,
+                          totalAmount: totalAmount,
+                          projectType: donation['projectType'] ?? 'Unknown',
+                          projectCreatorWallet:
+                              donation['projectCreatorWallet'] ?? '',
+                          donatedAmount: donatedAmount,
+                          progress: totalAmount > 0
+                              ? donatedAmount / totalAmount
+                              : 0.0,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+      ],
+    );
   }
 
-  Color _getStateColor(String state) {
-    switch (state) {
-      case "active":
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
         return Colors.green;
-      case "failed":
+      case 'completed':
+        return const Color.fromRGBO(24, 71, 137, 1);
+      case 'ended':
+        return Colors.grey;
+      case 'canceled':
         return Colors.red;
-      case "completed":
-        return Colors.blue;
-      case "upcoming":
+      case 'upcoming':
         return Colors.orange;
       default:
         return Colors.grey;
@@ -222,7 +598,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(100),
         child: AppBar(
@@ -237,8 +612,7 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding:
-                        const EdgeInsets.only(top: 50), // Moves everything down
+                    padding: const EdgeInsets.only(top: 50),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -253,176 +627,53 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: SizedBox(
-                      width: 120, // Define an explicit width
-                      height: 90, // Define an explicit height
-                      child: IconButton(
-                        icon: const Icon(Icons.account_circle,
-                            size: 75, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => ProfileScreenTwo()),
-                          );
-                        },
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        height: 90,
+                        child: IconButton(
+                          icon: const Icon(Icons.account_circle,
+                              size: 75, color: Colors.white),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ProfileScreenTwo()),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  )
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-      body: Stack(
-        children: [
-          Positioned(
-            top: 1,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: donatedProjects,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}"));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(
-                        child: Text(
-                            "Currently, there are no projects available."));
-                  }
-
-                  final projectList = snapshot.data!;
-
-                  return ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: projectList.length,
-                    itemBuilder: (context, index) {
-                      final project = projectList[index];
-                      final projectState = _getProjectState(project);
-                      final stateColor = _getStateColor(projectState);
-                      final deadline = project['endDate'] != null
-                          ? DateFormat('yyyy-MM-dd').format(
-                              DateTime.parse(project['endDate'].toString()))
-                          : 'No deadline available';
-                      final double progress =
-                          project['donatedAmount'] / project['totalAmount'];
-
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1), width: 3),
-                        ),
-                        elevation: 2,
-                        margin:
-                            EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                        child: ListTile(
-                          tileColor: Colors.grey[200],
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                          title: Text(
-                            project['name'] ?? 'Untitled',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: Color.fromRGBO(24, 71, 137, 1)),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: 8),
-                              RichText(
-                                text: TextSpan(
-                                  text: 'Deadline: ',
-                                  style: TextStyle(
-                                      fontSize: 17,
-                                      color: Color.fromRGBO(238, 100, 90, 1)),
-                                  children: [
-                                    TextSpan(
-                                      text: '$deadline',
-                                      style: TextStyle(
-                                          fontSize: 17, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.grey[200],
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(stateColor),
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '${(progress * 100).toStringAsFixed(0)}%',
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: stateColor.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      projectState,
-                                      style: TextStyle(
-                                          color: stateColor,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProjectDetails(
-                                  projectName: project['name'],
-                                  description: project['description'],
-                                  startDate: project['startDate'].toString(),
-                                  deadline: project['endDate'].toString(),
-                                  totalAmount: project['totalAmount'],
-                                  projectType: project['projectType'],
-                                  projectCreatorWallet:
-                                      project['organization'] ?? '',
-                                  donatedAmount: project['donatedAmount'],
-                                  projectId: project['id'],
-                                  progress: progress,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: RefreshIndicator(
+          onRefresh: _loadWalletAndData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildVotingSection(),
+                const Divider(height: 32),
+                _buildDonationHistorySection(),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

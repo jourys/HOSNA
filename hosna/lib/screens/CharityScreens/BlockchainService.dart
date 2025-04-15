@@ -1148,12 +1148,15 @@ Future<String?> getWalletAddressFromPrivateKey() async {
   // Check if a donor has donated to a project
   Future<bool> hasDonatedToProject(int projectId, String donorAddress) async {
     try {
-      final contract = await _getContract();
-      final function = contract.function('getProjectDonations');
+      final votingContract = await _getVotingContract();
+      final function = votingContract.function('hasDonated');
+      
+      print("🔍 Checking if donor $donorAddress has donated to project $projectId");
+      
       final result = await _web3Client.call(
-        contract: contract,
+        contract: votingContract,
         function: function,
-        params: [BigInt.from(projectId)],
+        params: [BigInt.from(projectId), EthereumAddress.fromHex(donorAddress)],
       );
 
       if (result.isEmpty) {
@@ -1161,10 +1164,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
         return false;
       }
 
-      final donations = result[0] as List;
-      final donorAddresses = donations.map((d) => (d as List)[0]).toList();
-      final hasDonated = donorAddresses.contains(EthereumAddress.fromHex(donorAddress));
-      
+      final hasDonated = result[0] as bool;
       print("📊 Donation status for project $projectId: ${hasDonated ? "Donated ✅" : "Not Donated ❌"}");
       return hasDonated;
     } catch (e) {
@@ -1323,4 +1323,148 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       return [];
     }
   }
-}
+
+  Future<List<Map<String, dynamic>>> getProjectsAwaitingVote(String donorAddress) async {
+    try {
+      if (donorAddress.isEmpty) {
+        print("⚠️ Empty donor address provided");
+        return [];
+      }
+
+      // Get all active voting sessions
+      final activeVotings = await getActiveVotingSessions();
+      List<Map<String, dynamic>> votingProjects = [];
+
+      for (var voting in activeVotings) {
+        // Check if the donor has already voted
+        bool hasVoted = await hasDonorVoted(voting['projectId'], donorAddress);
+        
+        // Check if the donor has donated to the project
+        bool hasDonated = await hasDonatedToProject(voting['projectId'], donorAddress);
+
+        // Only include projects where the donor has donated but hasn't voted yet
+        if (hasDonated && !hasVoted) {
+          final projectDetails = await getProjectDetails(voting['projectId']);
+          if (projectDetails.containsKey('name')) {
+            projectDetails['votingId'] = voting['projectId'];
+            projectDetails['votingDeadline'] = DateTime.fromMillisecondsSinceEpoch(
+              voting['endTime'] * 1000
+            ).toString();
+            votingProjects.add(projectDetails);
+          }
+        }
+      }
+
+      print("📊 Found ${votingProjects.length} projects awaiting vote for donor $donorAddress");
+      return votingProjects;
+    } catch (e) {
+      print("❌ Error getting projects awaiting vote: $e");
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProjectDonors(int projectId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final address = prefs.getString('walletAddress');
+      
+      if (address == null) {
+        print("❌ No wallet address found");
+        return [];
+      }
+
+      final contract = await _getContract();
+      final function = contract.function('hasDonatedToProject');
+      
+      print("🔍 Checking if donor $address has donated to project $projectId");
+      
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [BigInt.from(projectId), EthereumAddress.fromHex(address)],
+      );
+
+      if (result.isEmpty) {
+        print("⚠️ No donation data found for project $projectId");
+        return [];
+      }
+
+      final hasDonated = result[0] as bool;
+      
+      if (!hasDonated) {
+        print("ℹ️ Donor has not donated to project $projectId");
+        return [];
+      }
+
+      // Get project details to include in the result
+      final projectDetails = await getProjectDetails(projectId);
+      
+      if (projectDetails.containsKey('error')) {
+        print("⚠️ Error getting project details: ${projectDetails['error']}");
+        return [];
+      }
+
+      // Get the donated amount
+      final donationFunction = contract.function('getProjectDonations');
+      final donationResult = await _web3Client.call(
+        contract: contract,
+        function: donationFunction,
+        params: [BigInt.from(projectId)],
+      );
+
+      final donatedAmount = donationResult[0] as BigInt;
+
+      // Return project details with donation amount
+      return [{
+        'id': projectId,
+        'name': projectDetails['name'],
+        'description': projectDetails['description'],
+        'donatedAmount': donatedAmount.toDouble() / 1e18, // Convert from wei to ETH
+        'totalAmount': projectDetails['totalAmount'],
+        'projectType': projectDetails['projectType'],
+        'endDate': projectDetails['endDate'],
+        'projectCreatorWallet': projectDetails['organization'],
+      }];
+
+    } catch (e) {
+      print("❌ Error fetching project donors: $e");
+      return [];
+    }
+  }
+
+  // Get donor's specific donation amounts for a project
+  Future<Map<String, dynamic>?> getDonorInfo(int projectId, String donorAddress) async {
+    try {
+      final contract = await _getContract();
+      final function = contract.function('getDonorInfo');
+      
+      print("🔍 Getting donor info for project $projectId and donor $donorAddress");
+      
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [BigInt.from(projectId), EthereumAddress.fromHex(donorAddress)],
+      );
+
+      if (result.isEmpty) {
+        print("⚠️ No donor info found for project $projectId");
+        return null;
+      }
+
+      final anonymousAmount = result[0] as BigInt;
+      final nonAnonymousAmount = result[1] as BigInt;
+
+      print("📊 Donor info for project $projectId:");
+      print("   - Anonymous amount: ${anonymousAmount.toDouble() / 1e18} ETH");
+      print("   - Non-anonymous amount: ${nonAnonymousAmount.toDouble() / 1e18} ETH");
+
+      return {
+        'anonymousAmount': anonymousAmount,
+        'nonAnonymousAmount': nonAnonymousAmount,
+      };
+    } catch (e) {
+      print("❌ Error getting donor info: $e");
+      return null;
+    }
+  }
+} 

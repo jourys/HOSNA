@@ -1305,7 +1305,20 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     );
 
     // Store donation details
-    await _storeDonation(senderAddress.hex, donationAmountInEth, isAnonymous);
+    await _storeDonationInfo(
+      {
+        'id': widget.projectId,
+        'name': widget.projectName,
+        'description': widget.description,
+        'startDate': widget.startDate,
+        'endDate': widget.deadline,
+        'totalAmount': widget.totalAmount,
+        'projectType': widget.projectType,
+        'projectCreatorWallet': widget.projectCreatorWallet,
+        'donatedAmount': donationAmountInEth,
+      },
+      donationAmountInEth
+    );
 
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1314,29 +1327,57 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
   }
 }
 
-Future<void> _storeDonation(String donorAddress, double amount, bool isAnonymous) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String key = 'donationData_$donorAddress';
-  String? existingData = prefs.getString(key);
+Future<void> _storeDonationInfo(Map<String, dynamic> projectDetails, double donatedAmount) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final address = prefs.getString('walletAddress');
+    
+    if (address == null) {
+      print("❌ No wallet address found");
+      return;
+    }
 
-  Map<String, dynamic> donationData = existingData != null
-      ? jsonDecode(existingData)
-      : {'totalDonated': 0.0, 'isAnonymous': false};
+    // Get existing donations
+    final donationsKey = 'donations_${address}';
+    final donationsJson = prefs.getString(donationsKey) ?? '[]';
+    final List<dynamic> donations = json.decode(donationsJson);
 
-  // Update total donation amount
-  donationData['totalDonated'] = (donationData['totalDonated'] as double) + amount;
+    print("📌 Current donations count: ${donations.length}");
 
-  // Update anonymity status (if latest donation is anonymous, keep true)
-  if (isAnonymous) {
-    donationData['isAnonymous'] = true;
+    // Create donation info with all necessary details
+    final donationInfo = {
+      'id': projectDetails['id'],
+      'name': projectDetails['name'],
+      'description': projectDetails['description'],
+      'donatedAmount': donatedAmount,
+      'totalAmount': double.parse(projectDetails['totalAmount'].toString()),
+      'projectType': projectDetails['projectType'],
+      'endDate': projectDetails['endDate'] is int 
+          ? projectDetails['endDate'] 
+          : DateTime.parse(projectDetails['endDate'].toString()).millisecondsSinceEpoch,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'projectCreatorWallet': projectDetails['projectCreatorWallet'],
+      'donorWallet': address,
+    };
+
+    // Check if donation already exists
+    final existingIndex = donations.indexWhere((d) => d['id'].toString() == projectDetails['id'].toString());
+    if (existingIndex >= 0) {
+      donations[existingIndex] = donationInfo;
+      print("✅ Updated existing donation for project ${projectDetails['name']}");
+    } else {
+      donations.add(donationInfo);
+      print("✅ Added new donation for project ${projectDetails['name']}");
+    }
+
+    // Save updated donations
+    await prefs.setString(donationsKey, json.encode(donations));
+    print("✅ Successfully stored ${donations.length} donations for wallet $address");
+
+  } catch (e) {
+    print("❌ Error storing donation info: $e");
   }
-
-  await prefs.setString(key, jsonEncode(donationData));
-
-  print("Stored Data After Donation: $donationData");
 }
-
-
 
 }
 final String _contractAbi = '''[
@@ -1605,26 +1646,27 @@ Future<Map<String, dynamic>> fetchProjectFirestoreData(BigInt projectId) async {
   }
 }
 
-Future<int> getProjectDonations(BigInt projectId) async {
-  final getDonorsFunction = _contract.function('getProjectDonorsWithAmounts');
-  final result = await _web3Client.call(
-    contract: _contract,
-    function: getDonorsFunction,
-    params: [projectId],
-  );
-
-  if (result.isEmpty) {
-    print("❌ No donations found for project $projectId");
-    return 0;
-  }
-
+Future<double> getProjectDonations(BigInt projectId) async {
   try {
-    final donationAmounts = (result[1] as List).cast<BigInt>();
-    final totalAmount = donationAmounts.fold<BigInt>(BigInt.zero, (prev, element) => prev + element);
-    return totalAmount.toInt();
+    final getDonorsFunction = _contract.function('getProjectDonations');
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: getDonorsFunction,
+      params: [projectId],
+    );
+
+    if (result.isEmpty) {
+      print("No donations found for project $projectId");
+      return 0.0;
+    }
+
+    final donationAmountInWei = result[0] as BigInt;
+    final donationAmountInEth = donationAmountInWei.toDouble() / 1e18;
+    print("✅ Project $projectId donation amount: $donationAmountInEth ETH");
+    return donationAmountInEth;
   } catch (e) {
-    print("🚨 Error processing donations: $e");
-    return 0;
+    print("❌ Error fetching donation amount for project $projectId: $e");
+    return 0.0;
   }
 }
 
@@ -2098,4 +2140,3 @@ class _ReportPopupState extends State<ReportPopup> {
   }
 
 }
-

@@ -4,8 +4,9 @@ import 'package:hosna/screens/CharityScreens/PostProject.dart';
 import 'dart:convert';
 
 class DraftsPage extends StatefulWidget {
-  final String? walletAddress; // Add walletAddress as a parameter
-  const DraftsPage({super.key, this.walletAddress});
+  final String? walletAddress;
+  final Map<String, dynamic>? initialDraft; // Add initialDraft parameter
+  const DraftsPage({super.key, this.walletAddress, this.initialDraft});
 
   @override
   _DraftsPageState createState() => _DraftsPageState();
@@ -18,6 +19,20 @@ class _DraftsPageState extends State<DraftsPage> {
   void initState() {
     super.initState();
     _loadDrafts();
+    // If initialDraft is provided, navigate to PostProject immediately
+    if (widget.initialDraft != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostProject(
+              draft: widget.initialDraft,
+              walletAddress: widget.walletAddress,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _loadDrafts() async {

@@ -147,7 +147,6 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         ),
         title: Text('Profile',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
