@@ -6,10 +6,9 @@ import 'package:hosna/screens/DonorScreens/DonorSignup.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // For Firebase Authentication
+import 'package:firebase_auth/firebase_auth.dart'; // For Firebase Authentication
 import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -38,9 +37,9 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0xa93d9eBB2e6fE211847e98C1d8f1BB4c166C01EE";
+  final String _contractAddress = "0xE50FF5B540dB6280903FccDb7917F1271233D24E";
   final String _lookupContractAddress =
-      "0xe58Af90506dc0a86d271AE02E83b7392adE4C13A";
+      "0xCa74e468bB8f3b2BF030a1787872C0Cad3c57b8b";
 
   @override
   void initState() {
@@ -137,11 +136,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
             } else {
               print("❌ No private key found for this wallet.");
             }
-
           } catch (e) {
             print('Error saving wallet address or retrieving private key: $e');
           }
-SuspensionListener(walletAddress);
+          SuspensionListener(walletAddress);
 
           // Navigate to MainScreen
           Navigator.pushReplacement(
@@ -172,16 +170,16 @@ SuspensionListener(walletAddress);
 
   // Function to retrieve the private key from SharedPreferences
   Future<String?> _getPrivateKey(String walletAddress) async {
-     try {
-    DocumentSnapshot snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(walletAddress)
-        .get();
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .get();
 
-    if (snapshot.exists && snapshot['isSuspend'] == true) {
-      print("🚫 Access denied! Account is suspended.");
-      return null;
-    }
+      if (snapshot.exists && snapshot['isSuspend'] == true) {
+        print("🚫 Access denied! Account is suspended.");
+        return null;
+      }
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
       // Retrieve private key using the correct key format
@@ -195,10 +193,10 @@ SuspensionListener(walletAddress);
       }
 
       return privateKey;
-      } catch (e) {
-    print('⚠️ Error retrieving private key: $e');
-    return null;
-  }
+    } catch (e) {
+      print('⚠️ Error retrieving private key: $e');
+      return null;
+    }
   }
 
   @override
@@ -396,7 +394,8 @@ SuspensionListener(walletAddress);
             : null, // Show eye icon only for password field
       ),
       maxLength: maxLength,
-      buildCounter: (_, {required currentLength, required isFocused, maxLength}) {
+      buildCounter: (_,
+          {required currentLength, required isFocused, maxLength}) {
         return null; // Remove counter
       },
       validator: (value) {

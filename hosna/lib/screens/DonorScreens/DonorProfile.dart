@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-
+import 'package:web3dart/web3dart.dart' as web3dart show Transaction;
 
 class ProfileScreenTwo extends StatefulWidget {
   const ProfileScreenTwo({super.key});
@@ -17,7 +17,7 @@ class ProfileScreenTwo extends StatefulWidget {
 
 class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   late Web3Client _web3Client; // For blockchain connection
-String _donorAddress = '';
+  String _donorAddress = '';
   String _firstName = '';
   String _lastName = '';
   String _email = '';
@@ -25,9 +25,8 @@ String _donorAddress = '';
   int? userType;
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
-String? _profilePictureUrl;
-
+  final String contractAddress = '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -36,49 +35,131 @@ String? _profilePictureUrl;
     _initializeWeb3();
     _fetchProfilePicture();
     _getDonorData();
- }
-
- Future<void> _fetchProfilePicture() async {
-  print('🔄 Fetching profile picture for donor: $_donorAddress');
-
-  if (_donorAddress.isEmpty) {
-    print('⚠️ Donor address is empty. Cannot fetch profile picture.');
-    return;
   }
 
-  try {
-    print('📡 Querying Firestore for user document...');
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(_donorAddress)
-        .get();
+  Future<void> _fetchProfilePicture() async {
+    print('🔄 Fetching profile picture for donor: $_donorAddress');
 
-    print('📄 Firestore Document Retrieved: ${userDoc.exists ? "Exists ✅" : "Not Found ❌"}');
-
-    if (userDoc.exists) {
-      if (userDoc.data() != null) {
-        print('📑 Firestore Data: ${userDoc.data()}');
-      } else {
-        print('⚠️ Document exists but contains no data.');
-      }
-
-      if (userDoc['profile_picture'] != null) {
-        String profileUrl = userDoc['profile_picture'];
-        print('✅ Profile picture URL fetched: $profileUrl');
-
-        setState(() {
-          _profilePictureUrl = profileUrl;
-        });
-      } else {
-        print('⚠️ No profile picture found in Firestore document.');
-      }
-    } else {
-      print('❌ User document does not exist in Firestore.');
+    if (_donorAddress.isEmpty) {
+      print('⚠️ Donor address is empty. Cannot fetch profile picture.');
+      return;
     }
-  } catch (e) {
-    print('❌ Error fetching profile picture: $e');
+
+    try {
+      print('📡 Querying Firestore for user document...');
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_donorAddress)
+          .get();
+
+      print(
+          '📄 Firestore Document Retrieved: ${userDoc.exists ? "Exists ✅" : "Not Found ❌"}');
+
+      if (userDoc.exists) {
+        if (userDoc.data() != null) {
+          print('📑 Firestore Data: ${userDoc.data()}');
+        } else {
+          print('⚠️ Document exists but contains no data.');
+        }
+
+        if (userDoc['profile_picture'] != null) {
+          String profileUrl = userDoc['profile_picture'];
+          print('✅ Profile picture URL fetched: $profileUrl');
+
+          setState(() {
+            _profilePictureUrl = profileUrl;
+          });
+        } else {
+          print('⚠️ No profile picture found in Firestore document.');
+        }
+      } else {
+        print('❌ User document does not exist in Firestore.');
+      }
+    } catch (e) {
+      print('❌ Error fetching profile picture: $e');
+    }
   }
-}
+
+  Future<void> _deleteDonorAccount() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? walletAddress = prefs.getString('walletAddress');
+    String? privateKey = prefs.getString('privateKey_$walletAddress');
+
+    if (walletAddress == null || privateKey == null) {
+      print('❌ Missing wallet or private key.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing credentials.')),
+      );
+      return;
+    }
+
+    final String ownerPrivateKey =
+        'eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90';
+    final credentials =
+        await _web3Client.credentialsFromPrivateKey(ownerPrivateKey);
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''
+      [
+        {
+          "constant": false,
+          "inputs": [{"name": "_wallet", "type": "address"}],
+          "name": "deleteDonor",
+          "outputs": [],
+          "payable": false,
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ]
+      ''',
+        'DonorRegistry',
+      ),
+      EthereumAddress.fromHex(contractAddress),
+    );
+
+    final deleteFunction = contract.function('deleteDonor');
+
+    try {
+      final txHash = await _web3Client.sendTransaction(
+        credentials,
+        web3dart.Transaction.callContract(
+          contract: contract,
+          function: deleteFunction,
+          parameters: [EthereumAddress.fromHex(walletAddress)],
+        ),
+        chainId: 11155111,
+      );
+
+      print('✅ Deleted from blockchain. Tx: $txHash');
+
+      // Delete from Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .delete();
+      print("✅ Deleted from Firebase");
+
+      // Clean local data
+      await prefs.remove('walletAddress');
+      await prefs.remove('privateKey_$walletAddress');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account deleted successfully.')),
+      );
+
+      // Navigate to user page
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const UsersPage()),
+        (route) => false,
+      );
+    } catch (e) {
+      print('❌ Error deleting account: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting account: $e')),
+      );
+    }
+  }
 
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -130,53 +211,53 @@ String? _profilePictureUrl;
       EthereumAddress.fromHex(contractAddress),
     );
   }
-Future<void> _getDonorData() async {
-  print("🔄 Checking donor address: $_donorAddress");
- _fetchProfilePicture();
-  if (_donorAddress.isEmpty) {
-    print("⚠️ No donor wallet address found.");
-    return;
-  }
 
-  try {
-    print("📡 Fetching contract...");
-    final contract = await _loadContract();
-    final function = contract.function('getDonor');
-
-    print("📡 Fetching donor data for $_donorAddress...");
-
-    final result = await _web3Client.call(
-      contract: contract,
-      function: function,
-      params: [EthereumAddress.fromHex(_donorAddress)],
-    );
-
-    print("🟢 Raw Result: $result"); // ✅ Debugging the response
-
-    if (result.isEmpty) {
-      print("❌ Donor data is empty! Wallet: $_donorAddress");
+  Future<void> _getDonorData() async {
+    print("🔄 Checking donor address: $_donorAddress");
+    _fetchProfilePicture();
+    if (_donorAddress.isEmpty) {
+      print("⚠️ No donor wallet address found.");
       return;
     }
 
-    bool isRegistered = result[5] as bool;
-    if (!isRegistered) {
-      print("❌ Donor is not registered in the blockchain!");
-      return;
+    try {
+      print("📡 Fetching contract...");
+      final contract = await _loadContract();
+      final function = contract.function('getDonor');
+
+      print("📡 Fetching donor data for $_donorAddress...");
+
+      final result = await _web3Client.call(
+        contract: contract,
+        function: function,
+        params: [EthereumAddress.fromHex(_donorAddress)],
+      );
+
+      print("🟢 Raw Result: $result"); // ✅ Debugging the response
+
+      if (result.isEmpty) {
+        print("❌ Donor data is empty! Wallet: $_donorAddress");
+        return;
+      }
+
+      bool isRegistered = result[5] as bool;
+      if (!isRegistered) {
+        print("❌ Donor is not registered in the blockchain!");
+        return;
+      }
+
+      setState(() {
+        _firstName = result[0] as String;
+        _lastName = result[1] as String;
+        _email = result[2] as String;
+        _phone = result[3] as String;
+      });
+
+      print("✅ Donor data retrieved successfully!");
+    } catch (e) {
+      print("❌ Error fetching donor data: $e");
     }
-
-    setState(() {
-      _firstName = result[0] as String;
-      _lastName = result[1] as String;
-      _email = result[2] as String;
-      _phone = result[3] as String;
-    });
-
-    print("✅ Donor data retrieved successfully!");
-  } catch (e) {
-    print("❌ Error fetching donor data: $e");
   }
-}
-
 
   Future<List<dynamic>> _callGetDonorMethod(DeployedContract contract,
       String methodName, List<dynamic> params) async {
@@ -245,15 +326,15 @@ Future<void> _getDonorData() async {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-              radius: 38,
-              backgroundColor: Colors.transparent,
-              backgroundImage: _profilePictureUrl != null
-                  ? NetworkImage(_profilePictureUrl!)
-                  : null,
-              child: _profilePictureUrl == null
-                  ? Icon(Icons.account_circle, size: 100, color: Colors.grey)
-                  : null,
-            ),
+                radius: 38,
+                backgroundColor: Colors.transparent,
+                backgroundImage: _profilePictureUrl != null
+                    ? NetworkImage(_profilePictureUrl!)
+                    : null,
+                child: _profilePictureUrl == null
+                    ? Icon(Icons.account_circle, size: 100, color: Colors.grey)
+                    : null,
+              ),
               SizedBox(height: 30),
               Text('$_firstName $_lastName',
                   style: TextStyle(
@@ -332,7 +413,30 @@ Future<void> _getDonorData() async {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text("Confirm Deletion"),
+                                    content: const Text(
+                                        "Are you sure you want to permanently delete your account?"),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text("Cancel")),
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text("Delete")),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true) {
+                                  await _deleteDonorAccount();
+                                }
+                              },
                               child: Text(
                                 'Delete Account',
                                 style: TextStyle(

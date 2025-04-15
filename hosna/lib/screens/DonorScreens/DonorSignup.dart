@@ -12,7 +12,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/SuspensionListener.dart';
 
 class DonorSignUpPage extends StatefulWidget {
-
   const DonorSignUpPage({super.key});
 
   @override
@@ -81,7 +80,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
 
     // Example contract address
     _contractAddress =
-        EthereumAddress.fromHex("0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc");
+        EthereumAddress.fromHex("0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -162,7 +161,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       // Send the transaction to register the donor using the creator's wallet for gas
       final result = await _web3Client.sendTransaction(
         creatorCredentials, // Use the creator's credentials to sign the transaction
-         web3.Transaction.callContract( 
+        web3.Transaction.callContract(
           contract: contract,
           function: registerDonor,
           parameters: [
@@ -185,9 +184,9 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       _storePrivateKey(walletAddress.toString(), _privateKey);
       print("private key stoooored in shared pref.");
       // Store donor details in Firebase
-    await _storeDonorInFirebase(walletAddress.toString(), email);
-SuspensionListener(walletAddress.toString());
-reloadPrivateKey(walletAddress.toString());
+      await _storeDonorInFirebase(walletAddress.toString(), email);
+      SuspensionListener(walletAddress.toString());
+      reloadPrivateKey(walletAddress.toString());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
@@ -203,49 +202,55 @@ reloadPrivateKey(walletAddress.toString());
   }
 
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
-  try {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    
-    // Use a unique key format for storing the private key
-    String privateKeyKey = 'privateKey_$walletAddress';
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    // Save the private key
-    bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+      // Use a unique key format for storing the private key
+      String privateKeyKey = 'privateKey_$walletAddress';
 
-    if (isSaved) {
-      print('✅ Private key for wallet $walletAddress saved successfully!');
-    } else {
-      print('❌ Failed to save private key for wallet $walletAddress');
+      // Save the private key
+      bool isSaved = await prefs.setString(privateKeyKey, privateKey);
+
+      if (isSaved) {
+        print('✅ Private key for wallet $walletAddress saved successfully!');
+      } else {
+        print('❌ Failed to save private key for wallet $walletAddress');
+      }
+    } catch (e) {
+      print('⚠️ Error saving private key: $e');
     }
-  } catch (e) {
-    print('⚠️ Error saving private key: $e');
   }
-}
 
-Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
-  try {
-    await FirebaseFirestore.instance.collection('users').doc(walletAddress).set({
-      'walletAddress': walletAddress,
-      'email': email,
-      'userType': 0, // 0 means donor
-      'isSuspend': false,
-    });
-    print("✅ Donor data successfully stored in Firebase! 🎉");
-  } catch (e) {
-    print("❌ Error storing donor in Firebase: $e ");
+  Future<void> _storeDonorInFirebase(String walletAddress, String email) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .set({
+        'walletAddress': walletAddress,
+        'email': email,
+        'userType': 0, // 0 means donor
+        'isSuspend': false,
+      });
+      print("✅ Donor data successfully stored in Firebase! 🎉");
+    } catch (e) {
+      print("❌ Error storing donor in Firebase: $e ");
+    }
   }
-}
-Future<void> reloadPrivateKey(String walletAddress) async {
-  String? privateKey = await _fetchPrivateKeyFromSecureStorage(walletAddress);
 
-  if (privateKey != null && privateKey.isNotEmpty) {
-    // Proceed with using the private key
-    print("✅ Private key loaded for wallet $walletAddress.");
-  } else {
-    print("❌ Failed to load private key for wallet $walletAddress.");
+  Future<void> reloadPrivateKey(String walletAddress) async {
+    String? privateKey = await _fetchPrivateKeyFromSecureStorage(walletAddress);
+
+    if (privateKey != null && privateKey.isNotEmpty) {
+      // Proceed with using the private key
+      print("✅ Private key loaded for wallet $walletAddress.");
+    } else {
+      print("❌ Failed to load private key for wallet $walletAddress.");
+    }
   }
-}
-Future<String?> _fetchPrivateKeyFromSecureStorage(String walletAddress) async {
+
+  Future<String?> _fetchPrivateKeyFromSecureStorage(
+      String walletAddress) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String privateKeyKey = 'privateKey_$walletAddress';
