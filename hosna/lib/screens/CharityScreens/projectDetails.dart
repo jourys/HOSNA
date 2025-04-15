@@ -14,7 +14,8 @@ import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/VotingDetails.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
-
+import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
+import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
 
 
 class ProjectDetails extends StatefulWidget {
@@ -58,6 +59,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   bool isCanceled = false; // Default value
   String projectState = "";
    bool votingInitiated = false; // Initialize votingInitiated as false
+   bool isCompleted = false;
 
   // Web3 Variables
   late Web3Client _web3client;
@@ -210,6 +212,14 @@ void _listenToProjectState() {
       ? "canceled"
       : getProjectState(data);
 
+      isCompleted = data['isCompleted'] == true;
+
+          projectState = isCanceled
+              ? "canceled"
+              : isCompleted
+                  ? "completed"
+                  : getProjectState(data);
+
   print("Firestore data: $data");
   print("isCanceled: $isCanceled");
   print("Final Project Status: $projectState");
@@ -360,6 +370,7 @@ void dispose() {
       'endDate': widget.deadline,
       'totalAmount': widget.totalAmount,
       'donatedAmount': widget.donatedAmount,
+      'isCompleted': isCompleted,
     };
 
     return getProjectState(project); // Use the utility function
@@ -370,6 +381,8 @@ String getProjectState(Map<String, dynamic> project) {
     print("📛 Project is canceled globally.");
     return "canceled";
   }
+
+  if (project['isCompleted'] == true) return "completed";
 
   DateTime now = DateTime.now();
 
@@ -513,6 +526,17 @@ Widget _buildTypeItem(String title, String value) {
   );
 }
 
+Future<void> _markProjectAsCompleted() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(widget.projectId.toString())
+          .update({'isCompleted': true});
+      print("Project marked as completed.");
+    } catch (e) {
+      print("Error marking project as completed: $e");
+    }
+  }
 
   @override
 Widget build(BuildContext context) {
@@ -865,25 +889,113 @@ if (canVote && votingInitiated && userType == 0 )
     ),
   ), 
                           if (userType == 1 &&
-                              projectState == "in-progress" &&
-                              widget.projectCreatorWallet == globalWalletAddress)
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: () => print("post update"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 100, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15)),
-                                ),
-                                child: const Text('Post Update',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white)),
+                                projectState == "in-progress" &&
+                                widget.projectCreatorWallet ==
+                                    globalWalletAddress)
+                              Column(
+                                children: [
+                                  // Post Update button
+                                  Center(
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => PostUpdate(
+                                                projectId: widget.projectId),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromRGBO(
+                                            24, 71, 137, 1),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 100, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Post Update',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 15),
+                                  // Mark as Completed button
+                                  if (!isCompleted)
+                                    Center(
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          await _markProjectAsCompleted();
+                                          setState(() {
+                                            isCompleted = true;
+                                            projectState = "completed";
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blueGrey,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 80, vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(15),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Mark as Completed',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
+                            if (userType == 0 &&
+                                (projectState == "in-progress" ||
+                                    projectState == "completed"))
+                              Center(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => ViewUpdate(
+                                              projectName: widget.projectName,
+                                              projectId: widget.projectId)),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        const Color.fromRGBO(24, 71, 137, 1),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 100,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'View Updates',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              
                      
 
                     

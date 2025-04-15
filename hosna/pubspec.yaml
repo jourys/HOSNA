@@ -54,6 +54,7 @@ dependencies:
   lucide_icons: ^0.257.0
   url_launcher: ^6.3.1
   crypto: ^3.0.6
+  timeago: ^3.7.0 # please check if it compatible if not delete it and then try adding it again "I could not add it the way you do"
   # ethereum: ^0.2.1
   
   

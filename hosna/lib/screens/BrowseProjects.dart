@@ -163,6 +163,22 @@ class _BrowseProjectsState extends State<BrowseProjects> {
     bool isCanceled =
         await _isProjectCanceled(projectId); // Await the async call
 
+        try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data['isCompleted'] == true) {
+          return "completed";
+        }
+      }
+    } catch (e) {
+      print("Error checking isCompleted for project $projectId: $e");
+    }
+
     if (isCanceled) {
       print("This project is canceled.");
       return "canceled";
