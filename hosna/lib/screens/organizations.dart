@@ -456,12 +456,12 @@ class OrganizationProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(24, 71, 137, 1), // Top bar color
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80), // Increased app bar height
+        preferredSize: const Size.fromHeight(60), // Increased app bar height
         child: AppBar(
           backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
           elevation: 0, // Remove shadow
           leading: Padding(
-            padding: const EdgeInsets.only(top: 20), // Adjust icon position
+            padding: const EdgeInsets.only(top: 10), // Adjust icon position
             child: IconButton(
               icon: const Icon(
                 Icons.arrow_back,
@@ -481,7 +481,7 @@ class OrganizationProfilePage extends StatelessWidget {
                 organization["name"] ?? "Unknown Organization",
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 24, // Increased size
+                  fontSize: 22, // Increased size
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -499,71 +499,114 @@ class OrganizationProfilePage extends StatelessWidget {
                 topRight: Radius.circular(20),
               ),
             ),
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(8.0),
           child: SingleChildScrollView(
   child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Center(
-        child: Icon(Icons.account_circle,
-            size: 120, color: Colors.grey), // Enlarged profile icon
-      ),
-      const SizedBox(height: 20),
 
-      _buildSectionTitle(Icons.contact_phone, "Contact Information"),
-      _buildInfoRow(Icons.phone, "Phone", organization["phone"]),
-      _buildInfoRow(Icons.email, "Email", organization["email"]),
-      _buildInfoRow(Icons.location_on, "City", organization["city"]),
-
-      const SizedBox(height: 16),
-
-      _buildSectionTitle(Icons.business, "Organization Details"),
-      _buildInfoRow(Icons.badge, "License Number",
-          organization["licenseNumber"]),
-      _buildInfoRow(Icons.explore, "Website", organization["website"],
-          isLink: true),
-      _buildInfoRow(Icons.calendar_today, "Established",
-          organization["establishmentDate"]),
-
-      const SizedBox(height: 16),
-
-      _buildSectionTitle(Icons.info_outline, "About Us"),
-      _buildInfoRow(
-          Icons.description, "About Us", organization["description"]),
-
-      const SizedBox(height: 20),
-
-      Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ViewProjectsPage(
-                  orgAddress: organization["wallet"],
-                  orgName: organization["name"] ?? "Organization",
-                ),
+       CircleAvatar(
+                radius: 38,
+                backgroundColor: Colors.transparent,
+                
+                child: Icon(Icons.account_circle, size: 100, color: Colors.grey)
+                  
               ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 100),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text(
-            "View Projects",
-            style: TextStyle(
-              fontSize: 20,
-              color: Colors.white,
-            ),
-          ),
+  
+   
+              SizedBox(height: 60),
+
+
+      InfoRow(
+  icon: Icons.phone,
+  label: "Phone",
+  value: organization["phone"],
+),
+InfoRow(
+  icon: Icons.email,
+  label: "Email",
+  value: organization["email"],
+),
+InfoRow(
+  icon: Icons.location_on,
+  label: "City",
+  value: organization["city"],
+),
+
+
+
+      InfoRow(
+  icon: Icons.badge,
+  label: "License Number",
+  value: organization["licenseNumber"],
+),
+InfoRow(
+  icon: Icons.explore,
+  label: "Website",
+  value: organization["website"],
+  isLink: true,
+),
+InfoRow(
+  icon: Icons.rocket_launch,
+  label: "Established",
+  value: organization["establishmentDate"],
+),
+
+
+    InfoRow(
+  icon: Icons.description,
+  label: "About Us",
+  value: organization["description"],
+),
+
+              SizedBox(height: 30),
+
+      GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ViewProjectsPage(
+          orgAddress: organization["wallet"],
+          orgName: organization["name"] ?? "Organization",
         ),
       ),
+    );
+  },
+  child: Container(
+    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    decoration: BoxDecoration(
+      color: const Color.fromRGBO(24, 71, 137, 1),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          offset: const Offset(0, 5),
+          blurRadius: 10,
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.volunteer_activism, color: Colors.white),
+        const SizedBox(width: 10),
+        Text(
+          "Explore Charity Projects",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+      ],
+    ),
+  ),
+),
 
-      const SizedBox(height: 50),
+      const SizedBox(height: 70),
     ],
   ),
 ),
@@ -609,19 +652,111 @@ class OrganizationProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+}
+
+class InfoRow extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final bool isLink;
+
+  const InfoRow({
+    Key? key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isLink = false,
+  }) : super(key: key);
+
+  @override
+  State<InfoRow> createState() => _InfoRowState();
+}
+
+class _InfoRowState extends State<InfoRow> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final String content = widget.value?.trim() ?? "Not provided ";
+    final bool isLongText = content.length > 60;
+    final String displayText =
+        _isExpanded || !isLongText ? content : '${content.substring(0, 60)}...';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey[50],
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blueGrey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon(icon, size: 28, color: Colors.blueGrey),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          CircleAvatar(
+            backgroundColor: Colors.blue[100],
+            child: Icon(widget.icon, color: Colors.blue[800], size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${_addEmoji(widget.label)}: ',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                        ),
+                      ),
+                      TextSpan(
+                        text: displayText,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: widget.isLink ? Colors.blue : Colors.black87,
+                          decoration: widget.isLink
+                              ? TextDecoration.underline
+                              : TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isLongText)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _isExpanded = !_isExpanded;
+                        });
+                      },
+                      child: Text(
+                        _isExpanded ? "Show less" : "Show more",
+                        style: TextStyle(
+                          color: Colors.blue[900],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(50, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -629,30 +764,35 @@ class OrganizationProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String? value,
-      {bool isLink = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 26, color: Colors.blueGrey), // Adjusted icon size
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value ?? "N/A",
-              style: TextStyle(
-                fontSize: 18, // Increased text size
-                color: isLink ? Colors.blue : Colors.black87,
-                decoration:
-                    isLink ? TextDecoration.underline : TextDecoration.none,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+
+  /// Adds a fun emoji next to each label based on common fields
+  String _addEmoji(String label) {
+    switch (label.toLowerCase()) {
+      case 'phone':
+        return "Phone ";
+      case 'email':
+        return "Email ";
+      case 'city':
+        return "City ";
+      case 'license number':
+        return "License Number ";
+      case 'website':
+        return "Website ";
+      case 'established':
+      case 'founded':
+      case 'start':
+        return "Founded ";
+      case 'about us':
+        return "About Us ";
+      default:
+        return label;
+    }
   }
 }
+
+
+
+
 
 class ViewProjectsPage extends StatefulWidget {
   final String orgAddress;
