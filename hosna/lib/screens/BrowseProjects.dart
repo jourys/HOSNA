@@ -93,7 +93,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
 
       List<Map<String, dynamic>> projects = [];
 
-      for (int i = 0; i < projectCount; i++) {
+      for (int i = 39; i < projectCount; i++) {
         try {
           final project = await _blockchainService.getProjectDetails(i);
           if (project.containsKey("error")) {
@@ -155,67 +155,88 @@ class _BrowseProjectsState extends State<BrowseProjects> {
       _showMyProjects = false;
     });
   }
+Future<String> _getProjectState(Map<String, dynamic> project) async {
+  DateTime now = DateTime.now();
+  String projectId = project['id'].toString(); // Ensure it's a String
 
-  Future<String> _getProjectState(Map<String, dynamic> project) async {
-    DateTime now = DateTime.now();
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .get();
 
-    String projectId = project['id'].toString(); // Ensure it's a String
-    bool isCanceled =
-        await _isProjectCanceled(projectId); // Await the async call
-
-        try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
-        if (data != null && data['isCompleted'] == true) {
-          return "completed";
-        }
-      }
-    } catch (e) {
-      print("Error checking isCompleted for project $projectId: $e");
+    if (!doc.exists) {
+      print("⚠️ Project not found. Creating default fields...");
+      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
+        'isCanceled': false,
+        'isCompleted': false,
+        'isEnded': false,
+        'votingInitiated': false,
+      });
     }
 
-    if (isCanceled) {
-      print("This project is canceled.");
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    bool isCanceled = data['isCanceled'] ?? false;
+    bool isCompleted = data['isCompleted'] ?? false;
+bool isEnded = false;
+final votingId = data['votingId'];
+
+if (votingId != null) {
+  final votingDocRef = FirebaseFirestore.instance
+      .collection("votings")
+      .doc(votingId.toString());
+
+  final votingDoc = await votingDocRef.get();
+  final votingData = votingDoc.data();
+
+  if (votingDoc.exists) {
+    isEnded = votingData?['IsEnded'] ?? false;
+  }
+}
+    bool votingInitiated = data['votingInitiated'] ?? false;
+
+    // Determine projectState based on Firestore flags
+    if (isEnded) {
+      return "ended";}
+    if (isCompleted) {
+      return "completed";
+    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+      return "voting";
+    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
       return "canceled";
-    } else {
-      print("This project is active.");
     }
 
-    // Handle startDate (could be DateTime, String, or null)
+    // Fallback to logic based on time and funding progress
     DateTime startDate = project['startDate'] != null
         ? (project['startDate'] is DateTime
             ? project['startDate']
             : DateTime.parse(project['startDate']))
-        : DateTime.now(); // Use current time if startDate is null
+        : DateTime.now();
 
-    // Handle endDate (could be DateTime, String, or null)
     DateTime endDate = project['endDate'] != null
         ? (project['endDate'] is DateTime
             ? project['endDate']
             : DateTime.parse(project['endDate']))
-        : DateTime.now(); // Use current time if endDate is null
+        : DateTime.now();
 
-    // Get totalAmount and donatedAmount, handle null or invalid values
     double totalAmount = (project['totalAmount'] ?? 0).toDouble();
     double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
     if (now.isBefore(startDate)) {
-      return "upcoming"; // Project is not started yet
+      return "upcoming";
     } else if (donatedAmount >= totalAmount) {
-      return "in-progress"; // Project reached the goal
+      return "in-progress";
+    } else if (now.isAfter(endDate)) {
+      return "failed";
     } else {
-      if (now.isAfter(endDate)) {
-        return "failed"; // Project failed to reach the target
-      } else {
-        return "active"; // Project is ongoing and goal is not reached yet
-      }
+      return "active";
     }
+  } catch (e) {
+    print("❌ Error determining project state for ID $projectId: $e");
+    return "unknown";
   }
+}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -246,23 +267,26 @@ class _BrowseProjectsState extends State<BrowseProjects> {
     }
   }
 
-  Color _getStateColor(String state) {
-    switch (state) {
-      case "active":
-        return Colors.green;
-      case "failed":
-        return Colors.red;
-      case "in-progress":
-        return Colors.purple;
-      case "completed":
-        return Colors.blue;
-      case "canceled":
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
+ Color _getStateColor(String state) {
+  switch (state) {
+    case "active":
+      return Colors.green;
+    case "failed":
+      return Colors.red;
+    case "in-progress":
+      return Colors.purple;
+    case "voting":
+      return Colors.blue;
+    case "canceled":
+      return Colors.orange;
+    case "ended":
+      return Colors.grey;
+    case "completed":
+      return  Color.fromRGBO(24, 71, 137, 1);
+    default:
+      return Colors.grey;
   }
-
+}
   double weiToEth(BigInt wei) {
     return (wei / BigInt.from(10).pow(18));
   }

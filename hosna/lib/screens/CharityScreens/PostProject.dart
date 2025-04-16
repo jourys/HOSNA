@@ -815,16 +815,16 @@ class _PostProjectScreenState extends State<PostProject> {
       );
 
       print("✅ Project successfully posted!");
-
+ Navigator.pop(context);
       // Navigate to project details page only after successful posting
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BrowseProjects(
-            walletAddress: walletAddress ?? '',
-          ), // Replace with your Browse Project page
-        ),
-      );
+      // Navigator.pushReplacement(
+      //   context,
+      //   MaterialPageRoute(
+      //     builder: (context) => BrowseProjects(
+      //       walletAddress: walletAddress ?? '',
+      //     ), // Replace with your Browse Project page
+      //   ),
+      // );
       //} catch (e) {
       //print("❌ Error posting project: $e");
       // ScaffoldMessenger.of(context).showSnackBar(
