@@ -602,7 +602,8 @@ InfoRow(
 
               SizedBox(height: 30),
 
-      GestureDetector(
+   AnimatedArrowButton(
+  label: "Explore Charity Projects",
   onTap: () {
     Navigator.push(
       context,
@@ -614,39 +615,9 @@ InfoRow(
       ),
     );
   },
-  child: Container(
-    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    decoration: BoxDecoration(
-      color: const Color.fromRGBO(24, 71, 137, 1),
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          offset: const Offset(0, 5),
-          blurRadius: 10,
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.volunteer_activism, color: Colors.white),
-        const SizedBox(width: 10),
-        Text(
-          "Explore Charity Projects",
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
-      ],
-    ),
-  ),
 ),
+
+
 
       const SizedBox(height: 70),
     ],
@@ -695,6 +666,124 @@ InfoRow(
   }
 
 }
+class AnimatedArrowButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final String label;
+
+  const AnimatedArrowButton({
+    super.key,
+    required this.onTap,
+    required this.label,
+  });
+
+  @override
+  _AnimatedArrowButtonState createState() => _AnimatedArrowButtonState();
+}
+
+class _AnimatedArrowButtonState extends State<AnimatedArrowButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _offsetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _offsetAnimation = Tween<double>(begin: 0, end: 12).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _offsetAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_offsetAnimation.value, 0), // Animate the button to the right
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: ClipPath(
+              clipper: SharpArrowClipper(), // Use updated arrow clipper
+              child: Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      offset: const Offset(0, 4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.volunteer_activism,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      widget.label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+class SharpArrowClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    double arrowWidth = 25; // Arrow head width
+    double borderRadius = 25; // Rounded corners
+
+    final path = Path();
+    path.moveTo(borderRadius, 0); // Rounded left-top corner
+    path.lineTo(size.width - arrowWidth, 0); // Start of the triangle (right)
+    
+    // Draw the arrowhead at the right side
+    path.lineTo(size.width, size.height / 2); // Point at the tip of the triangle (right middle)
+    path.lineTo(size.width - arrowWidth, size.height); // Back down the triangle
+    
+    // Return to the left side and apply rounded corners
+    path.lineTo(borderRadius, size.height); // Rounded bottom-left corner
+    path.quadraticBezierTo(0, size.height, 0, size.height - borderRadius); // Bottom left curve
+    path.lineTo(0, borderRadius); // Rounded top-left corner
+    path.quadraticBezierTo(0, 0, borderRadius, 0); // Top-left curve closing the shape
+    
+    path.close(); // Close the path to form a complete arrow shape
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
 
 class InfoRow extends StatefulWidget {
   final IconData icon;
