@@ -333,59 +333,62 @@ class BlockchainService {
       EthereumAddress.fromHex(contractAddress),
     );
   }
-  Future<List<Map<String, dynamic>>> getFailedOrCanceledProjects(BlockchainService blockchainService) async {
-  List<Map<String, dynamic>> filteredProjects = [];
 
-  try {
-    int count = await blockchainService.getProjectCount();
+  Future<List<Map<String, dynamic>>> getFailedOrCanceledProjects(
+      BlockchainService blockchainService) async {
+    List<Map<String, dynamic>> filteredProjects = [];
 
-    for (int i = 0; i < count; i++) {
-      final project = await blockchainService.getProjectDetails(i);
+    try {
+      int count = await blockchainService.getProjectCount();
 
-      if (!project.containsKey('error')) {
-        final status = project['status'].toString().toLowerCase();
+      for (int i = 0; i < count; i++) {
+        final project = await blockchainService.getProjectDetails(i);
 
-        if (status == 'active') {
-          filteredProjects.add(project);
+        if (!project.containsKey('error')) {
+          final status = project['status'].toString().toLowerCase();
+
+          if (status == 'active') {
+            filteredProjects.add(project);
+          }
         }
       }
+    } catch (e) {
+      print('Error while filtering projects: $e');
     }
-  } catch (e) {
-    print('Error while filtering projects: $e');
+
+    return filteredProjects;
   }
 
-  return filteredProjects;
-}
-Future<double> getTotalFailedProjectAmount() async {
-  try {
-    await _loadContract();
-    final function = _contract.function("getFailedProjects");
+  Future<double> getTotalFailedProjectAmount() async {
+    try {
+      await _loadContract();
+      final function = _contract.function("getFailedProjects");
 
-    final result = await _web3Client.call(
-      contract: _contract,
-      function: function,
-      params: [],
-    );
+      final result = await _web3Client.call(
+        contract: _contract,
+        function: function,
+        params: [],
+      );
 
-    double totalFailedAmount = 0.0;
-    final failedProjectIds = result[0] as List<dynamic>;
+      double totalFailedAmount = 0.0;
+      final failedProjectIds = result[0] as List<dynamic>;
 
-    for (var projectId in failedProjectIds) {
-      try {
-        final projectDetails = await getProjectDetails(projectId.toInt());
-        final amount = (projectDetails["totalAmount"] ?? 0).toDouble();
-        totalFailedAmount += amount;
-      } catch (e) {
-        print("⚠️ Error fetching details for project ID $projectId: $e");
+      for (var projectId in failedProjectIds) {
+        try {
+          final projectDetails = await getProjectDetails(projectId.toInt());
+          final amount = (projectDetails["totalAmount"] ?? 0).toDouble();
+          totalFailedAmount += amount;
+        } catch (e) {
+          print("⚠️ Error fetching details for project ID $projectId: $e");
+        }
       }
-    }
 
-    return totalFailedAmount;
-  } catch (e) {
-    print("❌ Error fetching failed projects: $e");
-    return 0.0;
+      return totalFailedAmount;
+    } catch (e) {
+      print("❌ Error fetching failed projects: $e");
+      return 0.0;
+    }
   }
-}
 
   Future<void> initiateVoting(BigInt projectId, List<BigInt> selectedProjectIds,
       BigInt startDate, BigInt endDate) async {
@@ -402,7 +405,8 @@ Future<double> getTotalFailedProjectAmount() async {
       print("- End date: ${projectDetails['endDate']}");
 
       if (projectDetails['state'] != 4) {
-        print("Project must be in Failed state to initiate voting. Current state: ${projectDetails['state']}");
+        print(
+            "Project must be in Failed state to initiate voting. Current state: ${projectDetails['state']}");
         return;
       }
 
@@ -412,9 +416,11 @@ Future<double> getTotalFailedProjectAmount() async {
         print("📊 Option project check:");
         print("- Option ID: $optionId");
         print("- Current state: ${optionDetails['state']}");
-        
-        if (optionDetails['state'] != 1) { // 1 is Active state
-          throw Exception("Selected project ${optionId} is not active. All voting options must be active projects.");
+
+        if (optionDetails['state'] != 1) {
+          // 1 is Active state
+          throw Exception(
+              "Selected project ${optionId} is not active. All voting options must be active projects.");
         }
       }
 
@@ -483,7 +489,8 @@ Future<double> getTotalFailedProjectAmount() async {
         List<Map<String, dynamic>> activeVotings = [];
         for (int i = 0; i < projectIds.length; i++) {
           try {
-            final projectDetails = await getProjectDetails(projectIds[i].toInt());
+            final projectDetails =
+                await getProjectDetails(projectIds[i].toInt());
             activeVotings.add({
               'projectId': projectIds[i].toInt(),
               'projectName': projectDetails['name'],
@@ -707,7 +714,8 @@ Future<double> getTotalFailedProjectAmount() async {
   }
 
   /// **Submit Vote**
-  Future<void> submitVote(int projectId, String selectedOption, String donorAddress) async {
+  Future<void> submitVote(
+      int projectId, String selectedOption, String donorAddress) async {
     try {
       await connect();
 
@@ -849,71 +857,69 @@ Future<double> getTotalFailedProjectAmount() async {
     }
   }
 
-Future<Map<String, String?>> getCharityCredentials() async {
-  final prefs = await SharedPreferences.getInstance();
+  Future<Map<String, String?>> getCharityCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
 
-  // Retrieve the stored wallet address first
-  final walletAddress = prefs.getString('walletAddress');
+    // Retrieve the stored wallet address first
+    final walletAddress = prefs.getString('walletAddress');
 
-  // If wallet address is null, return early
-  if (walletAddress == null) {
-    print("❌ No wallet address found in SharedPreferences!");
+    // If wallet address is null, return early
+    if (walletAddress == null) {
+      print("❌ No wallet address found in SharedPreferences!");
+      return {
+        'privateKey': null,
+        'walletAddress': null,
+      };
+    }
+
+    // Retrieve the private key using the correct key format
+    final privateKeyKey = 'privateKey_$walletAddress';
+    String? privateKey = prefs.getString(privateKeyKey);
+
+    if (privateKey == null) {
+      print("❌ No private key found for wallet: $walletAddress.");
+    } else {
+      print("✅ Retrieved Private Key for wallet: $walletAddress.");
+      print("✅ Retrieved Private Key: $privateKey.");
+    }
+
     return {
-      'privateKey': null,
-      'walletAddress': null,
+      'privateKey': privateKey,
+      'walletAddress': walletAddress,
     };
   }
 
-  // Retrieve the private key using the correct key format
-  final privateKeyKey = 'privateKey_$walletAddress';
-  String? privateKey = prefs.getString(privateKeyKey);
+  Future<void> connect() async {
+    try {
+      // Retrieve the charity employee's credentials from storage
+      final credentials = await getCharityCredentials();
+      final walletAddress = credentials['walletAddress'];
+      final privateKey = credentials['privateKey'];
 
-  if (privateKey == null) {
-    print("❌ No private key found for wallet: $walletAddress.");
-  } else {
-    print("✅ Retrieved Private Key for wallet: $walletAddress.");
-    print("✅ Retrieved Private Key: $privateKey.");
-  }
+      print('🔍 Retrieved Wallet Address: $walletAddress');
+      print(
+          '🔍 Retrieved Private Key: ${privateKey != null ? "Exists ✅" : "Not Found ❌"}');
 
-  return {
-    'privateKey': privateKey,
-    'walletAddress': walletAddress,
-  };
-}
+      if (walletAddress == null) {
+        print("❌ Charity employee wallet address not found. Please log in.");
+        throw Exception("Wallet address not found.");
+      }
 
+      if (privateKey == null) {
+        print("❌ Private key not found. Cannot establish a secure connection.");
+        throw Exception("Private key not found.");
+      }
 
+      // Initialize credentials using the private key
+      _credentials = EthPrivateKey.fromHex(privateKey);
+      _ownAddress = EthereumAddress.fromHex(walletAddress);
 
- Future<void> connect() async {
-  try {
-    // Retrieve the charity employee's credentials from storage
-    final credentials = await getCharityCredentials();
-    final walletAddress = credentials['walletAddress'];
-    final privateKey = credentials['privateKey'];
-
-    print('🔍 Retrieved Wallet Address: $walletAddress');
-    print('🔍 Retrieved Private Key: ${privateKey != null ? "Exists ✅" : "Not Found ❌"}');
-
-    if (walletAddress == null) {
-      print("❌ Charity employee wallet address not found. Please log in.");
-      throw Exception("Wallet address not found.");
+      print("✅ Successfully connected with wallet address: $_ownAddress");
+    } catch (e) {
+      print("⚠️ Error during wallet connection: $e");
+      throw Exception("Failed to connect wallet: $e");
     }
-
-    if (privateKey == null) {
-      print("❌ Private key not found. Cannot establish a secure connection.");
-      throw Exception("Private key not found.");
-    }
-
-    // Initialize credentials using the private key
-    _credentials = EthPrivateKey.fromHex(privateKey);
-    _ownAddress = EthereumAddress.fromHex(walletAddress);
-
-    print("✅ Successfully connected with wallet address: $_ownAddress");
-  } catch (e) {
-    print("⚠️ Error during wallet connection: $e");
-    throw Exception("Failed to connect wallet: $e");
   }
-}
-
 
   Future<void> addProject(
     String name,
@@ -985,28 +991,27 @@ Future<Map<String, String?>> getCharityCredentials() async {
     }
   }
 
-Future<String?> getWalletAddressFromPrivateKey() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final privateKey = prefs.getString('privateKey');
+  Future<String?> getWalletAddressFromPrivateKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final privateKey = prefs.getString('privateKey');
 
-    if (privateKey == null || privateKey.isEmpty) {
-      print("❌ No private key found in SharedPreferences.");
-      return null; // Return null instead of an empty string
+      if (privateKey == null || privateKey.isEmpty) {
+        print("❌ No private key found in SharedPreferences.");
+        return null; // Return null instead of an empty string
+      }
+
+      // Derive wallet address from the private key
+      final credentials = EthPrivateKey.fromHex(privateKey);
+      final walletAddress = credentials.address.hex;
+
+      print("✅ Wallet address derived from private key: $walletAddress");
+      return walletAddress;
+    } catch (e) {
+      print("❌ Error deriving wallet address: $e");
+      return null; // Return null to indicate failure
     }
-
-    // Derive wallet address from the private key
-    final credentials = EthPrivateKey.fromHex(privateKey);
-    final walletAddress = credentials.address.hex;
-
-    print("✅ Wallet address derived from private key: $walletAddress");
-    return walletAddress;
-  } catch (e) {
-    print("❌ Error deriving wallet address: $e");
-    return null; // Return null to indicate failure
   }
-}
-
 
   Future<DeployedContract> _getContract() async {
     return DeployedContract(
@@ -1137,7 +1142,8 @@ Future<String?> getWalletAddressFromPrivateKey() async {
 
       final votingId = result[0] as BigInt;
       final hasVoting = votingId != BigInt.zero;
-      print("📊 Project $projectId has voting: $hasVoting (Voting ID: $votingId)");
+      print(
+          "📊 Project $projectId has voting: $hasVoting (Voting ID: $votingId)");
       return hasVoting;
     } catch (e) {
       print("❌ Error checking existing voting: $e");
@@ -1150,9 +1156,10 @@ Future<String?> getWalletAddressFromPrivateKey() async {
     try {
       final votingContract = await _getVotingContract();
       final function = votingContract.function('hasDonated');
-      
-      print("🔍 Checking if donor $donorAddress has donated to project $projectId");
-      
+
+      print(
+          "🔍 Checking if donor $donorAddress has donated to project $projectId");
+
       final result = await _web3Client.call(
         contract: votingContract,
         function: function,
@@ -1165,7 +1172,8 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       }
 
       final hasDonated = result[0] as bool;
-      print("📊 Donation status for project $projectId: ${hasDonated ? "Donated ✅" : "Not Donated ❌"}");
+      print(
+          "📊 Donation status for project $projectId: ${hasDonated ? "Donated ✅" : "Not Donated ❌"}");
       return hasDonated;
     } catch (e) {
       print("❌ Error checking donation status: $e");
@@ -1177,7 +1185,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
   Future<List<String>> getVotingOptions(int projectId) async {
     try {
       final votingContract = await _getVotingContract();
-      
+
       // First get the voting ID
       final votingIdFunction = votingContract.function('projectToVoting');
       final votingIdResult = await _web3Client.call(
@@ -1185,14 +1193,14 @@ Future<String?> getWalletAddressFromPrivateKey() async {
         function: votingIdFunction,
         params: [BigInt.from(projectId)],
       );
-      
+
       if (votingIdResult.isEmpty || votingIdResult[0] == BigInt.zero) {
         print("⚠️ No voting found for project ID $projectId");
         return [];
       }
 
       final votingId = votingIdResult[0] as BigInt;
-      
+
       // Then get the available options
       final optionsFunction = votingContract.function('getAvailableOptions');
       final optionsResult = await _web3Client.call(
@@ -1208,7 +1216,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
 
       List<BigInt> optionIds = (optionsResult[0] as List).cast<BigInt>();
       List<String> options = [];
-      
+
       for (var id in optionIds) {
         if (id == BigInt.zero) {
           options.add("Request a Refund");
@@ -1294,7 +1302,8 @@ Future<String?> getWalletAddressFromPrivateKey() async {
         List<Map<String, dynamic>> votingSessions = [];
         for (int i = 0; i < projectIds.length; i++) {
           try {
-            final projectDetails = await getProjectDetails(projectIds[i].toInt());
+            final projectDetails =
+                await getProjectDetails(projectIds[i].toInt());
             votingSessions.add({
               'projectId': projectIds[i].toInt(),
               'projectName': projectDetails['name'],
@@ -1324,7 +1333,8 @@ Future<String?> getWalletAddressFromPrivateKey() async {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getProjectsAwaitingVote(String donorAddress) async {
+  Future<List<Map<String, dynamic>>> getProjectsAwaitingVote(
+      String donorAddress) async {
     try {
       if (donorAddress.isEmpty) {
         print("⚠️ Empty donor address provided");
@@ -1338,24 +1348,26 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       for (var voting in activeVotings) {
         // Check if the donor has already voted
         bool hasVoted = await hasDonorVoted(voting['projectId'], donorAddress);
-        
+
         // Check if the donor has donated to the project
-        bool hasDonated = await hasDonatedToProject(voting['projectId'], donorAddress);
+        bool hasDonated =
+            await hasDonatedToProject(voting['projectId'], donorAddress);
 
         // Only include projects where the donor has donated but hasn't voted yet
         if (hasDonated && !hasVoted) {
           final projectDetails = await getProjectDetails(voting['projectId']);
           if (projectDetails.containsKey('name')) {
             projectDetails['votingId'] = voting['projectId'];
-            projectDetails['votingDeadline'] = DateTime.fromMillisecondsSinceEpoch(
-              voting['endTime'] * 1000
-            ).toString();
+            projectDetails['votingDeadline'] =
+                DateTime.fromMillisecondsSinceEpoch(voting['endTime'] * 1000)
+                    .toString();
             votingProjects.add(projectDetails);
           }
         }
       }
 
-      print("📊 Found ${votingProjects.length} projects awaiting vote for donor $donorAddress");
+      print(
+          "📊 Found ${votingProjects.length} projects awaiting vote for donor $donorAddress");
       return votingProjects;
     } catch (e) {
       print("❌ Error getting projects awaiting vote: $e");
@@ -1367,7 +1379,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final address = prefs.getString('walletAddress');
-      
+
       if (address == null) {
         print("❌ No wallet address found");
         return [];
@@ -1375,9 +1387,9 @@ Future<String?> getWalletAddressFromPrivateKey() async {
 
       final contract = await _getContract();
       final function = contract.function('hasDonatedToProject');
-      
+
       print("🔍 Checking if donor $address has donated to project $projectId");
-      
+
       final result = await _web3Client.call(
         contract: contract,
         function: function,
@@ -1390,7 +1402,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       }
 
       final hasDonated = result[0] as bool;
-      
+
       if (!hasDonated) {
         print("ℹ️ Donor has not donated to project $projectId");
         return [];
@@ -1398,7 +1410,7 @@ Future<String?> getWalletAddressFromPrivateKey() async {
 
       // Get project details to include in the result
       final projectDetails = await getProjectDetails(projectId);
-      
+
       if (projectDetails.containsKey('error')) {
         print("⚠️ Error getting project details: ${projectDetails['error']}");
         return [];
@@ -1415,17 +1427,19 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       final donatedAmount = donationResult[0] as BigInt;
 
       // Return project details with donation amount
-      return [{
-        'id': projectId,
-        'name': projectDetails['name'],
-        'description': projectDetails['description'],
-        'donatedAmount': donatedAmount.toDouble() / 1e18, // Convert from wei to ETH
-        'totalAmount': projectDetails['totalAmount'],
-        'projectType': projectDetails['projectType'],
-        'endDate': projectDetails['endDate'],
-        'projectCreatorWallet': projectDetails['organization'],
-      }];
-
+      return [
+        {
+          'id': projectId,
+          'name': projectDetails['name'],
+          'description': projectDetails['description'],
+          'donatedAmount':
+              donatedAmount.toDouble() / 1e18, // Convert from wei to ETH
+          'totalAmount': projectDetails['totalAmount'],
+          'projectType': projectDetails['projectType'],
+          'endDate': projectDetails['endDate'],
+          'projectCreatorWallet': projectDetails['organization'],
+        }
+      ];
     } catch (e) {
       print("❌ Error fetching project donors: $e");
       return [];
@@ -1433,13 +1447,15 @@ Future<String?> getWalletAddressFromPrivateKey() async {
   }
 
   // Get donor's specific donation amounts for a project
-  Future<Map<String, dynamic>?> getDonorInfo(int projectId, String donorAddress) async {
+  Future<Map<String, dynamic>?> getDonorInfo(
+      int projectId, String donorAddress) async {
     try {
       final contract = await _getContract();
       final function = contract.function('getDonorInfo');
-      
-      print("🔍 Getting donor info for project $projectId and donor $donorAddress");
-      
+
+      print(
+          "🔍 Getting donor info for project $projectId and donor $donorAddress");
+
       final result = await _web3Client.call(
         contract: contract,
         function: function,
@@ -1456,7 +1472,8 @@ Future<String?> getWalletAddressFromPrivateKey() async {
 
       print("📊 Donor info for project $projectId:");
       print("   - Anonymous amount: ${anonymousAmount.toDouble() / 1e18} ETH");
-      print("   - Non-anonymous amount: ${nonAnonymousAmount.toDouble() / 1e18} ETH");
+      print(
+          "   - Non-anonymous amount: ${nonAnonymousAmount.toDouble() / 1e18} ETH");
 
       return {
         'anonymousAmount': anonymousAmount,
@@ -1467,4 +1484,4 @@ Future<String?> getWalletAddressFromPrivateKey() async {
       return null;
     }
   }
-} 
+}
