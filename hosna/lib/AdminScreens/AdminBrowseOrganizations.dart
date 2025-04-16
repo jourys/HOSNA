@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
-import 'package:hosna/AdminScreens/AdminLogin.dart'; 
-import 'package:hosna/AdminScreens/ViewComplaintsPage.dart'; 
+import 'package:hosna/AdminScreens/AdminLogin.dart';
+import 'package:hosna/AdminScreens/ViewComplaintsPage.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart';
 import 'dart:convert';
-import 'AdminSidebar.dart'; 
+import 'AdminSidebar.dart';
 // Assuming the profile page is here
 
 class AdminBrowseOrganizations extends StatefulWidget {
@@ -23,7 +23,7 @@ class AdminBrowseOrganizations extends StatefulWidget {
 class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x02b0d417D48eEA64Aae9AdA80570783034ED6839';
+  final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
 
   late Web3Client _client;
   late DeployedContract _contract;
@@ -68,31 +68,30 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
 
   @override
   void dispose() {
-    _searchController.dispose(); // Dispose the controller when the widget is disposed
+    _searchController
+        .dispose(); // Dispose the controller when the widget is disposed
     super.dispose();
   }
 
+  Future<List<String>> fetchApprovedCharities() async {
+    List<String> walletAddresses = [];
 
-Future<List<String>> fetchApprovedCharities() async {
-  List<String> walletAddresses = [];
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('accountStatus', isEqualTo: 'approved')
+          .where('userType', isEqualTo: 1)
+          .get();
 
-  try {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('accountStatus', isEqualTo: 'approved')
-        .where('userType', isEqualTo: 1)
-        .get();
-
-    for (var doc in snapshot.docs) {
-      walletAddresses.add(doc['walletAddress']);
+      for (var doc in snapshot.docs) {
+        walletAddresses.add(doc['walletAddress']);
+      }
+    } catch (e) {
+      print("Error fetching charity wallet addresses: $e");
     }
-  } catch (e) {
-    print("Error fetching charity wallet addresses: $e");
+
+    return walletAddresses;
   }
-
-  return walletAddresses;
-}
-
 
   Future<void> _loadContract() async {
     try {
@@ -107,62 +106,61 @@ Future<List<String>> fetchApprovedCharities() async {
     }
   }
 
- 
- Future<void> _fetchCharities() async {
-  try {
-    // Fetch approved wallet addresses from Firestore
-    List<String> approvedWallets = await fetchApprovedCharities();
+  Future<void> _fetchCharities() async {
+    try {
+      // Fetch approved wallet addresses from Firestore
+      List<String> approvedWallets = await fetchApprovedCharities();
 
-    // Fetch all organizations from the smart contract
-    final function = _contract.function("getAllCharities");
-    final result = await _client.call(
-      contract: _contract,
-      function: function,
-      params: [],
-    );
+      // Fetch all organizations from the smart contract
+      final function = _contract.function("getAllCharities");
+      final result = await _client.call(
+        contract: _contract,
+        function: function,
+        params: [],
+      );
 
-    List<dynamic> wallets = result[0];
-    List<dynamic> names = result[1];
-    List<dynamic> emails = result[2];
-    List<dynamic> phones = result[3];
-    List<dynamic> cities = result[4];
-    List<dynamic> websites = result[5];
-    List<dynamic> descriptions = result[6];
-    List<dynamic> licenseNumbers = result[7];
-    List<dynamic> establishmentDates = result[8];
+      List<dynamic> wallets = result[0];
+      List<dynamic> names = result[1];
+      List<dynamic> emails = result[2];
+      List<dynamic> phones = result[3];
+      List<dynamic> cities = result[4];
+      List<dynamic> websites = result[5];
+      List<dynamic> descriptions = result[6];
+      List<dynamic> licenseNumbers = result[7];
+      List<dynamic> establishmentDates = result[8];
 
-    List<Map<String, dynamic>> tempOrganizations = [];
-    
-    for (int i = 0; i < wallets.length; i++) {
-      String wallet = wallets[i].toString();
+      List<Map<String, dynamic>> tempOrganizations = [];
 
-      // Only include charities that are approved in Firestore
-      if (approvedWallets.contains(wallet)) {
-        tempOrganizations.add({
-          "wallet": wallet,
-          "name": names[i],
-          "email": emails[i],
-          "phone": phones[i],
-          "city": cities[i],
-          "website": websites[i],
-          "description": descriptions[i],
-          "licenseNumber": licenseNumbers[i],
-          "establishmentDate": establishmentDates[i],
-        });
+      for (int i = 0; i < wallets.length; i++) {
+        String wallet = wallets[i].toString();
+
+        // Only include charities that are approved in Firestore
+        if (approvedWallets.contains(wallet)) {
+          tempOrganizations.add({
+            "wallet": wallet,
+            "name": names[i],
+            "email": emails[i],
+            "phone": phones[i],
+            "city": cities[i],
+            "website": websites[i],
+            "description": descriptions[i],
+            "licenseNumber": licenseNumbers[i],
+            "establishmentDate": establishmentDates[i],
+          });
+        }
       }
-    }
 
-    setState(() {
-      organizations = tempOrganizations;
-      isLoading = false;
-    });
-  } catch (e) {
-    print("Error fetching charities: $e");
-    setState(() {
-      isLoading = false;
-    });
+      setState(() {
+        organizations = tempOrganizations;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching charities: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
-}
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {
@@ -185,260 +183,289 @@ Future<List<String>> fetchApprovedCharities() async {
   }
 
   @override
-
   Widget build(BuildContext context) {
     return Scaffold(
-      
-          body: Container(
-  color: Colors.white, // Change this to your desired color
-  child: Row(
-        children: [
-          // Sidebar (Toggleable visibility)
-         AdminSidebar(), 
-          // Main content (Organizations list and search)
-          Expanded(
-            child: Column(
-              children: [
-                // Title
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Browse Organizations', // Page title
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromRGBO(24, 71, 137, 1), // Customize the color
-                    ),
-                  ),
-                ),
-                // Toggle button for sidebar visibility
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: Icon(isSidebarVisible ? Icons.menu_open : Icons.menu),
-                    onPressed: () {
-                      setState(() {
-                        isSidebarVisible = !isSidebarVisible;
-                      });
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20)), // Round top corners
-                    ),
+      body: Container(
+        color: Colors.white, // Change this to your desired color
+        child: Row(
+          children: [
+            // Sidebar (Toggleable visibility)
+            AdminSidebar(),
+            // Main content (Organizations list and search)
+            Expanded(
+              child: Column(
+                children: [
+                  // Title
+                  Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        // Search bar at the top
-                        Padding(
-                          padding: const EdgeInsets.all(6.0),
-                          child: TextField(
-                            controller:
-                                _searchController, // Bind the controller to the search bar
-                            onChanged: _onSearchChanged,
-                            decoration: InputDecoration(
-                              hintText: 'Search Organizations',
-                              hintStyle: TextStyle(color: Colors.black),
-                              filled: true,
-                              fillColor: Colors.white.withOpacity(0.8),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                                borderSide: BorderSide(
-                                    color: Color.fromRGBO(24, 71, 137, 1), width: 2),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                                borderSide: BorderSide(
-                                    color: Color.fromRGBO(24, 71, 137, 1), width: 2),
-                              ),
-                              prefixIcon: Icon(Icons.search, color: Colors.black),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(Icons.clear, color: Colors.black),
-                                      onPressed: () {
-                                        _searchController.clear(); // Clears the text input
-                                        _onSearchChanged(''); // Reset search filter
-                                      },
-                                    )
-                                  : null,
-                            ),
-                            style: TextStyle(color: Colors.black),
-                          ),
-                        ),
-
-                        // Loading or organizations list
-                        isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _getFilteredOrganizations().isEmpty
-                                ? const Center(
-                                    child: Text("No registered charities found."))
-                                : Expanded(
-                                    child: ListView.builder(
-                                      itemCount: _getFilteredOrganizations().length,
-                                      itemBuilder: (context, index) {
-                                        var charity =
-                                            _getFilteredOrganizations()[index];
-                                        return Card(
-                                          margin: const EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 12),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                                12), // Rounded corners
-                                            side: BorderSide(
-                                                color: Color.fromRGBO(24, 71, 137, 1),
-                                                width: 2),
-                                          ),
-                                          color: Color.fromARGB(255, 239, 236, 236),
-                                          child: ListTile(
-                                            contentPadding: EdgeInsets.symmetric(
-                                                horizontal: 14, vertical: 10),
-                                            leading: SizedBox(
-                                              width: 60, // Increased width
-                                              height: 100, // Increased height
-                                              child: CircleAvatar(
-                                                radius: 40, // Increased avatar size
-                                                backgroundColor: Colors.transparent,
-                                                child: Icon(Icons.account_circle,
-                                                    size: 75,
-                                                    color: Colors
-                                                        .grey), // Increased icon size
-                                              ),
-                                            ),
-                                            title: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  charity["name"],
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize:
-                                                        20, // Increased font size
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                    height:
-                                                        6), // Adds spacing between name and subtitle
-                                              ],
-                                            ),
-                                            subtitle: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.location_on,
-                                                        size: 25, color: Colors.grey),
-                                                    SizedBox(
-                                                        width:
-                                                            4), // Adds spacing between the icon and text
-                                                    Text(
-                                                      " ${charity["city"]}",
-                                                      style: TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize:
-                                                            16, // Increased font size
-                                                        fontWeight: FontWeight
-                                                            .w500, // Optional: Make it slightly bolder
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.email,
-                                                        size: 25, color: Colors.grey),
-                                                    SizedBox(
-                                                        width:
-                                                            4), // Adds spacing between the icon and text
-                                                    Text(
-                                                      " ${charity["email"]}",
-                                                      style: TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize:
-                                                            16, // Increased font size
-                                                        fontWeight: FontWeight
-                                                            .w500, // Optional: Make it slightly bolder
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                            onTap: () {
-                                              // Navigate to Organization Profile Page
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      OrganizationProfile(
-                                                           walletAddress: charity["wallet"]),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                      ],
+                    child: Text(
+                      'Browse Organizations', // Page title
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromRGBO(
+                            24, 71, 137, 1), // Customize the color
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  // Toggle button for sidebar visibility
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon:
+                          Icon(isSidebarVisible ? Icons.menu_open : Icons.menu),
+                      onPressed: () {
+                        setState(() {
+                          isSidebarVisible = !isSidebarVisible;
+                        });
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20)), // Round top corners
+                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          // Search bar at the top
+                          Padding(
+                            padding: const EdgeInsets.all(6.0),
+                            child: TextField(
+                              controller:
+                                  _searchController, // Bind the controller to the search bar
+                              onChanged: _onSearchChanged,
+                              decoration: InputDecoration(
+                                hintText: 'Search Organizations',
+                                hintStyle: TextStyle(color: Colors.black),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30.0),
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(24, 71, 137, 1),
+                                      width: 2),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30.0),
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(24, 71, 137, 1),
+                                      width: 2),
+                                ),
+                                prefixIcon:
+                                    Icon(Icons.search, color: Colors.black),
+                                suffixIcon: _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear,
+                                            color: Colors.black),
+                                        onPressed: () {
+                                          _searchController
+                                              .clear(); // Clears the text input
+                                          _onSearchChanged(
+                                              ''); // Reset search filter
+                                        },
+                                      )
+                                    : null,
+                              ),
+                              style: TextStyle(color: Colors.black),
+                            ),
+                          ),
+
+                          // Loading or organizations list
+                          isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _getFilteredOrganizations().isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                          "No registered charities found."))
+                                  : Expanded(
+                                      child: ListView.builder(
+                                        itemCount:
+                                            _getFilteredOrganizations().length,
+                                        itemBuilder: (context, index) {
+                                          var charity =
+                                              _getFilteredOrganizations()[
+                                                  index];
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(
+                                                vertical: 10, horizontal: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      12), // Rounded corners
+                                              side: BorderSide(
+                                                  color: Color.fromRGBO(
+                                                      24, 71, 137, 1),
+                                                  width: 2),
+                                            ),
+                                            color: Color.fromARGB(
+                                                255, 239, 236, 236),
+                                            child: ListTile(
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 10),
+                                              leading: SizedBox(
+                                                width: 60, // Increased width
+                                                height: 100, // Increased height
+                                                child: CircleAvatar(
+                                                  radius:
+                                                      40, // Increased avatar size
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  child: Icon(
+                                                      Icons.account_circle,
+                                                      size: 75,
+                                                      color: Colors
+                                                          .grey), // Increased icon size
+                                                ),
+                                              ),
+                                              title: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    charity["name"],
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize:
+                                                          20, // Increased font size
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                      height:
+                                                          6), // Adds spacing between name and subtitle
+                                                ],
+                                              ),
+                                              subtitle: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.location_on,
+                                                          size: 25,
+                                                          color: Colors.grey),
+                                                      SizedBox(
+                                                          width:
+                                                              4), // Adds spacing between the icon and text
+                                                      Text(
+                                                        " ${charity["city"]}",
+                                                        style: TextStyle(
+                                                          color: Colors.grey,
+                                                          fontSize:
+                                                              16, // Increased font size
+                                                          fontWeight: FontWeight
+                                                              .w500, // Optional: Make it slightly bolder
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.email,
+                                                          size: 25,
+                                                          color: Colors.grey),
+                                                      SizedBox(
+                                                          width:
+                                                              4), // Adds spacing between the icon and text
+                                                      Text(
+                                                        " ${charity["email"]}",
+                                                        style: TextStyle(
+                                                          color: Colors.grey,
+                                                          fontSize:
+                                                              16, // Increased font size
+                                                          fontWeight: FontWeight
+                                                              .w500, // Optional: Make it slightly bolder
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                              onTap: () {
+                                                // Navigate to Organization Profile Page
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        OrganizationProfile(
+                                                            walletAddress:
+                                                                charity[
+                                                                    "wallet"]),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-       ),
     );
   }
 
   // Sidebar item widget
-  Widget _buildSidebarItem(BuildContext context, String title, VoidCallback onTap, {Color color = const Color.fromRGBO(24, 71, 137, 1)}) {
-  return ListTile(
-    title: Center( // Center the text
-      child: Text(
-        title,
-        style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ),
-    onTap: onTap,
-  );
-}
-
-  // Sidebar button widget
-   Widget _buildSidebarButton({
-  required String title,
-  required VoidCallback onTap,
-  required Color backgroundColor,
-  required Color borderColor,
-  required Color textColor,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-    child: SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          side: BorderSide(color: borderColor, width: 2), // Set border thickness here
-          padding: EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onPressed: onTap,
+  Widget _buildSidebarItem(
+      BuildContext context, String title, VoidCallback onTap,
+      {Color color = const Color.fromRGBO(24, 71, 137, 1)}) {
+    return ListTile(
+      title: Center(
+        // Center the text
         child: Text(
           title,
-          style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: color, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-    ),
-  );
-}
+      onTap: onTap,
+    );
+  }
+
+  // Sidebar button widget
+  Widget _buildSidebarButton({
+    required String title,
+    required VoidCallback onTap,
+    required Color backgroundColor,
+    required Color borderColor,
+    required Color textColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            side: BorderSide(
+                color: borderColor, width: 2), // Set border thickness here
+            padding: EdgeInsets.symmetric(vertical: 18),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          onPressed: onTap,
+          child: Text(
+            title,
+            style: TextStyle(
+                color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // class OrganizationProfilePage extends StatelessWidget {
