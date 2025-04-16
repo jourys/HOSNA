@@ -848,6 +848,7 @@ class _InfoRowState extends State<InfoRow> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          fontFamily : 'Georgia',
                           color: Color.fromRGBO(24, 71, 137, 1),
                         ),
                       ),
@@ -855,6 +856,7 @@ class _InfoRowState extends State<InfoRow> {
                         text: displayText,
                         style: TextStyle(
                           fontSize: 15,
+                           fontFamily : 'Georgia',
                           color: widget.isLink ? Colors.blue : Colors.black87,
                           decoration: widget.isLink
                               ? TextDecoration.underline

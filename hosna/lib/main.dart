@@ -31,6 +31,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Hosna App',
      theme: ThemeData(
+fontFamily: 'Georgia',
   primaryColor: const Color.fromRGBO(24, 71, 137, 1), // Set primary color
   colorScheme: ColorScheme.fromSwatch(
     primarySwatch: const MaterialColor(
