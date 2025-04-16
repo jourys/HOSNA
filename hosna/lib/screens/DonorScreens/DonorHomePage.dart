@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
+import 'package:hosna/screens/DonorScreens/EligibleVotingProjectsPage.dart';
 import 'package:http/http.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/DonorScreens/DonationHistoryPage.dart';
+import 'package:hosna/screens/DonorScreens/EligibleVotingProjectsPage.dart';
 
 import 'DonorProfile.dart';
 
@@ -21,6 +23,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final BlockchainService _blockchainService = BlockchainService();
+  final DonorServices _donorServices = DonorServices();
   String? walletAddress;
   String _firstName = '';
   List<Map<String, dynamic>> votingProjects = [];
@@ -155,20 +158,26 @@ class _HomePageState extends State<HomePage> {
           // Check if project is failed or canceled and has voting initiated
           if ((isCanceled || project['state'] == 4) && votingInitiated) {
             // Check if donor has donated to this project
-            final hasDonated = await _blockchainService.hasDonatedToProject(
-                project['id'], address);
+            // final hasDonated = await _blockchainService.hasDonatedToProject(
+            //   project['id'], address);
 
             // Check if donor has already voted
-            final hasVoted =
-                await _blockchainService.hasDonorVoted(project['id'], address);
+            final isEligible = await _donorServices.checkIfDonorCanVote(
+              BigInt.from(project['id']),
+              address.toLowerCase(),
+            );
 
-            // Only add if donor has donated but hasn't voted yet
-            if (hasDonated && !hasVoted) {
-              // Add project details
+            if (isEligible) {
               project['votingId'] = project['id'];
-              project['votingDeadline'] =
-                  DateTime.fromMillisecondsSinceEpoch(project['endTime'] * 1000)
-                      .toString();
+
+              if (project['endTime'] != null) {
+                project['votingDeadline'] = DateTime.fromMillisecondsSinceEpoch(
+                        project['endTime'] * 1000)
+                    .toString();
+              } else {
+                project['votingDeadline'] = 'No deadline set';
+              }
+
               eligibleVotingProjects.add(project);
             }
           }
@@ -329,12 +338,30 @@ class _HomePageState extends State<HomePage> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Projects Awaiting Your Vote',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[900],
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EligibleVotingProjectsPage(
+                    votingProjects: votingProjects,
+                  ),
+                ),
+              );
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Projects Awaiting Your Vote',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
+                Icon(Icons.arrow_forward, color: Colors.blue[900]),
+              ],
             ),
           ),
         ),
@@ -374,19 +401,29 @@ class _HomePageState extends State<HomePage> {
                         Text('Voting Deadline: ${project['votingDeadline']}'),
                     ],
                   ),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/donor_voting',
-                        arguments: {
-                          'projectId': project['id'],
-                          'projectName': project['name'],
-                        },
-                      );
-                    },
-                    child: Text('Vote'),
-                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProjectDetails(
+                          projectId: project['id'],
+                          projectName: project['name'] ?? 'Unnamed Project',
+                          description: project['description'] ?? '',
+                          startDate: DateTime.now().toString(),
+                          deadline: project['votingDeadline'] ??
+                              DateTime.now().toString(),
+                          totalAmount:
+                              (project['totalAmount'] ?? 0.0).toDouble(),
+                          projectType: project['projectType'] ?? 'Unknown',
+                          projectCreatorWallet: project['organization'] ?? '',
+                          donatedAmount:
+                              (project['donatedAmount'] ?? 0.0).toDouble(),
+                          progress: ((project['donatedAmount'] ?? 0.0) /
+                              (project['totalAmount'] ?? 1.0)),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
             },

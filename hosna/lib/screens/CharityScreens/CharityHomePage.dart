@@ -45,6 +45,23 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     }
   }
 
+  Future<bool> _isVotingInitiated(String projectId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        return data?['votingInitiated'] == true;
+      }
+    } catch (e) {
+      print("❌ Error checking votingInitiated: $e");
+    }
+    return false;
+  }
+
   Future<void> _loadWalletAndProjects() async {
     final prefs = await SharedPreferences.getInstance();
     final savedWallet = prefs.getString('walletAddress');
@@ -76,7 +93,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
       final projectId = id.toString();
       bool isCanceled = await _isProjectCanceled(projectId);
-      bool hasVoting = await blockchainService.hasExistingVoting(id);
+      // bool hasVoting = await blockchainService.hasExistingVoting(id);
+      bool hasVoting = await _isVotingInitiated(projectId);
 
       // Get project status from blockchain data
       String status = await _getProjectState(project);
@@ -292,141 +310,156 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  // Projects Awaiting section
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Header with arrow
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const CanceledFailedProjects(),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Projects Awaiting You To Start Voting',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color.fromRGBO(24, 71, 137, 1),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Projects list
-                        ..._projects.map((project) {
-                          final status = project['status'];
-                          final color = status == 'failed'
-                              ? Colors.red
-                              : (status == 'canceled'
-                                  ? Colors.orange
-                                  : Colors.blue);
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenHeight = constraints.maxHeight;
+          final totalAvailable = screenHeight - 8; // space for the SizedBox
+          final halfHeight = totalAvailable / 2;
 
-                          return _buildProjectCard(
-                            project['name'],
-                            status[0].toUpperCase() + status.substring(1),
-                            color,
-                            '${(project['progress'] * 100).toStringAsFixed(0)}%',
-                          );
-                        }).toList(),
-                      ],
+          return Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                // 🟦 Top Half - Projects Awaiting Your Vote
+                Container(
+                  height: halfHeight,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Draft Projects section
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Header with arrow
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DraftsPage(
-                                  walletAddress: walletAddress,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Draft Projects',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color.fromRGBO(24, 71, 137, 1),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                ),
-                              ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section title + arrow
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const CanceledFailedProjects(),
                             ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text(
+                              'Projects Awaiting Your Vote',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Color.fromRGBO(24, 71, 137, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Scrollable list of voting projects
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: _projects.map((project) {
+                              final status = project['status'];
+                              final color = status == 'failed'
+                                  ? Colors.red
+                                  : (status == 'canceled'
+                                      ? Colors.orange
+                                      : Colors.blue);
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildProjectCard(
+                                  project['name'],
+                                  status[0].toUpperCase() + status.substring(1),
+                                  color,
+                                  '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
-                        // Draft projects list
-                        FutureBuilder<List<Map<String, dynamic>>>(
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // 🟩 Bottom Half - Draft Projects
+                Container(
+                  height: halfHeight,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section title + arrow
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DraftsPage(
+                                walletAddress: walletAddress,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text(
+                              'Draft Projects',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Color.fromRGBO(24, 71, 137, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Scrollable list of draft projects
+                      Expanded(
+                        child: FutureBuilder<List<Map<String, dynamic>>>(
                           future: _loadDrafts(),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
@@ -436,40 +469,45 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                             }
 
                             if (snapshot.hasError) {
-                              return Center(
-                                  child: Text('Error loading drafts'));
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text('Error loading drafts'),
+                              );
                             }
 
                             final drafts = snapshot.data ?? [];
 
                             if (drafts.isEmpty) {
-                              return Padding(
-                                padding: const EdgeInsets.all(16.0),
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
                                 child: Text(
                                   'No draft projects available',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
+                                  style: TextStyle(color: Colors.grey),
                                 ),
                               );
                             }
 
-                            return Column(
-                              children: drafts.map((draft) {
-                                return _buildDraftCard(draft);
-                              }).toList(),
+                            return SingleChildScrollView(
+                              child: Column(
+                                children: drafts
+                                    .map((draft) => Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 12),
+                                          child: _buildDraftCard(draft),
+                                        ))
+                                    .toList(),
+                              ),
                             );
                           },
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
