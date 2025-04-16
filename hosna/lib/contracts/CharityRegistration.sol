@@ -286,4 +286,20 @@ contract CharityRegistration {
             charity.establishmentDate
         );
     }
+    function deleteCharity(address _wallet) public {
+    require(charities[_wallet].registered, "Charity not registered");
+
+    // Mark as unregistered
+    charities[_wallet].registered = false;
+
+    // Remove from email mapping
+    bytes32 emailHash = keccak256(abi.encodePacked(_toLowerCase(charities[_wallet].email)));
+    emailToAddress[emailHash] = address(0);
+
+    // Remove password hash
+    passwordHashes[_wallet] = bytes32(0);
+
+    emit Debug("Charity marked as deleted");
+}
+
 }
