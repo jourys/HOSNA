@@ -119,7 +119,7 @@ class _DraftsPageState extends State<DraftsPage> {
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         Text(
-                          'Total Amount: ${draft['totalAmount']} SR',
+                          'Total Amount: ${draft['totalAmount']} ETH',
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         Text(

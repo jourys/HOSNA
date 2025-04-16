@@ -62,7 +62,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     // ✅ Fetch projects created by this wallet from blockchain
     final blockchainService = BlockchainService();
-    final myProjects = await blockchainService.fetchOrganizationProjects(walletAddress!);
+    final myProjects =
+        await blockchainService.fetchOrganizationProjects(walletAddress!);
 
     List<Map<String, dynamic>> filtered = [];
 
@@ -76,7 +77,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
       final projectId = id.toString();
       bool isCanceled = await _isProjectCanceled(projectId);
       bool hasVoting = await blockchainService.hasExistingVoting(id);
-      
+
       // Get project status from blockchain data
       String status = await _getProjectState(project);
 
@@ -121,7 +122,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
     DateTime now = DateTime.now();
-    
+
     // Handle startDate (could be DateTime, String, or null)
     DateTime startDate = project['startDate'] != null
         ? (project['startDate'] is DateTime
@@ -173,7 +174,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedWallet = prefs.getString('walletAddress');
-      
+
       if (savedWallet == null) {
         print("❌ No wallet address found.");
         return;
@@ -327,7 +328,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const CanceledFailedProjects(),
+                                builder: (context) =>
+                                    const CanceledFailedProjects(),
                               ),
                             );
                           },
@@ -427,16 +429,19 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                         FutureBuilder<List<Map<String, dynamic>>>(
                           future: _loadDrafts(),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
                             }
 
                             if (snapshot.hasError) {
-                              return Center(child: Text('Error loading drafts'));
+                              return Center(
+                                  child: Text('Error loading drafts'));
                             }
 
                             final drafts = snapshot.data ?? [];
-                            
+
                             if (drafts.isEmpty) {
                               return Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -576,14 +581,15 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
             );
             return;
           }
-          
+
           // Navigate to DraftsPage with the specific draft
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => DraftsPage(
                 walletAddress: walletAddress!,
-                initialDraft: draft, // Pass the specific draft to show its details
+                initialDraft:
+                    draft, // Pass the specific draft to show its details
               ),
             ),
           );
@@ -604,7 +610,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Total Amount: ${draft['totalAmount']} SR',
+                'Total Amount: ${draft['totalAmount']} ETH',
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 14,
@@ -660,4 +666,3 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     );
   }
 }
-

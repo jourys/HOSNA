@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:hosna/screens/CharityScreens/_EditProfileScreenState.dart';
@@ -6,6 +8,7 @@ import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 
 class ProfileScreenCharity extends StatefulWidget {
   const ProfileScreenCharity({super.key});
@@ -28,7 +31,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x02b0d417D48eEA64Aae9AdA80570783034ED6839';
+  final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
 
   @override
   void initState() {
@@ -126,6 +129,87 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     } catch (e) {
       print("Error calling contract method: $e");
       return [];
+    }
+  }
+
+  Future<void> deleteCharityAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress = prefs.getString('walletAddress');
+
+    if (walletAddress == null || walletAddress.isEmpty) {
+      print("❌ Wallet address not found.");
+      return;
+    }
+
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[
+        {
+          "constant": false,
+          "inputs": [{"name": "_wallet", "type": "address"}],
+          "name": "deleteCharity",
+          "outputs": [],
+          "payable": false,
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ]''',
+        'CharityRegistry',
+      ),
+      EthereumAddress.fromHex(contractAddress),
+    );
+
+    final deleteFunction = contract.function('deleteCharity');
+
+    try {
+      final credentials = EthPrivateKey.fromHex(
+          "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90"); //  Replace securely
+      await _web3Client.sendTransaction(
+        credentials,
+        web3.Transaction.callContract(
+          contract: contract,
+          function: deleteFunction,
+          parameters: [web3.EthereumAddress.fromHex(walletAddress)],
+          maxGas: 200000,
+        ),
+        chainId: 11155111,
+      );
+
+      print("✅ Deleted from blockchain");
+
+      // Delete from Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .delete();
+
+      print("✅ Deleted from Firestore");
+
+      // Delete from Firebase Auth (optional)
+      try {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await user.delete();
+          print("✅ Firebase Auth user deleted");
+        }
+      } catch (e) {
+        print("⚠️ Firebase Auth deletion skipped: $e");
+      }
+
+      await prefs.clear(); // Clear all storage
+      print("✅ SharedPreferences cleared");
+
+      // Navigate to Users page
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => UsersPage()),
+        (route) => false,
+      );
+    } catch (e) {
+      print("❌ Error deleting account: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error deleting account: $e")),
+      );
     }
   }
 
@@ -275,7 +359,30 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                             height: MediaQuery.of(context).size.height * .066,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text("Confirm Deletion"),
+                                    content: Text(
+                                        "Are you sure you want to delete your account? This action cannot be undone."),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: Text("Cancel")),
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: Text("Delete")),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true) {
+                                  await deleteCharityAccount();
+                                }
+                              },
                               child: Text(
                                 'Delete Account',
                                 style: TextStyle(
