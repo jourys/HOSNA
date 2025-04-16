@@ -1392,10 +1392,12 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                 const SizedBox(height: 16),
                                 _buildSectionTitle(
                                     Icons.info_outline, "About Us"),
-                                _buildStyledInfoRow(Icons.description, "",
+                                _buildStyleddescRow(Icons.description, "",
                                     organizationData?["description"]),
                               ],
+                              
                             ),
+                            
                           ),
                         ),
 
@@ -1413,8 +1415,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                     "License No.: ",
                                     organizationData?["licenseNumber"]),
                                 _buildStyledInfoRow(Icons.explore, "Website: ",
-                                    organizationData?["website"],
-                                    isLink: true),
+                                    organizationData?["website"]
+                                    ),
                                 _buildStyledInfoRow(
                                     Icons.calendar_today,
                                     "Established date: ",
@@ -1426,7 +1428,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 140),
+                  const SizedBox(height: 80),
                   Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1832,6 +1834,30 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
       Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
     });
   }
+Widget _buildStyleddescRow(IconData icon, String label, String? value) {
+ return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Row(
+  children: [
+    Icon(Icons.description, color: Colors.grey),
+    SizedBox(width: 10),
+    Expanded( // Use Expanded to allow wrapping text
+      child: Text(
+        organizationData?["description"] ?? "No description available",
+        style: TextStyle(fontSize: 16, color: Colors.black),
+        softWrap: true, // Ensures text wraps to the next line if needed
+        overflow: TextOverflow.visible, // Prevents clipping
+        maxLines: null, // Remove the limit on lines to let the text wrap freely
+      ),
+    ),
+  ],
+)
+
+
+
+
+  );
+}
 
 // Custom styled info row to ensure consistency
   Widget _buildStyledInfoRow(IconData icon, String label, String? value,
@@ -1924,7 +1950,7 @@ class DonorDetailsPage extends StatelessWidget {
   const DonorDetailsPage({super.key, required this.walletAddress});
 
   final String donorContractAddress =
-      '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
+      '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
 
   final String donorAbi = '''
   [
@@ -2022,7 +2048,6 @@ class DonorDetailsPage extends StatelessWidget {
     }
     return null; // Return null if no profile picture is found
   }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(

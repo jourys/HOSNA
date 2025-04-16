@@ -500,77 +500,74 @@ class OrganizationProfilePage extends StatelessWidget {
               ),
             ),
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Center(
-                  child: Icon(Icons.account_circle,
-                      size: 120, color: Colors.grey), // Enlarged profile icon
+          child: SingleChildScrollView(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Center(
+        child: Icon(Icons.account_circle,
+            size: 120, color: Colors.grey), // Enlarged profile icon
+      ),
+      const SizedBox(height: 20),
+
+      _buildSectionTitle(Icons.contact_phone, "Contact Information"),
+      _buildInfoRow(Icons.phone, "Phone", organization["phone"]),
+      _buildInfoRow(Icons.email, "Email", organization["email"]),
+      _buildInfoRow(Icons.location_on, "City", organization["city"]),
+
+      const SizedBox(height: 16),
+
+      _buildSectionTitle(Icons.business, "Organization Details"),
+      _buildInfoRow(Icons.badge, "License Number",
+          organization["licenseNumber"]),
+      _buildInfoRow(Icons.explore, "Website", organization["website"],
+          isLink: true),
+      _buildInfoRow(Icons.calendar_today, "Established",
+          organization["establishmentDate"]),
+
+      const SizedBox(height: 16),
+
+      _buildSectionTitle(Icons.info_outline, "About Us"),
+      _buildInfoRow(
+          Icons.description, "About Us", organization["description"]),
+
+      const SizedBox(height: 20),
+
+      Center(
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ViewProjectsPage(
+                  orgAddress: organization["wallet"],
+                  orgName: organization["name"] ?? "Organization",
                 ),
-                const SizedBox(height: 20),
-
-                _buildSectionTitle(Icons.contact_phone, "Contact Information"),
-                _buildInfoRow(Icons.phone, "Phone", organization["phone"]),
-                _buildInfoRow(Icons.email, "Email", organization["email"]),
-                _buildInfoRow(Icons.location_on, "City", organization["city"]),
-
-                const SizedBox(height: 16),
-
-                _buildSectionTitle(Icons.business, "Organization Details"),
-                _buildInfoRow(Icons.badge, "License Number",
-                    organization["licenseNumber"]),
-                _buildInfoRow(Icons.explore, "Website", organization["website"],
-                    isLink: true),
-                _buildInfoRow(Icons.calendar_today, "Established",
-                    organization["establishmentDate"]),
-
-                const SizedBox(height: 16),
-
-                _buildSectionTitle(Icons.info_outline, "About Us"),
-                _buildInfoRow(
-                    Icons.description, "About Us", organization["description"]),
-
-                const Spacer(), // Push button to bottom
-
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Navigate to the View Projects page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ViewProjectsPage(
-                            orgAddress: organization["wallet"],
-                            orgName: organization["name"] ??
-                                "Organization", // Pass org name
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromRGBO(
-                          24, 71, 137, 1), // Matching theme color
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal:
-                              100), // Increased padding for a longer button
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      "View Projects",
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white, // Ensuring text is white
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20), // Add spacing at bottom
-              ],
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 100),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
+          ),
+          child: const Text(
+            "View Projects",
+            style: TextStyle(
+              fontSize: 20,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 50),
+    ],
+  ),
+),
+
           ),
           FutureBuilder<String?>(
             future: _loadPrivateKey(), // Call the asynchronous function

@@ -231,7 +231,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     return DeployedContract(
       ContractAbi.fromJson(contractAbi, 'CharityRegistration'),
-      EthereumAddress.fromHex('0x02b0d417D48eEA64Aae9AdA80570783034ED6839'),
+      EthereumAddress.fromHex('0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7'),
     );
   }
 
