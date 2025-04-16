@@ -132,5 +132,13 @@ contract DonorRegistry {
         // ✅ Added event for updates
         emit DonorUpdated(_wallet, _firstName, _lastName, _email, _phone);
     }
+    function deleteDonor(address _wallet) public {
+    require(donors[_wallet].registered, "Donor not found");
+
+    delete emailToAddress[donors[_wallet].email];
+    delete phoneToAddress[donors[_wallet].phone];
+    delete donors[_wallet];
+}
+
 
 }  
