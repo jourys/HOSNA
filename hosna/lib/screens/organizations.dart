@@ -191,20 +191,20 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
       backgroundColor:
           Color.fromRGBO(24, 71, 137, 1), // Background matches app bar
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(70), // Increase app bar height
+        preferredSize: Size.fromHeight(55), // Increase app bar height
         child: AppBar(
           backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
           elevation: 0, // Remove shadow
           automaticallyImplyLeading: false, // Remove back arrow
           flexibleSpace: Padding(
-            padding: EdgeInsets.only(bottom: 20), // Move text down
+            padding: EdgeInsets.only(bottom: 14), // Move text down
             child: Align(
               alignment: Alignment.bottomCenter,
               child: Text(
                 "Organizations",
                 style: TextStyle(
                   color: Colors.white, // Make text white
-                  fontSize: 24, // Increase font size
+                  fontSize: 23, // Increase font size
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -282,106 +282,148 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
                                         Text("No registered charities found.")),
                               )
                             : Expanded(
-                                child: ListView.builder(
-                                  shrinkWrap:
-                                      true, // Prevents infinite scrolling
-                                  physics:
-                                      NeverScrollableScrollPhysics(), // Disable scrolling for ListView inside SingleChildScrollView
-                                  itemCount: _getFilteredOrganizations().length,
-                                  itemBuilder: (context, index) {
-                                    var charity =
-                                        _getFilteredOrganizations()[index];
-                                    return Card(
-                                      margin: const EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 18),
-                                      elevation: 3,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                            12), // Rounded corners
-                                      ),
-                                      color: Color.fromARGB(224, 255, 255, 255),
-                                      child: ListTile(
-                                        contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 8),
-                                        leading: SizedBox(
-                                          width: 80, // Increased width
-                                          height: 60, // Increased height
-                                          child: CircleAvatar(
-                                            radius: 40, // Increased avatar size
-                                            backgroundColor: Colors.transparent,
-                                            child: Icon(Icons.account_circle,
-                                                size: 75, color: Colors.grey),
-                                          ),
-                                        ),
-                                        title: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              charity["name"],
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize:
-                                                    20, // Increased font size
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                          ],
-                                        ),
-                                        subtitle: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(Icons.location_on,
-                                                    size: 25,
-                                                    color: Colors.grey),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  " ${charity["city"]}",
-                                                  style: TextStyle(
-                                                    color: Colors.grey,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.email,
-                                                    size: 25,
-                                                    color: Colors.grey),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  " ${charity["email"]}",
-                                                  style: TextStyle(
-                                                    color: Colors.grey,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        onTap: () {
-                                          // Navigate to Organization Profile Page
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  OrganizationProfilePage(
-                                                      organization: charity),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
+  child: ListView.builder(
+    shrinkWrap: true, // Prevents infinite scrolling
+    physics: NeverScrollableScrollPhysics(), // Disable scrolling for ListView inside SingleChildScrollView
+    itemCount: _getFilteredOrganizations().length,
+    itemBuilder: (context, index) {
+      var charity = _getFilteredOrganizations()[index];
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16), // Softer curves
+        ),
+        color: const Color.fromRGBO(240, 248, 255, 1), // Light cheerful blue
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          leading: Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFF8EC5FC), Color(0xFFE0C3FC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Icon(
+              Icons.account_circle,
+              size: 55,
+              color: Colors.white,
+            ),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+  ShaderMask(
+    shaderCallback: (bounds) => const LinearGradient(
+      colors: [
+        Color(0xFF0B2447), // Navy
+        Color(0xFF19376D), // Deeper tone
+        
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ).createShader(bounds),
+    child: Text(
+      charity["name"],
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Colors.white, // Required for ShaderMask
+        letterSpacing: 1.2,
+        shadows: [
+          Shadow(
+            offset: Offset(0.5, 1),
+            blurRadius: 2,
+            color: Colors.black26,
+          )
+        ],
+      ),
+    ),
+  ),
+  const SizedBox(height: 6),
+],
+
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+             Row(
+  children: [
+    ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Color(0xFF0A2647), Color(0xFF144272)], // Dark navy gradient
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds),
+      child: const Icon(Icons.location_on, size: 22, color: Colors.white),
+    ),
+    const SizedBox(width: 6),
+    ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Color(0xFF102C57), Color(0xFF205295)], // Slightly brighter navy blend
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds),
+      child: Text(
+        " ${charity["city"]}",
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.white, // Needed for ShaderMask to apply
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
+  ],
+),
+Row(
+  children: [
+    ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Color(0xFF001F54), Color(0xFF00337C)], // Dark email tone
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds),
+      child: const Icon(Icons.email, size: 22, color: Colors.white),
+    ),
+    const SizedBox(width: 6),
+    ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Color(0xFF0B2447), Color(0xFF19376D)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds),
+      child: Text(
+        " ${charity["email"]}",
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.white, // Must be white for shader to work
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
+  ],
+),
+
+            ],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OrganizationProfilePage(organization: charity),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  ),
+),
+
                   ],
                 ),
               ),
