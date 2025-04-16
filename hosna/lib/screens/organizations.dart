@@ -603,7 +603,7 @@ InfoRow(
               SizedBox(height: 30),
 
    AnimatedArrowButton(
-  label: "Explore Charity Projects",
+  label: "Explore ${organization["name"]} Projects", 
   onTap: () {
     Navigator.push(
       context,
