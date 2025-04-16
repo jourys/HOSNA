@@ -129,9 +129,7 @@ class _CharityRequestsState extends State<CharityRequests> {
                             var details = charityDetails[walletAddress];
 
                           if (details == null) return SizedBox.shrink();
-
-
-                            return GestureDetector(
+                      return GestureDetector(
                               onTap: () {
                                 showDialog(
                                   context: context,
