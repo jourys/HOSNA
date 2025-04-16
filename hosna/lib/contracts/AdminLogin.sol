@@ -7,6 +7,7 @@ contract AdminAccount {
     address public admin;
 
     event AdminUpdated(string newEmail);
+    event AdminDeleted(address deletedAdmin);
 
     constructor(string memory _email, string memory _password) {
         admin = msg.sender;
@@ -35,8 +36,20 @@ contract AdminAccount {
         );
     }
 
-    // Function to convert string to lowercase
-    function _toLowerCase(string memory str) internal pure returns (string memory) {
+    // ✅ Delete account function
+    function deleteAccount() public {
+        require(msg.sender == admin, "Only the admin can delete their account");
+
+        // Reset all data
+        adminEmail = "";
+        adminPasswordHash = bytes32(0);
+        admin = address(0);
+
+        emit AdminDeleted(msg.sender);
+    }
+
+    // 🔧 Helper to convert strings to lowercase
+        function _toLowerCase(string memory str) internal pure returns (string memory) {
         bytes memory bStr = bytes(str);
         bytes memory bLower = new bytes(bStr.length);
         for (uint i = 0; i < bStr.length; i++) {
