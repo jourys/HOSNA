@@ -603,7 +603,7 @@ InfoRow(
               SizedBox(height: 30),
 
    AnimatedArrowButton(
-  label: "Explore ${organization["name"]} Projects", 
+  label: "${organization["name"]} Projects", 
   onTap: () {
     Navigator.push(
       context,
@@ -619,7 +619,7 @@ InfoRow(
 
 
 
-      const SizedBox(height: 70),
+      const SizedBox(height: 90),
     ],
   ),
 ),
