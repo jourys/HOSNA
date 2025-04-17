@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,11 +12,9 @@ import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:web3dart/web3dart.dart' as web3;
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/VotingDetails.dart';
-import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
-import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
-
+import 'package:hosna/screens/NotificationService.dart';
 
 
 class ProjectDetails extends StatefulWidget {
@@ -175,7 +173,7 @@ canVote = await donorServices.checkIfDonorCanVote(
         canVote = true;
       });
       return;
-    final projectDocRef = FirebaseFirestore.instance
+    final projectDocRef = firestore.FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString());
 
@@ -205,10 +203,10 @@ canVote = await donorServices.checkIfDonorCanVote(
   }
 }
 
-StreamSubscription<DocumentSnapshot>? _projectSubscription;
+StreamSubscription<firestore.DocumentSnapshot>? _projectSubscription;
 
 void _listenToProjectState() {
-  _projectSubscription = FirebaseFirestore.instance
+  _projectSubscription = firestore.FirebaseFirestore.instance
       .collection('projects')
       .doc(widget.projectId.toString())
       .snapshots()
@@ -219,7 +217,7 @@ void _listenToProjectState() {
 
         // Ensure 'isCanceled' exists in the document
         if (!data.containsKey('isCanceled')) {
-          FirebaseFirestore.instance
+          firestore.FirebaseFirestore.instance
               .collection('projects')
               .doc(widget.projectId.toString())
               .update({'isCanceled': false});
@@ -436,28 +434,36 @@ void dispose() {
 
 Future<String> determineProjectState(String projectId) async {
   print("📥 Fetching project with ID: $projectId");
-final docRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
-DocumentSnapshot doc = await docRef.get();
+  final docRef = firestore.FirebaseFirestore.instance.collection('projects').doc(projectId);
+  firestore.DocumentSnapshot doc = await docRef.get();
 
-if (!doc.exists) {
-  print("⚠️ Document does not exist for project ID: $projectId");
+  String previousState = "";
+  
+  if (!doc.exists) {
+    print("⚠️ Document does not exist for project ID: $projectId");
 
-  // Create the document with default fields
-  await docRef.set({
-    'isCanceled': false,
-    'isCompleted': false,
-    'votingInitiated': false,
-    'isEnded': false,
-  });
+    // Create the document with default fields
+    await docRef.set({
+      'isCanceled': false,
+      'isCompleted': false,
+      'votingInitiated': false,
+      'isEnded': false,
+      'currentState': 'upcoming'
+    });
 
-  print("✅ Created default document for project ID: $projectId");
+    print("✅ Created default document for project ID: $projectId");
 
-  // Re-fetch the document after creating it
-  doc = await docRef.get();
-}
+    // Re-fetch the document after creating it
+    doc = await docRef.get();
+    previousState = "upcoming";
+  } else {
+    // If document exists, get the previous state
+    final existingData = doc.data() as Map<String, dynamic>;
+    previousState = existingData['currentState'] ?? "unknown";
+  }
 
-// Now it's safe to cast
-final data = doc.data() as Map<String, dynamic>;
+  // Now it's safe to cast
+  final data = doc.data() as Map<String, dynamic>;
 
   print("📄 Project data fetched: $data");
 
@@ -467,43 +473,69 @@ final data = doc.data() as Map<String, dynamic>;
   print("🗳️ votingInitiated: $votingInitiated");
   print("❌ isCanceled: $isCanceled");
 
-  // 🆕 Get votingId and check if endedisEnded = false;
-final votingId = data['votingId'];
-if (votingId != null) {
-  final votingDocRef = FirebaseFirestore.instance
-      .collection("votings")
-      .doc(votingId.toString());
+  // 🆕 Get votingId and check if ended
+  isEnded = false;
+  final votingId = data['votingId'];
+  if (votingId != null) {
+    final votingDocRef = firestore.FirebaseFirestore.instance
+        .collection("votings")
+        .doc(votingId.toString());
 
-  final votingDoc = await votingDocRef.get();
-  final votingData = votingDoc.data();
+    final votingDoc = await votingDocRef.get();
+    
+    if (votingDoc.exists) {
+      final votingData = votingDoc.data();
+      // If 'IsEnded' is missing, create it with default false
+      if (!votingData!.containsKey('IsEnded')) {
+        await votingDocRef.update({'IsEnded': false});
+        print("✅ 'IsEnded' field added to voting document $votingId.");
+      }
 
-  if (votingDoc.exists) {
-    // If 'IsEnded' is missing, create it with default false
-    if (!votingData!.containsKey('IsEnded')) {
-      await votingDocRef.update({'IsEnded': false});
-      print("✅ 'IsEnded' field added to voting document $votingId.");
+      isEnded = votingData['IsEnded'] ?? false;
+    } else {
+      print("⚠️ Voting document not found for ID: $votingId.");
     }
-
-    isEnded = votingData['IsEnded'] ?? false;
-  } else {
-    print("⚠️ Voting document not found for ID: $votingId.");
   }
-}
 
+  print("is ended : $isEnded");
 
+  // Set the global isCompleted value if it exists in Firestore
+  if (data.containsKey('isCompleted')) {
+    isCompleted = data['isCompleted'];
+  }
 
+  // Determine the current state
+  String currentState = getProjectState(data, votingInitiated, isCanceled, isEnded, isCompleted);
+  print("current state : $currentState");
+  print("previous state : $previousState");
+  // Compare current state with previous state
+  if (currentState != previousState) {
+    print("🔄 Project state changed from $previousState to $currentState");
+    
+    // Update the current state in Firestore
+    await docRef.update({'currentState': currentState});
+    
+    // Only send notifications for these specific state changes
+    if (currentState == "voting" || currentState == "ended" || 
+        currentState == "in-progress" || currentState == "completed") {
+      
+      // Send notifications to donors
+      try {
+        final blockchainService = BlockchainService();
+        final notificationService = NotificationService();
+        await notificationService.sendProjectStatusNotification(
+          int.parse(projectId),
+          data['name'] ?? "Unknown Project",
+          currentState
+        );
+        print("✅ Notifications sent for project state change to $currentState");
+      } catch (e) {
+        print("❌ Error sending notifications: $e");
+      }
+    }
+  }
 
- print("is ended : $isEnded");
-
-
-// Set the global isCompleted value if it exists in Firestore
-if (data.containsKey('isCompleted')) {
-  isCompleted = data['isCompleted'] ;
-}
-
-        
-
-  return getProjectState(data, votingInitiated, isCanceled, isEnded , isCompleted);
+  return currentState;
 }
 
 String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool isCanceled, bool isEnded, bool isCompleted) {
@@ -515,8 +547,8 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
     return "upcoming";
   } else if (project['startDate'] is DateTime) {
     startDate = project['startDate'];
-  } else if (project['startDate'] is Timestamp) {
-    startDate = (project['startDate'] as Timestamp).toDate();
+  } else if (project['startDate'] is firestore.Timestamp) {
+    startDate = (project['startDate'] as firestore.Timestamp).toDate();
   } else {
     startDate = DateTime.parse(project['startDate'].toString());
   }
@@ -527,8 +559,8 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
     return "active";
   } else if (project['endDate'] is DateTime) {
     endDate = project['endDate'];
-  } else if (project['endDate'] is Timestamp) {
-    endDate = (project['endDate'] as Timestamp).toDate();
+  } else if (project['endDate'] is firestore.Timestamp) {
+    endDate = (project['endDate'] as firestore.Timestamp).toDate();
   } else {
     endDate = DateTime.parse(project['endDate'].toString());
   }
@@ -572,7 +604,7 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
 }
 Future<void> _markProjectAsCompleted() async {
     try {
-      await FirebaseFirestore.instance
+      await firestore.FirebaseFirestore.instance
           .collection('projects')
           .doc(widget.projectId.toString())
           .update({'isCompleted': true});
@@ -931,7 +963,7 @@ if (userType == 1 &&
              if (votingInitiated) {
   try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -997,7 +1029,7 @@ if (userType == 1 &&
              if (votingInitiated) {
   try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -1062,7 +1094,7 @@ if (canVote && votingInitiated && userType == 0 )
    onPressed: ()async {
     try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -1225,21 +1257,21 @@ if (canVote && votingInitiated && userType == 0 )
                                       print("Project canceled: $isCanceled");
                                     });
 
-                                    DocumentSnapshot document =
-                                        await FirebaseFirestore.instance
+                                    firestore.DocumentSnapshot document =
+                                        await firestore.FirebaseFirestore.instance
                                             .collection('projects')
                                             .doc(widget.projectId.toString())
                                             .get();
 
                                     if (document.exists) {
-                                      await FirebaseFirestore.instance
+                                      await firestore.FirebaseFirestore.instance
                                           .collection('projects')
                                           .doc(widget.projectId.toString())
                                           .update({'isCanceled': true});
                                       print("Project state updated in Firestore.");
                                     } else {
                                       print("Project document not found. Creating a new project...");
-                                      await FirebaseFirestore.instance
+                                      await firestore.FirebaseFirestore.instance
                                           .collection('projects')
                                           .doc(widget.projectId.toString())
                                           .set({'isCanceled': true});
@@ -1553,12 +1585,12 @@ suffixIcon: Padding(
 }
 
 Future<void> _processDonation(String amount, bool isAnonymous) async {
-  if (globalPrivateKey == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Private key is missing.')),
-    );
-    return;
-  }
+  // if (globalPrivateKey == null) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text('Private key is missing.')),
+  //   );
+  //   return;
+  // }
 
   if (widget.projectCreatorWallet.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1934,7 +1966,7 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
 Future<Map<String, dynamic>> fetchProjectFirestoreData(BigInt projectId) async {
   try {
     // Reference to the Firestore collection containing project data
-    final projectDocRef = FirebaseFirestore.instance.collection('projects').doc(projectId.toString());
+    final projectDocRef = firestore.FirebaseFirestore.instance.collection('projects').doc(projectId.toString());
 
     // Fetch the document data
     final projectSnapshot = await projectDocRef.get();
@@ -2340,13 +2372,13 @@ class _ReportPopupState extends State<ReportPopup> {
                     return;
                   }
 
-                await FirebaseFirestore.instance.collection('reports').add({
+                await firestore.FirebaseFirestore.instance.collection('reports').add({
   'title': title,
   'description': description,
   'complainant': walletAddress,
   'targetCharityAddress': widget.projectCreatorWallet,
   'project_id': widget.projectId,
-  'timestamp': FieldValue.serverTimestamp(),
+  'timestamp': firestore.FieldValue.serverTimestamp(),
   'complaintType': 'project', // ✅ Added the complaintType field
 });
 
