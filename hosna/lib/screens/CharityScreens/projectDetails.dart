@@ -75,8 +75,8 @@ bool isCompleted = false;
   @override
   void initState()  {
     super.initState();
+
 _loadProjectState();
-   
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
 
@@ -105,9 +105,11 @@ _loadProjectState();
     print('✅ Global private key set: $privateKey');
 
 //  checkVotingStatus() ;
-  // _fetchVotingStatus();
+
      _listenToProjectState();
-    
+                  _fetchVotingStatus();
+
+
   }
 
 Future<void> _loadProjectState() async {
@@ -141,72 +143,67 @@ Future<void> _loadProjectState() async {
   }
 
 
-// Future<void> _fetchVotingStatus() async {
-//   print('🔍 Fetching voting status for project: ${widget.projectId}');
+Future<void> _fetchVotingStatus() async {
+  print('🔍 Fetching voting status for project: ${widget.projectId}');
 
-//   try {
-//     if (globalWalletAddress == null) {
-//       print('❌ Wallet address is null. Cannot check voting eligibility.');
-//       setState(() {
-//         canVote = false;
-//         votingInitiated = false;
-//       });
-//       return;
-//     }
+  try {
+    if (globalWalletAddress == null) {
+      print('❌ Wallet address is null. Cannot check voting eligibility.');
+      setState(() {
+        canVote = false;
+        votingInitiated = false;
+      });
+      return;
+    }
 
-//     final BigInt bigProjectId = BigInt.from(widget.projectId);
-//     print('🔢 Converted project ID to BigInt: $bigProjectId');
-//     print('🧾 Checking if donor can vote using address: $globalWalletAddress');
+    final BigInt bigProjectId = BigInt.from(widget.projectId);
+    print('🔢 Converted project ID to BigInt: $bigProjectId');
+    print('🧾 Checking if donor can vote using address: $globalWalletAddress');
     
 
-// print('🛑 isCanceled: $isCanceled');
+print('🛑 isCanceled: $isCanceled');
 
-// canVote = await donorServices.checkIfDonorCanVote(
-//   bigProjectId,
-//   globalWalletAddress.toString(),
-// );
+canVote = await donorServices.checkIfDonorCanVote(
+  bigProjectId,
+  globalWalletAddress.toString(),
+);
 
-//     print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
+    print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
 
-//     print('✅ Donor voting eligibility status: $canVote');
+    print('✅ Donor voting eligibility status: $canVote');
+ setState(() {
+        canVote = true;
+      });
+      return;
+    final projectDocRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString());
 
-//     final projectDocRef = FirebaseFirestore.instance
-//         .collection('projects')
-//         .doc(widget.projectId.toString());
+    final projectDoc = await projectDocRef.get();
+    print('📌 Fetched document for Project ID: ${widget.projectId}');
 
-//     final projectDoc = await projectDocRef.get();
-//     print('📌 Fetched document for Project ID: ${widget.projectId}');
+    if (projectDoc.exists) {
+      final data = projectDoc.data();
+      print('📄 Project document exists. Data: $data');
 
-//     if (projectDoc.exists) {
-//       final data = projectDoc.data();
-//       print('📄 Project document exists. Data: $data');
-//   // Check if project is completed
-//         if (isCompleted) {
-//           projectState = "completed";
-//         } else {
-//           projectState = votingInitiated && (!isCompleted) && (!isEnded)
-//               ? "voting"
-//               : isCanceled && (!votingInitiated) && (!isEnded)
-//                   ? "canceled"
-//                   : getProjectState(data!, votingInitiated, isCanceled, isEnded, isCompleted);
-//         }
-//     } else {
-//       print('❌ Project document not found in Firestore. Creating default document...');
-//       await projectDocRef.set({
-//         'votingInitiated': false,
-//       });
+       
+    } else {
+      print('❌ Project document not found in Firestore. Creating default document...');
+      await projectDocRef.set({
+        'votingInitiated': false,
+      });
 
-//       print('✅ Default project document created with votingInitiated = false');
+      print('✅ Default project document created with votingInitiated = false');
 
-//     //   setState(() {
-//     //     votingInitiated = false;
-//     //     print('🚦 Voting initiated status set to default (false)');
-//     //   });
-//     }
-//   } catch (e) {
-//     print('⚠️ Error while fetching voting status: $e');
-//   }
-// }
+      setState(() {
+        votingInitiated = false;
+        print('🚦 Voting initiated status set to default (false)');
+      });
+    }
+  } catch (e) {
+    print('⚠️ Error while fetching voting status: $e');
+  }
+}
 
 StreamSubscription<DocumentSnapshot>? _projectSubscription;
 
@@ -1097,7 +1094,7 @@ if (canVote && votingInitiated && userType == 0 )
 
 
       child: Text(
-        "Vote Now",
+        "Cast Your Vote!",
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
@@ -1868,7 +1865,6 @@ class DonorServices {
   }
 
 
-
 // Check if the user has donated to the project and if voting has started
 Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
   try {
@@ -1904,10 +1900,7 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
         ? "✅ User IS a donor for this project."
         : "❌ User is NOT a donor for this project.");
 
-  
-
-
-    bool isCanceled = firestoreData['isCanceled'] ?? false;
+ bool isCanceled = firestoreData['isCanceled'] ?? false;
     if (isCanceled) {
       print(" ✅  Project is canceled.  Voting has started.");
     }

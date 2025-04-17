@@ -55,6 +55,7 @@ dependencies:
   url_launcher: ^6.3.1
   crypto: ^3.0.6
   timeago: ^3.2.2 # please check if it compatible if not delete it and then try adding it again "I could not add it the way you do"
+  lottie: ^3.3.1
   # ethereum: ^0.2.1
   
   
@@ -93,6 +94,7 @@ flutter:
     - assets/Projects.png
     - assets/BlueProjects.png
     - assets/api.json   
+    - assets/hourglass.json
 
 flutter_native_splash:
   color: "#ffffff"  # White background

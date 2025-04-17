@@ -240,20 +240,20 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
+        preferredSize: const Size.fromHeight(70),
         child: AppBar(
           backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
           elevation: 0,
           automaticallyImplyLeading: false,
           flexibleSpace: Padding(
-            padding: const EdgeInsets.only(left: 20, bottom: 20),
+            padding: const EdgeInsets.only(left: 30, bottom: 20),
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 60),
+                    padding: const EdgeInsets.only(top: 38),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -261,7 +261,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                           "Good Day, ${_organizationName}!",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 27,
+                            fontSize: 23,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

@@ -951,7 +951,7 @@ class BlockchainService {
             totalAmountInWei, // Send Wei value
             projectType,
           ],
-          gasPrice: EtherAmount.inWei(BigInt.from(10 * 1000000000)),
+          gasPrice: EtherAmount.inWei(BigInt.from(20 * 1000000000)),
           maxGas: 5000000,
         ),
         chainId: 11155111, // Sepolia Testnet Chain ID

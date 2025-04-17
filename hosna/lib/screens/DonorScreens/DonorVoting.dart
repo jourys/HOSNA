@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lottie/lottie.dart';
+
 
 class DonorVotePage extends StatefulWidget {
   final String walletAddress;
@@ -121,7 +123,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
   }
 
   String _formatRemainingTime() {
-    return "$remainingMonths months, $remainingDays days, $remainingHours hours, $remainingMinutes minutes";
+    return "$remainingDays days, $remainingHours hours, $remainingMinutes minutes";
   }
 
   Future<String?> _loadPrivateKey() async {
@@ -195,69 +197,229 @@ class _DonorVotePageState extends State<DonorVotePage> {
     }
   }
 
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      centerTitle: true,
+      title: const Text('Voting Details' ),
+      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+foregroundColor: Colors.white,
+    ),
+    body: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color.fromRGBO(24, 71, 137, 1),
+      Color.fromRGBO(24, 71, 137, 1)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: VotingGlassEffectContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: isFetching
+              ? const Center(child: CircularProgressIndicator())
+              : votingDetails.isEmpty
+                  ? const Center(child: Text("No voting details available"))
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                       
+
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Choose one project to vote:",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: votingDetails.length,
+                            itemBuilder: (context, index) {
+                              return Card(
+                                color: Colors.blue[50],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: RadioListTile<int>(
+                                  value: index,
+                                  groupValue: selectedProjectIndex,
+                                  onChanged: (int? value) {
+                                    setState(() {
+                                      selectedProjectIndex = value!;
+                                    });
+                                  },
+                                  title: Text(
+                                    '${votingDetails[index]} (${votingPercentages[index]}%)',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        Center(
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40), // Increased padding for a larger container
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFCDD2), // Very light grey background
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFB71C1C), width: 1), // Dark red border
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.access_time, color: Color(0xFFB71C1C) , size : 50), // Dark red icon
+        const SizedBox(width: 8),
+        RichText(
+          text: TextSpan(
+            children: [
+              const TextSpan(
+                text: "Countdown :   ",
+                style: TextStyle(
+                  fontFamily: 'Georgia', // Set to Georgia font
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFFB71C1C), // Dark red for the label
+                ),
+              ),
+              TextSpan(
+                text: "$remainingDays",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontFamily: 'Georgia', // Set to Georgia font
+                  color: Color(0xFFB71C1C), // Dark red for days
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const TextSpan(
+                text: " d   ",
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFFB71C1C), // Dark red for "d"
+                  fontFamily: 'Georgia', // Set to Georgia font
+                ),
+              ),
+              TextSpan(
+                text: "$remainingHours",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontFamily: 'Georgia', // Set to Georgia font
+                  color: Color(0xFFB71C1C), // Dark red for hours
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const TextSpan(
+                text: " h   ",
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFFB71C1C), // Dark red for "h"
+                  fontFamily: 'Georgia', // Set to Georgia font
+                ),
+              ),
+              TextSpan(
+                text: "$remainingMinutes",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontFamily: 'Georgia', // Set to Georgia font
+                  color: Color(0xFFB71C1C), // Dark red for minutes
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const TextSpan(
+                text: " m",
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFFB71C1C), // Dark red for "m"
+                  fontFamily: 'Georgia', // Set to Georgia font
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+
+                        Column(
+  children: [
+
+      Center(
+      child: SizedBox(
+        height: 200,
+        width: 500,
+        child: Lottie.asset('assets/hourglass.json'),
+      ),
+    ),
+
+ const SizedBox(height: 20),
+   ElevatedButton(
+  onPressed: isSubmitting ? null : _submitVote,
+  style: ElevatedButton.styleFrom(
+    backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+    padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(15),
+    ),
+    elevation: 6,
+    shadowColor: Colors.blueAccent.withOpacity(0.4),
+    foregroundColor: Colors.white,
+  ),
+  child: isSubmitting
+      ? const CircularProgressIndicator(color: Colors.white)
+      : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text(
+              "Submit Vote  ",
+              style: TextStyle(fontSize: 20),
+            ),
+            SizedBox(width: 20),
+            Icon(Icons.rocket_launch, color: Colors.white , size : 30),
+          ],
+        ),
+),
+
+  
+  ],
+),
+
+                      ],
+                    ),
+        ),
+      ),
+    ),
+  );
+}
+}
+
+class VotingGlassEffectContainer extends StatelessWidget {
+  final Widget child;
+
+  const VotingGlassEffectContainer({Key? key, required this.child})
+      : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Voting Details'),
-        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: isFetching
-            ? const Center(child: CircularProgressIndicator())
-            : votingDetails.isEmpty
-                ? const Center(child: Text("No voting details available"))
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Voting Ends In: ${_formatRemainingTime()}",
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text("Choose one project to vote:",
-                          style: TextStyle(fontSize: 18)),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: votingDetails.length,
-                          itemBuilder: (context, index) {
-                            return RadioListTile<int>(
-                              value: index,
-                              groupValue: selectedProjectIndex,
-                              onChanged: (int? value) {
-                                setState(() {
-                                  selectedProjectIndex = value!;
-                                });
-                              },
-                              title: Text(
-                                '${votingDetails[index]} (${votingPercentages[index]}%)',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: isSubmitting ? null : _submitVote,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromRGBO(24, 71, 137, 1),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                        child: isSubmitting
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
-                            : const Text(
-                                "Submit Vote",
-                                style: TextStyle(fontSize: 18),
-                              ),
-                      ),
-                    ],
-                  ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+      child: Container(
+        color: Colors.white,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: child,
+            ),
+           
+          ],
+        ),
       ),
     );
   }
