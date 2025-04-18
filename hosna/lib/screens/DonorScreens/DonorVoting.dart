@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,10 +7,12 @@ import 'package:lottie/lottie.dart';
 
 
 class DonorVotePage extends StatefulWidget {
+   final String projectId; 
   final String walletAddress;
   final String votingId;
 
   const DonorVotePage({
+       required this.projectId,
     required this.walletAddress,
     required this.votingId,
     Key? key,
@@ -30,13 +33,16 @@ class _DonorVotePageState extends State<DonorVotePage> {
   List<int> votingPercentages = [];
   bool isFetching = false;
 
-  int selectedProjectIndex = -1;
+  String selectedProjectIndex = '';
   bool isSubmitting = false;
 
   int remainingMonths = 0;
   int remainingDays = 0;
   int remainingHours = 0;
   int remainingMinutes = 0;
+
+bool _isLoadingRefundService = true;
+RefundService? refundService;
 
   final String _abi = '''[
     {
@@ -71,6 +77,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
   void initState() {
     super.initState();
     _initializeWeb3Client();
+    initRefundService();
   }
 
   void _initializeWeb3Client() async {
@@ -92,6 +99,51 @@ class _DonorVotePageState extends State<DonorVotePage> {
 
     await _fetchVotingData();
   }
+Future<Credentials?> _loadUserCredentials() async {
+  try {
+    String? privateKey = await _loadPrivateKey(); // Retrieve private key from shared preferences
+    if (privateKey == null) {
+      print('⚠️ Private key not found');
+      return null;
+    }
+
+    // Convert the private key to Ethereum credentials (Credentials object)
+    Credentials credentials = EthPrivateKey.fromHex(privateKey);
+    return credentials; // Return the credentials (userCredentials)
+  } catch (e) {
+    print('⚠️ Error retrieving credentials: $e');
+    return null;
+  }
+}
+
+Future<void> initRefundService() async {
+  setState(() => _isLoadingRefundService = true); // Start loading
+
+  try {
+    String? privateKey = await _loadPrivateKey();
+    String? walletAddress = await _loadWalletAddress();
+
+    if (privateKey == null || walletAddress == null) {
+      print("❌ Wallet info missing");
+      setState(() => _isLoadingRefundService = false);
+      return;
+    }
+
+    final creds = EthPrivateKey.fromHex(privateKey);
+    final userAddr = EthereumAddress.fromHex(walletAddress);
+
+    refundService = RefundService(
+      userAddress: userAddr,
+      userCredentials: creds,
+    );
+
+    print("✅ RefundService initialized for $walletAddress");
+  } catch (e) {
+    print("⚠️ Error initializing RefundService: $e");
+  }
+
+  setState(() => _isLoadingRefundService = false); // Done loading
+}
 
   Future<void> _fetchVotingData() async {
     if (isFetching) return;
@@ -148,57 +200,147 @@ class _DonorVotePageState extends State<DonorVotePage> {
       return null;
     }
   }
+BigInt getSelectedIndexAsBigInt() {
+  if (selectedProjectIndex.startsWith('vote_')) {
+    final index = int.parse(selectedProjectIndex.split('_')[1]);
+    return BigInt.from(index);
+  } else if (selectedProjectIndex.startsWith('refund_')) {
+    final projectId = int.parse(widget.projectId);
+    return BigInt.from(projectId);
+  } else {
+    throw Exception('Invalid selection format');
+  }
+}
 
-  Future<void> _submitVote() async {
-    if (selectedProjectIndex == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select an option to vote.")),
-      );
-      return;
-    }
+Future<void> _submitVote() async {
+  print("🔍 Checking if project is selected...");
+  if (selectedProjectIndex == -1) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select an option to vote.")),
+    );
+    print("❌ No project selected. Returning...");
+    return;
+  }
 
-    setState(() => isSubmitting = true);
+  setState(() => isSubmitting = true);
 
-    final privateKey = await _loadPrivateKey();
-    if (privateKey == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Private key not found.")),
-      );
-      setState(() => isSubmitting = false);
-      return;
-    }
+  print("🔑 Loading private key...");
+  final privateKey = await _loadPrivateKey();
+  if (privateKey == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Private key not found.")),
+    );
+    setState(() => isSubmitting = false);
+    print("❌ Private key not found. Returning...");
+    return;
+  }
 
-    try {
-      final credentials = EthPrivateKey.fromHex(privateKey);
-      await _web3Client.sendTransaction(
-        credentials,
-        Transaction.callContract(
-          contract: _contract,
-          function: _voteFunction,
-          parameters: [
-            BigInt.from(int.parse(widget.votingId)),
-            BigInt.from(selectedProjectIndex),
-          ],
-          maxGas: 300000,
-        ),
-        chainId: 11155111,
-      );
+  try {
+    print("🔑 Private key loaded, creating credentials...");
+    final credentials = EthPrivateKey.fromHex(privateKey);
+    print("📜 Credentials created: $credentials");
 
+    print("🚀 Preparing to send transaction...");
+    print("📝 Transaction details: Voting ID: ${widget.votingId}, Project Index: $selectedProjectIndex");
+
+   final result = await _web3Client.sendTransaction(
+  credentials,
+  Transaction.callContract(
+    contract: _contract,
+    function: _voteFunction,
+    parameters: [
+      BigInt.from(int.parse(widget.votingId)),
+      getSelectedIndexAsBigInt(),
+    ],
+    maxGas: 300000,
+  ),
+  chainId: 11155111,
+);
+
+
+    print("✅ Transaction sent. Hash: $result");
+
+    // Wait for transaction receipt with a status
+    final receipt = await _waitForReceipt(result);
+
+    if (receipt != null && receipt.status == true) {
+      print("🎉 Vote submitted successfully!");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vote submitted successfully!")),
       );
-    } catch (e) {
-      print("❌ Error submitting vote: $e");
+    } else if (receipt == null) {
+      print("⏰ Transaction receipt timed out.");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to submit vote: $e")),
+        const SnackBar(content: Text("Transaction confirmation timed out. Please check later.")),
       );
-    } finally {
-      setState(() => isSubmitting = false);
+    } else {
+      print("⚠️ Transaction failed or reverted.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Transaction failed. Please try again.")),
+      );
     }
+
+  } catch (e) {
+    String errorMessage = "Failed to submit vote.";
+    final errorString = e.toString();
+    print("⚠️ Error caught: $e");
+
+    if (errorString.contains('revert')) {
+      print("🔍 Parsing revert error...");
+      final match = RegExp(r'''revert(?:ed)?(?: with reason string)?\s*["']?([^"']+)["']?''').firstMatch(errorString);
+
+      if (match != null && match.groupCount >= 1) {
+        final revertMessage = match.group(1);
+        print("📜 Revert reason found: $revertMessage");
+
+        if (revertMessage == "Already voted") {
+          errorMessage = "You have already voted.";
+          print("❌ User has already voted.");
+        } else {
+          errorMessage = "Transaction reverted: $revertMessage";
+          print("⚠️ Transaction reverted with message: $revertMessage");
+        }
+      } else {
+        errorMessage = "Transaction reverted.";
+        print("⚠️ Transaction reverted without a specific message.");
+      }
+    } else if (errorString.contains("User denied")) {
+      errorMessage = "Transaction was rejected by the user.";
+      print("❌ User rejected the transaction.");
+    }
+
+    print("❌ Error submitting vote: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
+  } finally {
+    setState(() => isSubmitting = false);
+    print("✅ Finished submitting, setting isSubmitting to false.");
   }
+}
+
+Future<TransactionReceipt?> _waitForReceipt(String txHash) async {
+  const int maxTries = 20; // instead of 10
+const Duration delay = Duration(seconds: 3); // instead of 2
+
+  for (int i = 0; i < maxTries; i++) {
+    final receipt = await _web3Client.getTransactionReceipt(txHash);
+    if (receipt != null && receipt.status != null) {
+      print("🧾 Transaction receipt received. Status: ${receipt.status}");
+      return receipt;
+    }
+    print("⏳ Waiting for transaction receipt... (try ${i + 1}/$maxTries)");
+    await Future.delayed(delay);
+  }
+  print("❌ Receipt not found after $maxTries attempts.");
+  return null;
+}
 
  @override
 Widget build(BuildContext context) {
+
+// Convert wallet address string to EthereumAddress
+final EthereumAddress ethAddress = EthereumAddress.fromHex(widget.walletAddress);
   return Scaffold(
     appBar: AppBar(
       centerTitle: true,
@@ -238,29 +380,55 @@ foregroundColor: Colors.white,
                         const SizedBox(height: 10),
                         Expanded(
                           child: ListView.builder(
-                            itemCount: votingDetails.length,
-                            itemBuilder: (context, index) {
-                              return Card(
-                                color: Colors.blue[50],
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: RadioListTile<int>(
-                                  value: index,
-                                  groupValue: selectedProjectIndex,
-                                  onChanged: (int? value) {
-                                    setState(() {
-                                      selectedProjectIndex = value!;
-                                    });
-                                  },
-                                  title: Text(
-                                    '${votingDetails[index]} (${votingPercentages[index]}%)',
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+  itemCount: votingDetails.length + 1,
+  itemBuilder: (context, index) {
+    if (index < votingDetails.length) {
+      final voteValue = 'vote_$index'; // Unique string value
+      return Card(
+        color: Colors.blue[50],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: RadioListTile<String>(
+          value: voteValue,
+          groupValue: selectedProjectIndex,
+          onChanged: (String? value) {
+            setState(() {
+              selectedProjectIndex = value!;
+            });
+          },
+          title: Text(
+            '${votingDetails[index]} (${votingPercentages[index]}%)',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+      );
+    } else {
+      final refundValue = 'refund_${widget.projectId}'; // Also unique
+      return Card(
+        color: Colors.red[50],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: RadioListTile<String>(
+          value: refundValue,
+          groupValue: selectedProjectIndex,
+          onChanged: (String? value) {
+            setState(() {
+              selectedProjectIndex = value!;
+            });
+          },
+          title: const Text(
+            'Request a refund',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+  },
+),
+
+
                         ),
                         Center(
   child: Container(
@@ -359,8 +527,52 @@ foregroundColor: Colors.white,
     ),
 
  const SizedBox(height: 20),
-   ElevatedButton(
-  onPressed: isSubmitting ? null : _submitVote,
+  ElevatedButton(
+  onPressed: isSubmitting
+      ? null
+      : () async {
+          setState(() {
+            isSubmitting = true;
+          });
+
+          try {
+            // التحقق من نوع الخيار (تصويت أو استرجاع)
+            if (selectedProjectIndex.startsWith('refund_')) {
+              final refundIndex = int.parse(widget.projectId);
+
+              Credentials? userCredentials = await _loadUserCredentials();
+
+              if (userCredentials == null) {
+                print("❌ userCredentials is null. Cannot proceed.");
+                return;
+              }
+
+              final refundService = RefundService(
+                userAddress: ethAddress,
+                userCredentials: userCredentials,
+              );
+
+              final txHash = await refundService.requestRefund(refundIndex);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✅ Refund requested!')),
+              );
+            } else if (selectedProjectIndex.startsWith('vote_')) {
+              // تصويت
+              await _submitVote(); // تأكدي إنها معرفة وتعتمد على selectedProjectIndex
+            } else {
+              // حالة غير متوقعة
+              throw Exception("❌ Invalid selection value");
+            }
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('❌ Error: $e')),
+            );
+          } finally {
+            setState(() {
+              isSubmitting = false;
+            });
+          }
+        },
   style: ElevatedButton.styleFrom(
     backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
     padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
@@ -381,10 +593,11 @@ foregroundColor: Colors.white,
               style: TextStyle(fontSize: 20),
             ),
             SizedBox(width: 20),
-            Icon(Icons.rocket_launch, color: Colors.white , size : 30),
+            Icon(Icons.rocket_launch, color: Colors.white, size: 30),
           ],
         ),
 ),
+
 
   
   ],
@@ -422,5 +635,145 @@ class VotingGlassEffectContainer extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+
+
+class RefundService {
+  final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
+  final String contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45';
+
+  late Web3Client web3client;
+  late DeployedContract donationContract;
+  final EthereumAddress userAddress;
+  final Credentials userCredentials;
+
+  // ABI string should match the contract on-chain
+  final String abi = '''
+  [
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+      ],
+      "name": "requestRefund",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+      ],
+      "name": "getTotalRefunded",
+      "outputs": [
+        { "internalType": "uint256", "name": "", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+      ],
+      "name": "getRefundRequestCount",
+      "outputs": [
+        { "internalType": "uint256", "name": "", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+      ],
+      "name": "updateDonatedAmount",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+  ''';
+
+  RefundService({
+    required this.userAddress,
+    required this.userCredentials,
+  }) {
+    web3client = Web3Client(rpcUrl, Client());
+
+    donationContract = DeployedContract(
+      ContractAbi.fromJson(abi, 'DonationContract'),
+      EthereumAddress.fromHex(contractAddress),
+    );
+  }
+
+  // Request a refund for a given project
+  Future<void> requestRefund(int projectId) async {
+    final requestRefundFunction = donationContract.function('requestRefund');
+    final updateDonatedAmountFunction = donationContract.function('updateDonatedAmount');
+
+    try {
+      print("🧾 Preparing to request refund for projectId: $projectId");
+      print("🚀 Sending refund transaction...");
+
+      // Send refund transaction
+      final result = await web3client.sendTransaction(
+        userCredentials,
+        Transaction.callContract(
+          contract: donationContract,
+          function: requestRefundFunction,
+          parameters: [BigInt.from(projectId)],
+        ),
+        chainId: 11155111, // Sepolia
+      );
+
+      print("✅ Refund transaction sent: $result");
+
+      // After refund, update the donated amount
+      print("🔄 Updating donated amount after refund...");
+      await web3client.sendTransaction(
+        userCredentials,
+        Transaction.callContract(
+          contract: donationContract,
+          function: updateDonatedAmountFunction,
+          parameters: [BigInt.from(projectId)],
+        ),
+        chainId: 11155111, // Sepolia
+      );
+
+      print("✅ Donated amount updated after refund");
+    } catch (e) {
+      print("❌ Failed to request refund: $e");
+    }
+  }
+
+  // Get total refunded amount for a project
+  Future<BigInt> getTotalRefunded(int projectId) async {
+    final function = donationContract.function('getTotalRefunded');
+    try {
+      final result = await web3client.call(
+        contract: donationContract,
+        function: function,
+        params: [BigInt.from(projectId)],
+      );
+      return result.first as BigInt;
+    } catch (e) {
+      throw Exception('❌ Failed to fetch total refunded: $e');
+    }
+  }
+
+  // Get number of users who requested a refund
+  Future<BigInt> getRefundRequestCount(int projectId) async {
+    final function = donationContract.function('getRefundRequestCount');
+    try {
+      final result = await web3client.call(
+        contract: donationContract,
+        function: function,
+        params: [BigInt.from(projectId)],
+      );
+      return result.first as BigInt;
+    } catch (e) {
+      throw Exception('❌ Failed to fetch refund request count: $e');
+    }
   }
 }

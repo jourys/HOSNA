@@ -682,6 +682,12 @@ return Scaffold(
         Center(
           child: ElevatedButton.icon(
              onPressed: () async {
+                if (_selectedProjects.length != 3 || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select 3 projects and an end date.')),
+      );
+      return;
+    }
     bool confirm = await _showInitiateVotingConfirmationDialog(context);
     
 
@@ -764,6 +770,10 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
       setState(() => _isLoading = false);
     }
   }
+
+
+
+
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
     DateTime now = DateTime.now();
@@ -1520,7 +1530,7 @@ Future<void> fetchAndStoreProjectDetails() async {
 
 class DonationService {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9'; // Replace with your actual contract address
+  final String contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45'; // Replace with your actual contract address
 
   final String senderAddress;
   final String receiverAddress;
@@ -1538,20 +1548,30 @@ class DonationService {
   }
 
   Future<void> initializeContract() async {
-    final abi = '''
-    [
-      {
-        "inputs": [
-          { "internalType": "uint256", "name": "fromProjectId", "type": "uint256" },
-          { "internalType": "uint256", "name": "toProjectId", "type": "uint256" }
-        ],
-        "name": "transferProjectFundsToAnother",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
-    ]
-    ''';
+   final abi = '''
+[
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "fromProjectId", "type": "uint256" },
+      { "internalType": "uint256", "name": "toProjectId", "type": "uint256" }
+    ],
+    "name": "transferProjectFundsToAnother",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+    ],
+    "name": "updateDonatedAmount",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
+''';
+
 
     final privateKey = await _loadPrivateKey();
     if (privateKey == null) {
@@ -1567,61 +1587,106 @@ class DonationService {
     );
   }
 
-  Future<String> transferFundsBetweenProjects(int fromProjectId, int toProjectId) async {
+Future<String> transferFundsBetweenProjects(int fromProjectId, int toProjectId) async {
   final transferFunction = contract.function("transferProjectFundsToAnother");
 
   try {
-    // Fetch current gas price and increase it for faster processing
+    final encodedData = transferFunction.encodeCall([
+      BigInt.from(fromProjectId),
+      BigInt.from(toProjectId),
+    ]);
 
-// Encode the function call manually
-final encodedData = transferFunction.encodeCall([
-  BigInt.from(fromProjectId),
-  BigInt.from(toProjectId),
-]);
+    print('🚀 Sending transaction for transferring funds from project $fromProjectId to $toProjectId');
 
-// Send the transaction
-final txHash = await ethClient.sendTransaction(
-  credentials,
-  web3.Transaction(
-    to: contract.address,
-    gasPrice: web3.EtherAmount.fromUnitAndValue(web3.EtherUnit.gwei, 50), // Example: 50 Gwei
-    maxGas: 300000,
-    data: encodedData,
-  ),
-  chainId: 11155111,
-  fetchChainIdFromNetworkId: false,
-);
+    final txHash = await ethClient.sendTransaction(
+      credentials,
+      web3.Transaction(
+        to: contract.address,
+        gasPrice: await ethClient.getGasPrice(), // use latest gas price from network
+        maxGas: 300000,
+        data: encodedData,
+      ),
+      chainId: 11155111,
+      fetchChainIdFromNetworkId: false,
+    );
 
+    print('🔗 Transaction submitted. Hash: $txHash');
 
-    print('🔗 Transaction Hash: $txHash'); // ✅ Always log for debug/monitoring
-
-    // Wait for the transaction to be mined
     final receipt = await _waitForReceipt(txHash);
     if (receipt == null) {
-      throw Exception("⏳ Transaction sent (hash above), but not yet mined.");
+      throw Exception("⏳ Transaction not confirmed in time. Tx hash: $txHash");
     }
+
+    print('✅ Transaction confirmed. Block: ${receipt.blockNumber}');
+
+    // Update the donated amount after funds transfer
+    await _updateProjectDonatedAmount(fromProjectId);
+    await _updateProjectDonatedAmount(toProjectId);
 
     return txHash;
   } catch (e, stack) {
+    print('❌ Error transferring funds: $e');
     print('🧯 Stacktrace: $stack');
-    throw Exception('❌ Failed to transfer funds: $e');
+    rethrow;
+  }
+}
+
+Future<void> _updateProjectDonatedAmount(int projectId) async {
+  final updateFunction = contract.function("updateDonatedAmount");
+
+  try {
+    final encodedData = updateFunction.encodeCall([BigInt.from(projectId)]);
+
+    print('🚀 Updating donated amount for project $projectId');
+
+    final txHash = await ethClient.sendTransaction(
+      credentials,
+      web3.Transaction(
+        to: contract.address,
+        gasPrice: await ethClient.getGasPrice(), // use latest gas price from network
+        maxGas: 300000,
+        data: encodedData,
+      ),
+      chainId: 11155111,
+      fetchChainIdFromNetworkId: false,
+    );
+
+    print('🔗 Donation amount update transaction submitted. Hash: $txHash');
+
+    final receipt = await _waitForReceipt(txHash);
+    if (receipt == null) {
+      throw Exception("⏳ Donation amount update not confirmed in time. Tx hash: $txHash");
+    }
+
+    print('✅ Donation amount updated successfully for project $projectId');
+  } catch (e, stack) {
+    print('❌ Error updating donated amount for project $projectId: $e');
+    print('🧯 Stacktrace: $stack');
+    rethrow;
   }
 }
 
 
-// Helper method to wait for the transaction receipt
+// Optimized version without delay, faster mining confirmation loop
 Future<web3.TransactionReceipt?> _waitForReceipt(
   String txHash, {
-  int retries = 20,
-  Duration delay = const Duration(seconds: 5),
+  int retries = 40,
 }) async {
+  print('🔍 Waiting for transaction $txHash to be mined...');
+
   for (int i = 0; i < retries; i++) {
     final receipt = await ethClient.getTransactionReceipt(txHash);
-    if (receipt != null) return receipt;
-    print('⏳ Waiting for transaction to be mined... Attempt $i');
-    await Future.delayed(delay);
+
+    if (receipt != null) {
+      print('✅ Receipt found at attempt $i');
+      return receipt;
+    }
+
+    // Yield to event loop to prevent UI blocking without fixed delay
+    await Future.delayed(Duration(milliseconds: 500));
   }
-  print('❌ Transaction still not mined after $retries retries');
+
+  print('❌ Failed to get receipt after $retries attempts for $txHash');
   return null;
 }
 

@@ -75,7 +75,6 @@ bool isCompleted = false;
   @override
   void initState()  {
     super.initState();
-
 _loadProjectState();
     _getUserType();
     _web3client = Web3Client(rpcUrl, Client());
@@ -112,6 +111,8 @@ _loadProjectState();
 
   }
 
+
+
 Future<void> _loadProjectState() async {
    setState(() {
     _isLoadingState = true;
@@ -142,7 +143,6 @@ Future<void> _loadProjectState() async {
     }
   }
 
-
 Future<void> _fetchVotingStatus() async {
   print('🔍 Fetching voting status for project: ${widget.projectId}');
 
@@ -159,22 +159,22 @@ Future<void> _fetchVotingStatus() async {
     final BigInt bigProjectId = BigInt.from(widget.projectId);
     print('🔢 Converted project ID to BigInt: $bigProjectId');
     print('🧾 Checking if donor can vote using address: $globalWalletAddress');
-    
 
-print('🛑 isCanceled: $isCanceled');
+    print('🛑 isCanceled: $isCanceled');
 
-canVote = await donorServices.checkIfDonorCanVote(
-  bigProjectId,
-  globalWalletAddress.toString(),
-);
+    // Check donor voting eligibility
+    final bool donorEligibility = await donorServices.checkIfDonorCanVote(
+      bigProjectId,
+      globalWalletAddress.toString(),
+    );
 
-    print(' DOOOOONOOOOR: ${globalWalletAddress.toString()}');
+    print('✅ Donor voting eligibility status: $donorEligibility');
 
-    print('✅ Donor voting eligibility status: $canVote');
- setState(() {
-        canVote = true;
-      });
-      return;
+    setState(() {
+      canVote = donorEligibility;
+    });
+
+    // Check voting status from Firestore
     final projectDocRef = FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString());
@@ -186,24 +186,24 @@ canVote = await donorServices.checkIfDonorCanVote(
       final data = projectDoc.data();
       print('📄 Project document exists. Data: $data');
 
-       
+      setState(() {
+        votingInitiated = data?['votingInitiated'] ?? false;
+      });
     } else {
       print('❌ Project document not found in Firestore. Creating default document...');
-      await projectDocRef.set({
-        'votingInitiated': false,
-      });
+      await projectDocRef.set({'votingInitiated': false});
 
       print('✅ Default project document created with votingInitiated = false');
 
       setState(() {
         votingInitiated = false;
-        print('🚦 Voting initiated status set to default (false)');
       });
     }
   } catch (e) {
     print('⚠️ Error while fetching voting status: $e');
   }
 }
+
 
 StreamSubscription<DocumentSnapshot>? _projectSubscription;
 
@@ -447,7 +447,7 @@ if (!doc.exists) {
     'isCanceled': false,
     'isCompleted': false,
     'votingInitiated': false,
-    'isEnded': false,
+  
   });
 
   print("✅ Created default document for project ID: $projectId");
@@ -636,6 +636,7 @@ Widget _buildTypeItem(String title, String value) {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
+            
             color: Color.fromRGBO(24, 71, 137, 1), // Project Title Color
           ),
         ),
@@ -664,6 +665,8 @@ Widget _buildTypeItem(String title, String value) {
 
   @override
 Widget build(BuildContext context) {
+ 
+
     String projectState = _getProjectState();
 print("Project status: $projectState");
 
@@ -1049,7 +1052,7 @@ if (userType == 1 &&
 
 
 
-if (canVote && votingInitiated && userType == 0 )
+if (canVote && votingInitiated && userType == 0 && (!isEnded))
   Center(
     child: ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -1077,6 +1080,7 @@ if (canVote && votingInitiated && userType == 0 )
           context,
           MaterialPageRoute(
             builder: (context) => DonorVotePage(
+              projectId: widget.projectId.toString(),
               walletAddress: globalWalletAddress ?? '',
               votingId: votingId.toString(), // 👈 Pass it here
             ),
@@ -1285,6 +1289,7 @@ Widget _buildDateItem(String title, String value, {Color valueColor = Colors.gre
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
+          fontFamily: 'Georgia',
           color: Color.fromRGBO(24, 71, 137, 1),
         ),
         children: [
@@ -1437,6 +1442,8 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16, // Decrease font size here
+          fontFamily: 'Georgia',
+
           color: Color.fromRGBO(24, 71, 137, 1), // Set title color
         ),
         children: [
@@ -1597,7 +1604,7 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     // Load contract
     final donationContract = DeployedContract(
       ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-      EthereumAddress.fromHex('0x74409493A94E68496FA90216fc0A40BAF98CF0B9'),
+      EthereumAddress.fromHex('0x6753413d428794F8CE9a9359E1739450A8cfED45'),
     );
 
     final function = donationContract.function('donate');
@@ -1789,7 +1796,7 @@ class DonorServices {
 
   // Contract address and RPC URL as constants
   static const String _rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
-  static const String _contractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9'; // Contract address on Sepolia
+  static const String _contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45'; // Contract address on Sepolia
   
   // Constructor for initializing Web3 client and contract
   DonorServices()
@@ -1894,7 +1901,7 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
     );
 
   if (isDonor) return true;
-    else return false;
+    // else return false;
 
     print(isDonor
         ? "✅ User IS a donor for this project."

@@ -9,6 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/AdminScreens/AdminSidebar.dart';
 
+
+
+
+
+
+
+
 class BrowseProjects extends StatefulWidget {
   final String walletAddress;
   const BrowseProjects({super.key, required this.walletAddress});
@@ -93,7 +100,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
 
       List<Map<String, dynamic>> projects = [];
 
-      for (int i = 39; i < projectCount; i++) {
+      for (int i = 0; i < projectCount; i++) {
         try {
           final project = await _blockchainService.getProjectDetails(i);
           if (project.containsKey("error")) {
