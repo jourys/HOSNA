@@ -342,28 +342,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 Widget build(BuildContext context) {
   return Scaffold(
     backgroundColor: Colors.white, // Make the background of the body white
-    appBar: PreferredSize(
-      preferredSize: Size.fromHeight(40), // Increase the height of the app bar
-      child: AppBar(
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Blue color for the top bar
-        elevation: 0, // Remove shadow
-        automaticallyImplyLeading: false, // Remove back arrow
-        flexibleSpace: Padding(
-          padding: EdgeInsets.only(bottom: 10), // Move text down a bit
-          child: Align(
-            alignment: Alignment.bottomCenter, // Center text vertically
-            child: Text(
-              "Edit Profile", // Updated text
-              style: TextStyle(
-                color: Colors.white, // White text color
-                fontSize: 24, // Font size
-                fontWeight: FontWeight.bold, // Bold font weight
-              ),
-            ),
+   appBar: PreferredSize(
+  preferredSize: Size.fromHeight(40), // Increase the height of the app bar
+  child: AppBar(
+    backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Blue color for the top bar
+    elevation: 0, // Remove shadow
+    automaticallyImplyLeading: false, // Disable automatic leading widget
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back, // Back arrow icon
+        color: Colors.white, // White color for the icon
+      ),
+      onPressed: () {
+        Navigator.of(context).pop(); // Go back to the previous screen
+      },
+    ),
+    flexibleSpace: Padding(
+      padding: EdgeInsets.only(bottom: 10), // Move text down a bit
+      child: Align(
+        alignment: Alignment.bottomCenter, // Center text vertically
+        child: Text(
+          "Edit Profile", // Updated text
+          style: TextStyle(
+            color: Colors.white, // White text color
+            fontSize: 24, // Font size
+            fontWeight: FontWeight.bold, // Bold font weight
           ),
         ),
       ),
     ),
+  ),
+),
+
     body: Stack(
       children: [
         // Blue background below the container
