@@ -947,50 +947,91 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     projects = BlockchainService().fetchOrganizationProjects(widget.orgAddress);
   }
 
-  Future<String> _getProjectState(Map<String, dynamic> project) async {
-    DateTime now = DateTime.now();
 
-    String projectId = project['id'].toString(); // Ensure it's a String
-    bool isCanceled =
-        await _isProjectCanceled(projectId); // Await the async call
 
-    if (isCanceled) {
-      print("This project is canceled.");
-      return "canceled";
-    } else {
-      print("This project is active.");
+  
+Future<String> _getProjectState(Map<String, dynamic> project) async {
+  DateTime now = DateTime.now();
+  String projectId = project['id'].toString(); // Ensure it's a String
+
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .get();
+
+    if (!doc.exists) {
+      print("⚠️ Project not found. Creating default fields...");
+      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
+        'isCanceled': false,
+        'isCompleted': false,
+        'isEnded': false,
+        'votingInitiated': false,
+      });
     }
 
-    // Handle startDate (could be DateTime, String, or null)
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    bool isCanceled = data['isCanceled'] ?? false;
+    bool isCompleted = data['isCompleted'] ?? false;
+bool isEnded = false;
+final votingId = data['votingId'];
+
+if (votingId != null) {
+  final votingDocRef = FirebaseFirestore.instance
+      .collection("votings")
+      .doc(votingId.toString());
+
+  final votingDoc = await votingDocRef.get();
+  final votingData = votingDoc.data();
+
+  if (votingDoc.exists) {
+    isEnded = votingData?['IsEnded'] ?? false;
+  }
+}
+    bool votingInitiated = data['votingInitiated'] ?? false;
+
+    // Determine projectState based on Firestore flags
+    if (isEnded) {
+      return "ended";}
+    if (isCompleted) {
+      return "completed";
+    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+      return "voting";
+    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+      return "canceled";
+    }
+
+    // Fallback to logic based on time and funding progress
     DateTime startDate = project['startDate'] != null
         ? (project['startDate'] is DateTime
             ? project['startDate']
             : DateTime.parse(project['startDate']))
-        : DateTime.now(); // Use current time if startDate is null
+        : DateTime.now();
 
-    // Handle endDate (could be DateTime, String, or null)
     DateTime endDate = project['endDate'] != null
         ? (project['endDate'] is DateTime
             ? project['endDate']
             : DateTime.parse(project['endDate']))
-        : DateTime.now(); // Use current time if endDate is null
+        : DateTime.now();
 
-    // Get totalAmount and donatedAmount, handle null or invalid values
     double totalAmount = (project['totalAmount'] ?? 0).toDouble();
     double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
     if (now.isBefore(startDate)) {
-      return "upcoming"; // Project is not started yet
+      return "upcoming";
     } else if (donatedAmount >= totalAmount) {
-      return "in-progress"; // Project reached the goal
+      return "in-progress";
+    } else if (now.isAfter(endDate)) {
+      return "failed";
     } else {
-      if (now.isAfter(endDate)) {
-        return "failed"; // Project failed to reach the target
-      } else {
-        return "active"; // Project is ongoing and goal is not reached yet
-      }
+      return "active";
     }
+  } catch (e) {
+    print("❌ Error determining project state for ID $projectId: $e");
+    return "unknown";
   }
+}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -1015,22 +1056,27 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     }
   }
 
-  Color _getStateColor(String state) {
-    switch (state) {
-      case "active":
-        return Colors.green;
-      case "failed":
-        return Colors.red;
-      case "in-progress":
-        return Colors.purple;
-      case "completed":
-        return Colors.blue;
-      case "canceled":
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
+
+ Color _getStateColor(String state) {
+  switch (state) {
+    case "active":
+      return Colors.green;
+    case "failed":
+      return Colors.red;
+    case "in-progress":
+      return Colors.purple;
+    case "voting":
+      return Colors.blue;
+    case "canceled":
+      return Colors.orange;
+    case "ended":
+      return Colors.grey;
+    case "completed":
+      return  Color.fromRGBO(24, 71, 137, 1);
+    default:
+      return Colors.grey;
   }
+}
 
   double weiToEth(BigInt wei) {
     return (wei / BigInt.from(10).pow(18)).toDouble();
@@ -1041,7 +1087,7 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     return Scaffold(
       backgroundColor: Color.fromRGBO(24, 71, 137, 1),
       appBar: AppBar(
-        toolbarHeight: 70,
+        toolbarHeight: 55,
         title: Padding(
           padding: EdgeInsets.only(bottom: 1),
           child: Text(
@@ -1105,143 +1151,179 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
 
                   final projectList = snapshot.data!;
 
-                  return ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: projectList.length,
-                    itemBuilder: (context, index) {
-                      final project = projectList[index];
+                  return 
+                  
 
-                      return FutureBuilder<String>(
-                        future: _getProjectState(
-                            project), // Await the project state
-                        builder: (context, stateSnapshot) {
-                          if (stateSnapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return Center(
-                                child: CircularProgressIndicator(
-                              color: Colors.white,
-                            ));
-                          } else if (stateSnapshot.hasError) {
-                            return Center(
-                                child: Text("Error: ${stateSnapshot.error}"));
-                          } else if (!stateSnapshot.hasData) {
-                            return SizedBox(); // Handle no data scenario
-                          }
+       ListView.builder(
+  padding: const EdgeInsets.all(14), // Slightly increased padding
+  itemCount: projectList.length,
+  itemBuilder: (context, index) {
+    final project = projectList[index];
 
-                          final projectState = stateSnapshot.data!;
-                          final stateColor = _getStateColor(projectState);
+    return FutureBuilder<String>(
+      future: _getProjectState(project),
+      builder: (context, stateSnapshot) {
+        if (stateSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator(color: Colors.white));
+        } else if (stateSnapshot.hasError) {
+          return Center(child: Text("Error: ${stateSnapshot.error}"));
+        } else if (!stateSnapshot.hasData) {
+          return SizedBox();
+        }
 
-                          final deadline = project['endDate'] != null
-                              ? DateFormat('yyyy-MM-dd').format(
-                                  DateTime.parse(project['endDate'].toString()))
-                              : 'No deadline available';
-                          final double progress =
-                              project['donatedAmount'] / project['totalAmount'];
+        final projectState = stateSnapshot.data!;
+        final stateColor = _getStateColor(projectState);
 
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              side: BorderSide(
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                  width: 3),
-                            ),
-                            elevation: 2,
-                            margin: EdgeInsets.symmetric(
-                                vertical: 6, horizontal: 16),
-                            child: ListTile(
-                              tileColor: Colors.grey[200],
-                              contentPadding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
-                              title: Text(
-                                project['name'] ?? 'Untitled',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Color.fromRGBO(24, 71, 137, 1)),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SizedBox(height: 8),
-                                  RichText(
-                                    text: TextSpan(
-                                      text: 'Deadline: ',
-                                      style: TextStyle(
-                                          fontSize: 17,
-                                          color:
-                                              Color.fromRGBO(238, 100, 90, 1)),
-                                      children: [
-                                        TextSpan(
-                                          text: deadline,
-                                          style: TextStyle(
-                                              fontSize: 17, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  LinearProgressIndicator(
-                                    value: progress,
-                                    backgroundColor: Colors.grey[200],
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        stateColor),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${(progress * 100).toStringAsFixed(0)}%',
-                                        style:
-                                            TextStyle(color: Colors.grey[600]),
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: stateColor.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          projectState,
-                                          style: TextStyle(
-                                              color: stateColor,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ProjectDetails(
-                                      projectName: project['name'],
-                                      description: project['description'],
-                                      startDate:
-                                          project['startDate'].toString(),
-                                      deadline: project['endDate'].toString(),
-                                      totalAmount: project['totalAmount'],
-                                      projectType: project['projectType'],
-                                      projectCreatorWallet:
-                                          project['organization'] ?? '',
-                                      donatedAmount: project['donatedAmount'],
-                                      projectId: project['id'],
-                                      progress: progress,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
+        final deadline = project['endDate'] != null
+            ? DateFormat('yyyy-MM-dd').format(DateTime.parse(project['endDate'].toString()))
+            : 'No deadline';
+        final double progress = project['donatedAmount'] / project['totalAmount'];
+
+        // Light grey color instead of gradient
+        final bgColor = const Color.fromARGB(255, 230, 227, 227); // Very light grey background
+
+        // Dark red ombré for deadline
+        final deadlineColor = LinearGradient(
+          colors: [
+            Color(0xFF8B0000), // Dark Red
+            Color(0xFFB22222), // Firebrick Red
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+
+        // Navy blue ombré for name
+        final nameColor = LinearGradient(
+          colors: [
+            Color(0xFF000080), // Navy Blue
+            Color(0xFF4682B4), // Steel Blue
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProjectDetails(
+                  projectName: project['name'],
+                  description: project['description'],
+                  startDate: project['startDate'].toString(),
+                  deadline: project['endDate'].toString(),
+                  totalAmount: project['totalAmount'],
+                  projectType: project['projectType'],
+                  projectCreatorWallet: project['organization'] ?? '',
+                  donatedAmount: project['donatedAmount'],
+                  projectId: project['id'],
+                  progress: progress,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6), // Reduced margin for smaller card size
+            padding: const EdgeInsets.all(12), // Reduced padding for smaller card size
+            decoration: BoxDecoration(
+              color: bgColor, // Light grey color background
+              borderRadius: BorderRadius.circular(12), // Slightly smaller border radius for smaller card
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 8, // Reduced blur radius for smaller shadow
+                  offset: Offset(0, 4), // Reduced shadow offset for smaller card
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) {
+                    return nameColor.createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height));
+                  },
+                  child: Text(
+                    project['name'] ?? 'Untitled Project',
+                    style: TextStyle(
+                      fontSize: 16, // Slightly smaller font size for title
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white, // The color here is overridden by the ShaderMask
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10), // Reduced space between title and progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8), // Smaller border radius for progress bar
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withOpacity(0.3),
+                    valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                    minHeight: 6, // Reduced height for progress bar
+                  ),
+                ),
+                SizedBox(height: 8), // Reduced space between progress bar and state text
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 14, // Smaller font size for progress percentage
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4), // Reduced padding
+                      decoration: BoxDecoration(
+                        color: stateColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16), // Slightly smaller border radius
+                      ),
+                      child: Text(
+                        projectState,
+                        style: TextStyle(
+                          color: stateColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13, // Smaller font size for state text
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10), // Reduced space for deadline section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    ShaderMask(
+                      shaderCallback: (bounds) {
+                        return deadlineColor.createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height));
+                      },
+                      child: Icon(
+                        Icons.access_time, // Deadline icon
+                        size: 20,
+                      ),
+                    ),
+                    SizedBox(width: 6), // Reduced space between icon and text
+                    Text(
+                      'Deadline: $deadline',
+                      style: TextStyle(
+                        fontSize: 13, // Smaller font size for deadline text
+                        foreground: Paint()..shader = deadlineColor.createShader(Rect.fromLTWH(0, 0, 200, 70)), // Dark red ombré for deadline text
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  },
+);
+
+
                 },
               ),
             ),

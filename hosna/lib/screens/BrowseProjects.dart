@@ -165,6 +165,7 @@ late GetCharityByWallet _charityService;
       _showMyProjects = false;
     });
   }
+  
 Future<String> _getProjectState(Map<String, dynamic> project) async {
   DateTime now = DateTime.now();
   String projectId = project['id'].toString(); // Ensure it's a String
