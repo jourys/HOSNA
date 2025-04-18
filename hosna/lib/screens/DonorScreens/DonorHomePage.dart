@@ -9,6 +9,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/DonorScreens/DonationHistoryPage.dart';
+import 'package:hosna/screens/NotificationService.dart';
 
 import 'DonorProfile.dart';
 
@@ -46,6 +47,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadWalletAndData();
     _loadUserName();
+    _checkAllProjectStates();
   }
 
   Future<void> _loadUserName() async {
@@ -297,6 +299,9 @@ class _HomePageState extends State<HomePage> {
 
       print("📊 Final history list length: ${historyList.length}");
 
+      // Add this line before the final setState
+      await _checkAllProjectStates();
+
       if (!mounted) return;
       setState(() {
         donationHistory = historyList;
@@ -310,6 +315,96 @@ class _HomePageState extends State<HomePage> {
         hasError = true;
         errorMessage = 'Failed to load data. Please try again.';
       });
+    }
+  }
+
+  Future<void> _checkAllProjectStates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final address = prefs.getString('walletAddress');
+      
+      if (address == null || address.isEmpty) {
+        print("❌ No wallet address found for checking project states");
+        return;
+      }
+
+      // Get all projects from blockchain
+      final allProjects = await _blockchainService.fetchAllProjects();
+      
+      // For each project, check if the user has donated to it
+      for (var project in allProjects) {
+        final projectId = project['id'].toString();
+        
+        // Get current project details from Firestore
+        final projectDoc = await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .get();
+
+        print("Project ${project['name']} - Project ID: $projectId");
+            
+        if (!projectDoc.exists) continue;
+        
+        final data = projectDoc.data() as Map<String, dynamic>;
+        
+        // Get current state
+        final bool isCanceled = data['isCanceled'] ?? false;
+        final bool isEnded = DateTime.now().isAfter(project['endDate']);
+        final bool isCompleted = project['donatedAmount'] >= project['totalAmount'];
+        final bool votingInitiated = data['votingInitiated'] ?? false;
+        
+        final String currentState = getProjectState(
+          data, votingInitiated, isCanceled, isEnded, isCompleted);
+        
+        // Get previous state
+        final String previousState = data['currentState'] ?? 'active';
+        
+        print("Project ${project['name']} - Current state: $currentState, Previous state: $previousState");
+        
+        // If state has changed, update Firestore and send notification
+        if (currentState != previousState) {
+          print("🔄 Project state changed from $previousState to $currentState for project ${project['name']}");
+          
+          // Update current state in Firestore
+          await FirebaseFirestore.instance
+              .collection('projects')
+              .doc(projectId)
+              .update({'currentState': currentState});
+          
+          // Send notification if state is one of these specific states
+          if (currentState == "voting" || currentState == "ended" || 
+              currentState == "in-progress" || currentState == "completed") {
+            
+            try {
+              final notificationService = NotificationService();
+              await notificationService.sendProjectStatusNotification(
+                int.parse(projectId),
+                data['name'] ?? "Unknown Project",
+                currentState
+              );
+              print("✅ Notifications sent for project state change to $currentState");
+            } catch (e) {
+              print("❌ Error sending notifications: $e");
+            }
+          }
+        }
+      }
+      
+      print("✅ Completed checking all project states");
+    } catch (e) {
+      print("❌ Error checking project states: $e");
+    }
+  }
+
+  String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool isCanceled, bool isEnded, bool isCompleted) {
+    if (isCanceled) {
+      return votingInitiated ? "voting" : "canceled";
+    } else if (isCompleted) {
+      return "completed";
+    } else if (isEnded) {
+      return "ended";
+    } else {
+      return "active";
     }
   }
 
@@ -594,99 +689,99 @@ class _HomePageState extends State<HomePage> {
         return Colors.grey;
     }
   }
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-    appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(65),
-      child: AppBar(
-        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        flexibleSpace: Padding(
-          padding: const EdgeInsets.only(left: 25, bottom: 10),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 35),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(65),
+        child: AppBar(
+          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          flexibleSpace: Padding(
+            padding: const EdgeInsets.only(left: 25, bottom: 10),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 35),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Good Day, ${_firstName}!",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
                     children: [
-                      Text(
-                        "Good Day, ${_firstName}!",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 25,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(
+                        width: 120,
+                        height: 70,
+                        child: IconButton(
+                          icon: const Icon(Icons.account_circle,
+                              size: 75, color: Colors.white),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ProfileScreenTwo()),
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
-                ),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 120,
-                      height: 70,
-                      child: IconButton(
-                        icon: const Icon(Icons.account_circle,
-                            size: 75, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => ProfileScreenTwo()),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-    body: LayoutBuilder(
-      builder: (context, constraints) {
-        return RefreshIndicator(
-          onRefresh: _loadWalletAndData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight,
-              ),
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return RefreshIndicator(
+            onRefresh: _loadWalletAndData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
                 ),
-                padding: const EdgeInsets.only(bottom: 20), // Optional padding
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildVotingSection(),
-                    const Divider(height: 32),
-                    _buildDonationHistorySection(),
-                  ],
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  padding: const EdgeInsets.only(bottom: 20), // Optional padding
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildVotingSection(),
+                      const Divider(height: 32),
+                      _buildDonationHistorySection(),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
+          );
+        },
+      ),
+    );
+  }
 }
