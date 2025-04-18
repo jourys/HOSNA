@@ -10,6 +10,10 @@ import 'dart:convert';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:hosna/screens/NotificationService.dart';
+
+import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
+
 class CharityEmployeeHomePage extends StatefulWidget {
   const CharityEmployeeHomePage({super.key});
 
@@ -28,6 +32,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     _loadWalletAndProjects();
     _loadOrganizationData();
     printUserType();
+    _checkProjectStates();
   }
 
   Future<void> printUserType() async {
@@ -118,6 +123,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     });
 
     print("✅ Filtered Projects Count: ${_projects.length}");
+    await _checkProjectStates();
   }
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
@@ -268,24 +274,66 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: SizedBox(
-                      width: 120,
-                      height: 80,
-                      child: IconButton(
-                        icon: const Icon(Icons.account_circle,
-                            size: 85, color: Colors.white),
+                   Row(
+
+                    children: [
+
+                      IconButton(
+
+                        icon: const Icon(
+
+                          Icons.notifications,
+
+                          color: Colors.white,
+
+                          size: 30,
+
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => ProfileScreenCharity()),
+                                builder: (context) => CharityNotificationsPage(),
+
+                            ),
                           );
                         },
                       ),
-                    ),
-                  )
+                    SizedBox(width: 10),
+
+                      SizedBox(
+
+                        width: 100,
+
+                        height: 80,
+
+                        child: IconButton(
+
+                          icon: const Icon(Icons.account_circle,
+
+                              size: 85, color: Colors.white),
+
+                          onPressed: () {
+
+                            Navigator.push(
+
+                              context,
+
+                              MaterialPageRoute(
+
+                                  builder: (context) => ProfileScreenCharity()),
+
+                            );
+
+                          },
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
                 ],
               ),
             ),
@@ -664,5 +712,226 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
         ),
       ],
     );
+  }
+  Future<void> _checkProjectStates() async {
+
+    try {
+
+      final prefs = await SharedPreferences.getInstance();
+
+      final savedWallet = prefs.getString('walletAddress');
+
+
+
+      if (savedWallet == null) {
+
+        print("❌ No wallet address found for checking project states");
+
+        return;
+
+      }
+
+
+
+      // Get organization's projects
+
+      final blockchainService = BlockchainService();
+
+      final myProjects = await blockchainService.fetchOrganizationProjects(savedWallet);
+
+      
+
+      // Process each project
+
+      for (var project in myProjects) {
+
+        final projectId = project['id'].toString();
+
+        
+
+        // Get current project details from Firestore
+
+        final projectDoc = await FirebaseFirestore.instance
+
+            .collection('projects')
+
+            .doc(projectId)
+
+            .get();
+
+            
+
+        if (!projectDoc.exists) continue;
+
+        
+
+        final data = projectDoc.data() as Map<String, dynamic>;
+
+        
+
+        // Check project state
+
+        final bool isCanceled = data['isCanceled'] ?? false;
+
+        final bool isCompleted = project['donatedAmount'] >= project['totalAmount'];
+
+        final bool isEnded = DateTime.now().isAfter(project['endDate']);
+
+        final bool votingInitiated = data['votingInitiated'] ?? false;
+
+        final bool hasVoting = await blockchainService.hasExistingVoting(project['id']);
+
+        final bool votingEnded = hasVoting && DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch((data['votingEndDate'] ?? 0) * 1000));
+
+        
+
+        // Determine current state
+
+        String currentState;
+
+        if (isCanceled) {
+
+          currentState = votingInitiated ? "voting" : "canceled";
+
+          if (votingEnded) currentState = "ended";
+
+        } else if (isCompleted) {
+
+          currentState = "in-progress"; // Project funded successfully
+
+        } else if (isEnded) {
+
+          currentState = "ended";
+
+        } else {
+
+          currentState = "active";
+
+        }
+
+        
+
+        // Get previous state
+
+        String previousState = data['currentState'] ?? 'active';
+
+        
+
+        print("Project ${project['name']} - Current state: $currentState, Previous state: $previousState");
+
+        
+
+        // Only handle state changes
+
+        if (currentState != previousState) {
+
+          print("🔄 Project state changed from $previousState to $currentState for project ${project['name']}");
+
+          
+
+          // Update current state in Firestore
+
+          await FirebaseFirestore.instance
+
+              .collection('projects')
+
+              .doc(projectId)
+
+              .update({'currentState': currentState});
+
+          
+
+          // Create a notification for charity employee based on specific state changes (R1 and R2)
+
+          if ((currentState == "in-progress" && previousState == "active") || // R1: Project funded -> in-progress 
+
+              (currentState == "ended" && previousState == "voting")) {       // R2: Voting ended -> ended
+
+            
+
+            try {
+
+              // Create a unique notification ID
+
+              final notificationId = 'charity_${projectId}_${currentState}_${DateTime.now().millisecondsSinceEpoch}';
+
+              
+
+              // Create notification in Firestore
+
+              await FirebaseFirestore.instance
+
+                  .collection('charity_notifications')
+
+                  .doc(notificationId)
+
+                  .set({
+
+                    'charityAddress': savedWallet,
+
+                    'projectId': projectId,
+
+                    'projectName': project['name'] ?? 'Unknown Project',
+
+                    'message': _getStatusChangeMessage(currentState, project['name'] ?? 'Unknown Project'),
+
+                    'type': 'status_change',
+
+                    'status': currentState,
+
+                    'timestamp': FieldValue.serverTimestamp(),
+
+                    'isRead': false,
+
+                  });
+
+                  
+
+              print("✅ Notification created for charity: $savedWallet about project state change to $currentState");
+
+            } catch (e) {
+
+              print("❌ Error creating notification: $e");
+
+            }
+
+          }
+
+        }
+
+      }
+
+      
+
+      print("✅ Completed checking all project states");
+
+    } catch (e) {
+
+      print("❌ Error checking project states: $e");
+
+    }
+
+  }
+
+
+
+  String _getStatusChangeMessage(String status, String projectName) {
+
+    switch (status) {
+
+      case 'in-progress':
+
+        return 'Project "$projectName" has been fully funded and is now in progress!';
+
+      case 'ended':
+
+        return 'The voting period for project "$projectName" has ended.';
+
+      default:
+
+        return 'Project "$projectName" status has changed to $status.';
+
+    }
+
   }
 }

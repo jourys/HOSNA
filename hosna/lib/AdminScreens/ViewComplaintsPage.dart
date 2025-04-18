@@ -1461,44 +1461,24 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                         ElevatedButton(
                           onPressed: () async {
                             // Show the confirmation dialog
-                            bool isConfirmed =
-                                await _showSuspendConfirmationDialog(context);
+                            bool isConfirmed = await _showSuspendConfirmationDialog(context);
 
                             if (isConfirmed) {
-                              try {
-                                // Suspend the account by updating the 'isSuspend' field in Firestore
-                                await FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(widget.walletAddress)
-                                    .update({'isSuspend': true});
+                              // The suspension logic is now handled in _showSuspendConfirmationDialog
+                              // Just show the success popup
+                              showSuspendSuccessPopup(context);
 
-                                // Show the success pop-up
-                                showSuspendSuccessPopup(context);
+                              // Show a SnackBar for quick feedback
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "Account has been suspended successfully."),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
 
-                                // Show a SnackBar for quick feedback
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "Account has been suspended successfully."),
-                                    backgroundColor: Colors.red,
-                                    duration: Duration(seconds: 3),
-                                  ),
-                                );
-
-                                print("✅ Account suspended successfully!");
-                              } catch (e) {
-                                // Handle error if suspension fails
-                                print("❌ Error suspending account: $e");
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "Failed to suspend the account. Please try again."),
-                                    backgroundColor: Colors.red,
-                                    duration: Duration(seconds: 3),
-                                  ),
-                                );
-                              }
+                              print("✅ Account suspended successfully!");
                             } else {
                               print("❌ Suspension cancelled by user.");
                             }
@@ -1524,9 +1504,13 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                 await _showcancelConfirmationDialog(context);
 
                             if (confirmed) {
-                              final helper = CancelAllProjectsHelper();
-                              await helper.cancelAllProjectsForOrganization(
-                                  widget.walletAddress);
+                              // final helper = CancelAllProjectsHelper();
+                              // await helper.cancelAllProjectsForOrganization(
+                              //     widget.walletAddress);
+
+                               // The cancellation logic is now handled in the dialog's then() callback
+
+                              // Just update the user's suspend status and show success popup
                               await FirebaseFirestore.instance
                                   .collection('users')
                                   .doc(widget.walletAddress)
@@ -1613,6 +1597,11 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 
 // Function to show confirmation dialog before cancellation
   Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+    // Create a TextEditingController for the justification field
+
+    final justificationController = TextEditingController();
+
+    String justification = "Admin initiated cancellation"; // Default value
     return await showDialog<bool>(
           context: context,
           barrierDismissible:
@@ -1621,19 +1610,91 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
             return AlertDialog(
               backgroundColor: Colors.white, // Set background to white
               title: const Text(
-                'Confirm cancelation',
+                'Confirm Cancelation',
                 style: TextStyle(
                   fontWeight: FontWeight.bold, // Make title bold
                   fontSize: 22, // Increase title font size
                 ),
                 textAlign: TextAlign.center, // Center the title text
               ),
-              content: const Text(
-                'Are you sure you want to suspend this account and cancel all projects ?',
-                style: TextStyle(
-                  fontSize: 18, // Make content text bigger
+              content: SingleChildScrollView(
+
+                child: Column(
+
+                  mainAxisSize: MainAxisSize.min,
+
+                  children: [
+
+                    const Text(
+
+                      'Are you sure you want to suspend this account and cancel all projects?',
+
+                      style: TextStyle(
+
+                        fontSize: 18, // Make content text bigger
+
+                      ),
+
+                      textAlign: TextAlign.center, // Center the content text
+
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+
+                      'Please provide a justification:',
+
+                      style: TextStyle(
+
+                        fontSize: 16,
+
+                        fontWeight: FontWeight.bold,
+
+                      ),
+
+                      textAlign: TextAlign.left,
+
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    TextField(
+
+                      controller: justificationController,
+
+                      maxLines: 3,
+
+                      decoration: InputDecoration(
+
+                        hintText: 'Enter reason for cancellation...',
+
+                        border: OutlineInputBorder(
+
+                          borderRadius: BorderRadius.circular(8),
+
+                        ),
+
+                        filled: true,
+
+                        fillColor: Colors.grey[100],
+
+                      ),
+
+                      onChanged: (value) {
+
+                        if (value.trim().isNotEmpty) {
+
+                          justification = value;
+
+                        }
+
+                      },
+
+                    ),
+
+                  ],
                 ),
-                textAlign: TextAlign.center, // Center the content text
               ),
               actions: <Widget>[
                 Row(
@@ -1664,8 +1725,31 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     const SizedBox(width: 20), // Add space between buttons
                     OutlinedButton(
                       onPressed: () {
-                        Navigator.pop(
-                            context, true); // Return true after confirming save
+                        // Validate if justification is provided
+
+                        if (justificationController.text.trim().isEmpty) {
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+
+                            const SnackBar(
+
+                              content: Text('Please provide a justification for cancellation.'),
+
+                              backgroundColor: Colors.red,
+
+                            ),
+
+                          );
+
+                        } else {
+
+                          // Store the justification in a global variable or a provider
+
+                          justification = justificationController.text.trim();
+
+                          Navigator.pop(context, true); // Return true with justification
+
+                        }
                       },
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
@@ -1691,99 +1775,219 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                   vertical: 10), // Add padding for the actions
             );
           },
-        ) ??
-        false; // If null, default to false
+        ).then((confirmed) {
+
+          if (confirmed == true) {
+
+            // Pass the justification to the cancellation helper
+
+            final helper = CancelAllProjectsHelper();
+
+            helper.cancelAllProjectsForOrganization(widget.walletAddress, justification);
+
+            return true;
+
+          }
+
+          return false;
+
+        });
   }
 
   Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
     print("🚀 Showing suspend confirmation dialog...");
-
+    
+    // Create a TextEditingController for the justification field
+    final justificationController = TextEditingController();
+    String justification = "Account suspended by admin"; // Default value
+    
     return await showDialog<bool>(
-          context: context,
-          barrierDismissible:
-              false, // Prevent dismissing the dialog by tapping outside
-          builder: (BuildContext context) {
-            print("🔧 Building the dialog...");
-
-            return AlertDialog(
-              backgroundColor: Colors.white, // Set background to white
-              title: const Text(
-                'Confirm Suspension',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold, // Make title bold
-                  fontSize: 22, // Increase title font size
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Confirm Account Suspension',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Are you sure you want to suspend this charity account?',
+                  style: TextStyle(
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center, // Center the title text
-              ),
-              content: const Text(
-                'Are you sure you want to suspend this account?',
-                style: TextStyle(
-                  fontSize: 18, // Make content text bigger
+                const SizedBox(height: 20),
+                const Text(
+                  'Please provide a justification:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.left,
                 ),
-                textAlign: TextAlign.center, // Center the content text
-              ),
-              actions: <Widget>[
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the buttons
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        print("❌ Cancel clicked - Suspension not confirmed.");
-                        Navigator.pop(context, false); // Return false on cancel
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Color.fromRGBO(
-                              24, 71, 137, 1), // Border color for Cancel button
-                          width: 3,
-                        ),
-                        backgroundColor: Color.fromRGBO(24, 71, 137,
-                            1), // Background color for Cancel button
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 20, // Increase font size for buttons
-                          color: Colors
-                              .white, // White text color for Cancel button
-                        ),
-                      ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: justificationController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter reason for account suspension...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 20), // Add space between the buttons
-                    OutlinedButton(
-                      onPressed: () {
-                        print("✅ Yes clicked - Suspension confirmed.");
-                        Navigator.pop(context,
-                            true); // Return true after confirming suspension
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Color.fromRGBO(
-                              212, 63, 63, 1), // Border color for Yes button
-                          width: 3,
-                        ),
-                        backgroundColor: Color.fromRGBO(
-                            212, 63, 63, 1), // Background color for Yes button
-                      ),
-                      child: const Text(
-                        '   Yes   ',
-                        style: TextStyle(
-                          fontSize: 20, // Increase font size for buttons
-                          color:
-                              Colors.white, // White text color for Yes button
-                        ),
-                      ),
-                    ),
-                  ],
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                  onChanged: (value) {
+                    if (value.trim().isNotEmpty) {
+                      justification = value;
+                    }
+                  },
                 ),
               ],
-              actionsPadding: const EdgeInsets.symmetric(
-                  vertical: 10), // Add padding for the actions
-            );
-          },
-        ) ??
-        false; // If null, default to false
+            ),
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 3,
+                    ),
+                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                  child: const Text(
+                    '  No  ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                OutlinedButton(
+                  onPressed: () {
+                    // Validate if justification is provided
+                    if (justificationController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please provide a justification for suspension.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } else {
+                      // Store the justification
+                      justification = justificationController.text.trim();
+                      Navigator.pop(context, true);
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: const Color.fromARGB(255, 182, 12, 12),
+                      width: 3,
+                    ),
+                    backgroundColor: const Color.fromARGB(255, 182, 12, 12),
+                  ),
+                  child: const Text(
+                    '  Yes  ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed == true) {
+        // Suspend account and send notification
+        _suspendAccountWithJustification(widget.walletAddress, justification);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  Future<void> _suspendAccountWithJustification(String walletAddress, String justification) async {
+    try {
+      // Update the account in Firestore with suspension status and reason
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .update({
+            'isSuspend': true,
+            'suspensionReason': justification,
+            'suspendedAt': FieldValue.serverTimestamp(),
+            'suspendedBy': 'admin'
+          });
+      
+      // Fetch organization information to use in notification
+      final orgDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .get();
+      
+      if (orgDoc.exists) {
+        final orgData = orgDoc.data();
+        final orgName = orgData?['name'] ?? 'Unknown Organization';
+        
+        // Send notification to the suspended charity
+        await _sendSuspensionNotification(
+          walletAddress,
+          orgName,
+          justification
+        );
+      }
+      
+      print("✅ Account suspended successfully with justification: $justification");
+    } catch (e) {
+      print("❌ Error suspending account: $e");
+    }
+  }
+  
+  Future<void> _sendSuspensionNotification(String charityAddress, String orgName, String justification) async {
+    try {
+      // Create a unique notification ID
+      final notificationId = 'account_suspended_${DateTime.now().millisecondsSinceEpoch}';
+      
+      // Create notification in Firestore
+      await FirebaseFirestore.instance
+          .collection('charity_notifications')
+          .doc(notificationId)
+          .set({
+            'charityAddress': charityAddress,
+            'orgName': orgName,
+            'message': 'Your charity account has been suspended by an admin. Reason: $justification',
+            'type': 'account_suspension',
+            'status': 'suspended',
+            'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'suspensionReason': justification,
+          });
+          
+      print("✅ Suspension notification sent to charity: $charityAddress");
+    } catch (e) {
+      print("❌ Error sending suspension notification: $e");
+    }
   }
 
   void showSuspendSuccessPopup(BuildContext context) {
@@ -2466,7 +2670,7 @@ class CancelAllProjectsHelper {
   final BlockchainService _blockchainService = BlockchainService();
 
   /// Cancel all projects for a specific organization
-  Future<void> cancelAllProjectsForOrganization(String orgAddress) async {
+  Future<void> cancelAllProjectsForOrganization(String orgAddress, String justification) async {
     try {
       print("🔎 Fetching projects for org: $orgAddress");
       List<Map<String, dynamic>> projects =
@@ -2481,7 +2685,7 @@ class CancelAllProjectsHelper {
         int projectId = project['id'];
         print("🚫 Cancelling project ID: $projectId");
 
-        await _cancelProjectInFirestore(projectId);
+        await _cancelProjectInFirestore(projectId, justification);
       }
 
       print("✅ All projects canceled and updated in Firestore.");
@@ -2491,7 +2695,7 @@ class CancelAllProjectsHelper {
   }
 
   /// Firestore logic to cancel a project
-  Future<void> _cancelProjectInFirestore(int projectId) async {
+  Future<void> _cancelProjectInFirestore(int projectId, String justification) async {
     final docRef = FirebaseFirestore.instance
         .collection('projects')
         .doc(projectId.toString());
@@ -2499,11 +2703,127 @@ class CancelAllProjectsHelper {
     final docSnapshot = await docRef.get();
 
     if (docSnapshot.exists) {
-      await docRef.update({'isCanceled': true});
-      print("📄 Firestore project updated: $projectId");
+      await docRef.update({
+
+        'isCanceled': true,
+
+        'cancellationReason': justification,
+
+        'cancelledAt': FieldValue.serverTimestamp(),
+
+        'cancelledBy': 'admin'
+
+      });
+
+      print("📄 Firestore project updated: $projectId with justification");
+
+      
+
+      // Attempt to get project details to send notification
+
+      try {
+
+        final project = await _blockchainService.getProjectDetails(projectId);
+
+        if (!project.containsKey("error")) {
+
+          await _sendCancellationNotification(
+
+            projectId.toString(), 
+
+            project['name'] ?? 'Unknown Project', 
+
+            project['organization'] ?? '', 
+
+            justification
+
+          );
+
+        }
+
+      } catch (e) {
+
+        print("⚠️ Could not send notification: $e");
+
+      }
     } else {
-      await docRef.set({'isCanceled': true});
-      print("🆕 Firestore project created and canceled: $projectId");
+      await docRef.set({
+
+        'isCanceled': true,
+
+        'cancellationReason': justification,
+
+        'cancelledAt': FieldValue.serverTimestamp(),
+
+        'cancelledBy': 'admin'
+
+      });
+
+      print("🆕 Firestore project created and canceled: $projectId with justification");
+
+    }
+
+  }
+
+  
+
+  // Send notification to project creator
+
+  Future<void> _sendCancellationNotification(String projectId, String projectName, String creatorAddress, String justification) async {
+
+    try {
+
+      if (creatorAddress.isEmpty) {
+
+        print("❌ No project creator wallet address found");
+
+        return;
+
+      }
+
+      
+
+      // Create notification for project creator
+
+      final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
+
+      
+
+      await FirebaseFirestore.instance
+
+          .collection('charity_notifications')
+
+          .doc(notificationId)
+
+          .set({
+
+            'charityAddress': creatorAddress,
+
+            'projectId': projectId,
+
+            'projectName': projectName,
+
+            'message': 'Your project "$projectName" has been cancelled by an admin. Reason: $justification',
+
+            'type': 'project_cancellation',
+
+            'status': 'canceled',
+
+            'timestamp': FieldValue.serverTimestamp(),
+
+            'isRead': false,
+
+            'cancellationReason': justification,
+
+          });
+
+          
+
+      print("✅ Cancellation notification sent to project creator: $creatorAddress");
+
+    } catch (e) {
+
+      print("❌ Error sending cancellation notification: $e");
     }
   }
 }
