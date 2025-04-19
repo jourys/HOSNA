@@ -511,7 +511,9 @@ class _InfoRowState extends State<InfoRow> {
                   child: Text(
                     _isExpanded || !isLong
                         ? widget.value
-                        : widget.value.substring(0, 60) + '...',
+                        : widget.value.length > 60
+                            ? widget.value.substring(0, 60) + '...'
+                            : widget.value,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
