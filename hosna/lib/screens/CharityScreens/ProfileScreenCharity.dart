@@ -28,6 +28,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   String _organizationURL = '';
   String _establishmentDate = '';
   String _description = '';
+  String _profilePictureUrl = '';
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
@@ -36,7 +37,12 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   @override
   void initState() {
     super.initState();
-    _initializeWeb3();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _initializeWeb3();
+    await _loadProfilePicture(); // 🔹 Fetch profile picture from Firestore
   }
 
   Future<void> _initializeWeb3() async {
@@ -83,6 +89,23 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     );
 
     return contract;
+  }
+
+  Future<void> _loadProfilePicture() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('charities')
+          .doc(_charityAddress)
+          .get();
+
+      if (doc.exists && doc.data()?.containsKey('profile_picture') == true) {
+        setState(() {
+          _profilePictureUrl = doc.data()!['profile_picture'];
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading profile picture: $e');
+    }
   }
 
   Future<void> _getCharityData() async {
@@ -253,7 +276,8 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
               if (result == true) {
                 print("🔄 Refreshing profile after edit...");
-                _getCharityData(); // Reload the updated data
+                await _getCharityData();
+                await _loadProfilePicture();
               }
             },
           ),
@@ -272,10 +296,14 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 38,
-                backgroundColor: Colors.transparent,
-                child:
-                    Icon(Icons.account_circle, size: 100, color: Colors.grey),
+                radius: 50,
+                backgroundColor: Colors.grey[300],
+                backgroundImage: _profilePictureUrl.isNotEmpty
+                    ? NetworkImage(_profilePictureUrl)
+                    : null,
+                child: _profilePictureUrl.isEmpty
+                    ? Icon(Icons.business, size: 100, color: Colors.white)
+                    : null,
               ),
               SizedBox(height: 30),
               Text(_organizationName,
@@ -283,128 +311,140 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                       color: Colors.blue[900],
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
-              
               SizedBox(height: 16),
               Expanded(
-                 child: Scrollbar( // Add scrollbar here
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                  InfoRow(title: 'phone : ', value: _phone),             // Phone
-InfoRow(title: 'Email : ', value: _email),                // Email
-InfoRow(title: 'License : ', value: _licenseNumber),      // License Number
-InfoRow(title: 'Location : ', value: _organizationCity),  // City
-InfoRow(title: 'Website : ', value: _organizationURL),    // Website
-InfoRow(title: 'Founded : ', value: _establishmentDate),  // Establishment Date
-InfoRow(title: 'About : ', value: _description),          // Description
+                child: Scrollbar(
+                  // Add scrollbar here
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        InfoRow(title: 'phone : ', value: _phone), // Phone
+                        InfoRow(title: 'Email : ', value: _email), // Email
+                        InfoRow(
+                            title: 'License : ',
+                            value: _licenseNumber), // License Number
+                        InfoRow(
+                            title: 'Location : ',
+                            value: _organizationCity), // City
+                        InfoRow(
+                            title: 'Website : ',
+                            value: _organizationURL), // Website
+                        InfoRow(
+                            title: 'Founded : ',
+                            value: _establishmentDate), // Establishment Date
+                        InfoRow(
+                            title: 'About : ',
+                            value: _description), // Description
 
-                      SizedBox(height: 20),
-                      Center(
-                        child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
-                            width: MediaQuery.of(context).size.width * .8,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                SharedPreferences prefs =
-                                    await SharedPreferences.getInstance();
+                        SizedBox(height: 20),
+                        Center(
+                          child: SizedBox(
+                              height: MediaQuery.of(context).size.height * .066,
+                              width: MediaQuery.of(context).size.width * .8,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  SharedPreferences prefs =
+                                      await SharedPreferences.getInstance();
 
-                                // Retrieve private key and wallet address before clearing session data
-                                String? privateKey =
-                                    prefs.getString('privateKey');
-                                String? walletAddress =
-                                    prefs.getString('walletAddress');
+                                  // Retrieve private key and wallet address before clearing session data
+                                  String? privateKey =
+                                      prefs.getString('privateKey');
+                                  String? walletAddress =
+                                      prefs.getString('walletAddress');
 
-                                // Clear all session-related data (but keep the private key and wallet address)
-                                await prefs.remove(
-                                    'userSession'); // Remove any session data you want cleared
+                                  // Clear all session-related data (but keep the private key and wallet address)
+                                  await prefs.remove(
+                                      'userSession'); // Remove any session data you want cleared
 
-                                // If we have the private key and wallet address, restore them
-                                if (privateKey != null) {
-                                  await prefs.setString(
-                                      'privateKey', privateKey);
-                                }
-                                if (walletAddress != null) {
-                                  await prefs.setString(
-                                      'walletAddress', walletAddress);
-                                }
+                                  // If we have the private key and wallet address, restore them
+                                  if (privateKey != null) {
+                                    await prefs.setString(
+                                        'privateKey', privateKey);
+                                  }
+                                  if (walletAddress != null) {
+                                    await prefs.setString(
+                                        'walletAddress', walletAddress);
+                                  }
 
-                                print(
-                                    '✅ User logged out. Session cleared but private key and wallet address retained.');
+                                  print(
+                                      '✅ User logged out. Session cleared but private key and wallet address retained.');
 
-                                // Navigate to UsersPage
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
-                              },
-                              child: Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.blue[900],
-                                  shape: RoundedRectangleBorder(
-                                      side:
-                                          BorderSide(color: Colors.blue[900]!),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(24)))),
-                            )),
-                      ),
-                      SizedBox(height: 12),
-                      Center(
-                        child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
-                            width: MediaQuery.of(context).size.width * .8,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text("Confirm Deletion"),
-                                    content: Text(
-                                        "Are you sure you want to delete your account? This action cannot be undone."),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: Text("Cancel")),
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: Text("Delete")),
-                                    ],
+                                  // Navigate to UsersPage
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const UsersPage()),
+                                  );
+                                },
+                                child: Text(
+                                  'Log out',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
                                   ),
-                                );
-
-                                if (confirm == true) {
-                                  await deleteCharityAccount();
-                                }
-                              },
-                              child: Text(
-                                'Delete Account',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
                                 ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red[800],
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      side: BorderSide(color: Colors.red[900]!),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(24)))),
-                            )),
-                      )
-                    ],
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.blue[900],
+                                    shape: RoundedRectangleBorder(
+                                        side: BorderSide(
+                                            color: Colors.blue[900]!),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(24)))),
+                              )),
+                        ),
+                        SizedBox(height: 12),
+                        Center(
+                          child: SizedBox(
+                              height: MediaQuery.of(context).size.height * .066,
+                              width: MediaQuery.of(context).size.width * .8,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: Text("Confirm Deletion"),
+                                      content: Text(
+                                          "Are you sure you want to delete your account? This action cannot be undone."),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text("Cancel")),
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text("Delete")),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    await deleteCharityAccount();
+                                  }
+                                },
+                                child: Text(
+                                  'Delete Account',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[800],
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                        side:
+                                            BorderSide(color: Colors.red[900]!),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(24)))),
+                              )),
+                        )
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ],
           ),
@@ -412,8 +452,6 @@ InfoRow(title: 'About : ', value: _description),          // Description
       ),
     );
   }
-
-
 }
 
 class InfoRow extends StatefulWidget {
