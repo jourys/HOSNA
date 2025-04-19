@@ -970,7 +970,6 @@ class BlockchainService {
     }
   }
 
-
   Future<double> getProjectDonations(int projectId) async {
     try {
       final contract = await _getContract();
@@ -1130,24 +1129,26 @@ class BlockchainService {
     try {
       final votingContract = await _getVotingContract();
       final function = votingContract.function('projectToVoting');
+
       final result = await _web3Client.call(
         contract: votingContract,
         function: function,
         params: [BigInt.from(projectId)],
       );
 
-      if (result.isEmpty) {
+      if (result.isEmpty || result[0] == null) {
         print("⚠️ No voting status found for project ID $projectId");
         return false;
       }
 
       final votingId = result[0] as BigInt;
       final hasVoting = votingId != BigInt.zero;
+
       print(
           "📊 Project $projectId has voting: $hasVoting (Voting ID: $votingId)");
       return hasVoting;
     } catch (e) {
-      print("❌ Error checking existing voting: $e");
+      print("❌ Error checking existing voting for project ID $projectId: $e");
       return false;
     }
   }
@@ -1486,30 +1487,30 @@ class BlockchainService {
     }
   }
 
-
   Future<double> fetchDonatedAmountForProject(int projectId) async {
-  try {
-    final contract = await _getContract(); // Replace with your contract loading logic
-    final getProjectFunction = contract.function('getProject');
+    try {
+      final contract =
+          await _getContract(); // Replace with your contract loading logic
+      final getProjectFunction = contract.function('getProject');
 
-    final result = await _web3Client.call(
-      contract: contract,
-      function: getProjectFunction,
-      params: [BigInt.from(projectId)],
-    );
+      final result = await _web3Client.call(
+        contract: contract,
+        function: getProjectFunction,
+        params: [BigInt.from(projectId)],
+      );
 
-    // result[5] = donatedAmount in Wei
-    BigInt donatedAmountInWei = result[5] as BigInt;
+      // result[5] = donatedAmount in Wei
+      BigInt donatedAmountInWei = result[5] as BigInt;
 
-    // Convert from Wei to Ether
-    double donatedInEth = donatedAmountInWei / BigInt.from(10).pow(18);
+      // Convert from Wei to Ether
+      double donatedInEth = donatedAmountInWei / BigInt.from(10).pow(18);
 
-    print("🔵 Fetched donated amount for project $projectId: $donatedInEth ETH");
-    return donatedInEth;
-  } catch (e) {
-    print("🔻 Error fetching donated amount for project $projectId: $e");
-    return 0.0;
+      print(
+          "🔵 Fetched donated amount for project $projectId: $donatedInEth ETH");
+      return donatedInEth;
+    } catch (e) {
+      print("🔻 Error fetching donated amount for project $projectId: $e");
+      return 0.0;
+    }
   }
-}
-
 }

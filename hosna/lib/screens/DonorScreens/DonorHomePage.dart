@@ -359,6 +359,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<Map<String, dynamic>?> _fetchLatestProjectDetails(
+      int projectId) async {
+    try {
+      final allProjects = await _blockchainService.fetchAllProjects();
+
+      for (var project in allProjects) {
+        if (project['id'] == projectId) {
+          return project;
+        }
+      }
+
+      print("⚠️ Project $projectId not found in blockchain");
+      return null;
+    } catch (e) {
+      print("❌ Error fetching project $projectId details: $e");
+      return null;
+    }
+  }
+
   Widget _buildDonationHistorySection() {
     if (hasError) {
       return const SizedBox.shrink();
@@ -416,82 +435,104 @@ class _HomePageState extends State<HomePage> {
             itemCount: donationHistory.length,
             itemBuilder: (context, index) {
               final donation = donationHistory[index];
-              final totalAmount = (donation['totalAmount'] ?? 0.0).toDouble();
-              final donatedAmount =
-                  (donation['donatedAmount'] ?? 0.0).toDouble();
-              final progress = totalAmount > 0
-                  ? (donatedAmount / totalAmount * 100).toStringAsFixed(1)
-                  : '0.0';
+              return FutureBuilder<Map<String, dynamic>?>(
+                  future: _fetchLatestProjectDetails(
+                      int.parse(donation['id'].toString())),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Card(
+                        margin: EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: ListTile(title: Text('Loading...')),
+                      );
+                    }
 
-              return Card(
-                margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: ListTile(
-                  title: Text(
-                    donation['name'] ?? 'Unnamed Project',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 8),
-                      Text(
-                        'Donated: ${donatedAmount.toStringAsFixed(5)} ETH',
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontWeight: FontWeight.bold,
+                    if (snapshot.hasError || snapshot.data == null) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: ListTile(
+                          title:
+                              Text(donation['name'] ?? 'Error loading project'),
+                          subtitle: const Text('Could not load latest details'),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Total Goal: ${totalAmount.toStringAsFixed(5)} ETH',
-                        style: TextStyle(
-                          color: Colors.blue[700],
+                      );
+                    }
+
+                    try {
+                      final latestProjectData = snapshot.data!;
+                      final totalAmount =
+                          (latestProjectData['totalAmount'] ?? 0.0).toDouble();
+                      final donatedAmount =
+                          (latestProjectData['donatedAmount'] ?? 0.0)
+                              .toDouble();
+                      final progress = totalAmount > 0
+                          ? (donatedAmount / totalAmount * 100)
+                              .toStringAsFixed(1)
+                          : '0.0';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: ListTile(
+                          title: Text(donation['name'] ?? 'Unnamed Project',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              Text(
+                                  'Donated: ${donation['donatedAmount'].toStringAsFixed(5)} ETH',
+                                  style: TextStyle(
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Text(
+                                  'Total Goal: ${totalAmount.toStringAsFixed(5)} ETH',
+                                  style: TextStyle(color: Colors.blue[700])),
+                              const SizedBox(height: 4),
+                              Text('Progress: $progress%',
+                                  style: TextStyle(color: Colors.orange[700])),
+                              Text(
+                                  'Project Type: ${donation['projectType'] ?? 'Unknown'}',
+                                  style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProjectDetails(
+                                  projectId:
+                                      int.parse(donation['id'].toString()),
+                                  projectName:
+                                      donation['name'] ?? 'Unnamed Project',
+                                  description: donation['description'] ?? '',
+                                  totalAmount: totalAmount,
+                                  projectType:
+                                      donation['projectType'] ?? 'Unknown',
+                                  projectCreatorWallet:
+                                      donation['projectCreatorWallet'] ?? '',
+                                  donatedAmount: donatedAmount,
+                                  progress: totalAmount > 0
+                                      ? donatedAmount / totalAmount
+                                      : 0.0,
+                                  deadline: latestProjectData['endDate']
+                                      .toString(), // ✅ use actual
+                                  startDate: latestProjectData['startDate']
+                                      .toString(), // ✅ use actual
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Progress: $progress%',
-                        style: TextStyle(
-                          color: Colors.orange[700],
-                        ),
-                      ),
-                      Text(
-                        'Project Type: ${donation['projectType'] ?? 'Unknown'}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProjectDetails(
-                          projectId: int.parse(donation['id'].toString()),
-                          projectName: donation['name'] ?? 'Unnamed Project',
-                          description: donation['description'] ?? '',
-                          // deadline: '',
-                          totalAmount: totalAmount,
-                          projectType: donation['projectType'] ?? 'Unknown',
-                          projectCreatorWallet:
-                              donation['projectCreatorWallet'] ?? '',
-                          donatedAmount: donatedAmount,
-                          progress: totalAmount > 0
-                              ? donatedAmount / totalAmount
-                              : 0.0,
-                          // startDate: '',
-                          deadline: DateTime.now().toIso8601String(),
-                          startDate: DateTime.now().toIso8601String(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
+                      );
+                    } catch (e) {
+                      print("⚠️ Error rendering donation item: $e");
+                      return const SizedBox.shrink();
+                    }
+                  });
             },
           ),
       ],
