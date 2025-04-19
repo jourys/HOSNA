@@ -17,8 +17,18 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
   bool isLoading = true;
   String selectedFilter = 'All';
   String selectedSort = 'Date (Newest)';
-  final List<String> filterOptions = ['All', 'Active', 'Completed', 'Cancelled'];
-  final List<String> sortOptions = ['Date (Newest)', 'Date (Oldest)', 'Amount (Highest)', 'Amount (Lowest)'];
+  final List<String> filterOptions = [
+    'All',
+    'Active',
+    'Completed',
+    'Cancelled'
+  ];
+  final List<String> sortOptions = [
+    'Date (Newest)',
+    'Date (Oldest)',
+    'Amount (Highest)',
+    'Amount (Lowest)'
+  ];
 
   @override
   void initState() {
@@ -40,30 +50,36 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
       if (donationsJson != null) {
         final List<dynamic> donations = json.decode(donationsJson);
         historyList = await Future.wait<Map<String, dynamic>>(
-          donations.where((donation) => 
-            donation['donorWallet']?.toString().toLowerCase() == walletAddress.toLowerCase()
-          ).map((donation) async {
+          donations
+              .where((donation) =>
+                  donation['donorWallet']?.toString().toLowerCase() ==
+                  walletAddress.toLowerCase())
+              .map((donation) async {
             // Get current project status and details from Firestore
             String status = 'unknown';
             String projectName = 'Unknown Project';
             String projectType = 'Unknown';
             double totalAmount = 0.0;
             String description = '';
-            
+
             try {
               final projectDoc = await FirebaseFirestore.instance
                   .collection('projects')
                   .doc(donation['id'].toString())
                   .get();
-              
+
               if (projectDoc.exists) {
                 final data = projectDoc.data() as Map<String, dynamic>;
                 status = data['status'] ?? 'unknown';
-                projectName = data['name'] ?? 'Unknown Project';
-                projectType = data['projectType'] ?? 'Unknown';
+                projectName = data['name'] ??
+                    donation['projectName'] ??
+                    donation['name'] ??
+                    'Unknown Project';
+                projectType =
+                    data['projectType'] ?? donation['projectType'] ?? 'Unknown';
                 totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
                 description = data['description'] ?? '';
-                
+
                 // Calculate status based on dates and amounts
                 if (data['isCanceled'] == true) {
                   status = 'cancelled';
@@ -89,8 +105,10 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
             }
 
             // Calculate progress
-            final donatedAmount = double.tryParse(donation['donatedAmount'].toString()) ?? 0.0;
-            final progress = totalAmount > 0 ? (donatedAmount / totalAmount) : 0.0;
+            final donatedAmount =
+                double.tryParse(donation['donatedAmount'].toString()) ?? 0.0;
+            final progress =
+                totalAmount > 0 ? (donatedAmount / totalAmount) : 0.0;
 
             return <String, dynamic>{
               ...Map<String, dynamic>.from(donation),
@@ -102,8 +120,7 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
               'progress': progress,
               'formattedDate': DateFormat('MMM d, yyyy').format(
                 DateTime.fromMillisecondsSinceEpoch(
-                  int.parse(donation['timestamp'].toString())
-                ),
+                    int.parse(donation['timestamp'].toString())),
               ),
             };
           }).toList(),
@@ -146,9 +163,11 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
     if (selectedFilter == 'All') {
       return historyList;
     }
-    return historyList.where((donation) => 
-      donation['status'].toString().toLowerCase() == selectedFilter.toLowerCase()
-    ).toList();
+    return historyList
+        .where((donation) =>
+            donation['status'].toString().toLowerCase() ==
+            selectedFilter.toLowerCase())
+        .toList();
   }
 
   Color _getStatusColor(String status) {
@@ -257,42 +276,25 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                             itemCount: filteredDonations.length,
                             itemBuilder: (context, index) {
                               final donation = filteredDonations[index];
-                              final progress = ((donation['progress'] ?? 0.0) * 100).toStringAsFixed(1);
-                              
+                              final progress =
+                                  ((donation['progress'] ?? 0.0) * 100)
+                                      .toStringAsFixed(1);
+
                               return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 child: ListTile(
-                                  title: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          donation['projectName'] ?? 'Unknown Project',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: _getStatusColor(donation['status'] ?? 'unknown').withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          (donation['status'] ?? 'UNKNOWN').toUpperCase(),
-                                          style: TextStyle(
-                                            color: _getStatusColor(donation['status'] ?? 'unknown'),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  title: Text(
+                                    donation['projectName'] ??
+                                        'Unknown Project',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
                                   ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const SizedBox(height: 8),
                                       Text(
@@ -332,51 +334,64 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                                   ),
                                   onTap: () async {
                                     try {
-                                      // Get latest project data from Firestore
-                                      final projectDoc = await FirebaseFirestore.instance
+                                      final projectDoc = await FirebaseFirestore
+                                          .instance
                                           .collection('projects')
                                           .doc(donation['id'].toString())
                                           .get();
 
-                                      if (projectDoc.exists) {
-                                        final data = projectDoc.data() as Map<String, dynamic>;
-                                        
-                                        // Convert timestamps to strings
-                                        final startDate = data['startDate']?.toDate() ?? DateTime.now();
-                                        final endDate = data['endDate']?.toDate() ?? DateTime.now();
-                                        
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ProjectDetails(
-                                              projectId: int.parse(donation['id'].toString()),
-                                              projectName: data['name'] ?? 'Unknown Project',
-                                              description: data['description'] ?? '',
-                                              startDate: DateFormat('yyyy-MM-dd').format(startDate),
-                                              deadline: DateFormat('yyyy-MM-dd').format(endDate),
-                                              totalAmount: (data['totalAmount'] ?? 0.0).toDouble(),
-                                              projectType: data['projectType'] ?? 'Unknown',
-                                              projectCreatorWallet: data['projectCreatorWallet'] ?? '',
-                                              donatedAmount: (data['donatedAmount'] ?? 0.0).toDouble(),
-                                              progress: data['donatedAmount'] != null && data['totalAmount'] != null
-                                                  ? (data['donatedAmount'] as num).toDouble() / (data['totalAmount'] as num).toDouble()
-                                                  : 0.0,
-                                            ),
+                                      final data = projectDoc.data()
+                                          as Map<String, dynamic>?;
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProjectDetails(
+                                            projectId: int.parse(
+                                                donation['id'].toString()),
+                                            projectName: donation['name'] ??
+                                                'Unknown Project', // 👈 Use from local donation
+                                            description:
+                                                data?['description'] ?? '',
+                                            startDate: DateFormat('yyyy-MM-dd')
+                                                .format(data?['startDate']
+                                                        ?.toDate() ??
+                                                    DateTime.now()),
+                                            deadline: DateFormat('yyyy-MM-dd')
+                                                .format(data?['endDate']
+                                                        ?.toDate() ??
+                                                    DateTime.now()),
+                                            totalAmount:
+                                                (data?['totalAmount'] ?? 0.0)
+                                                    .toDouble(),
+                                            projectType: data?['projectType'] ??
+                                                'Unknown',
+                                            projectCreatorWallet:
+                                                data?['projectCreatorWallet'] ??
+                                                    '',
+                                            donatedAmount:
+                                                (data?['donatedAmount'] ?? 0.0)
+                                                    .toDouble(),
+                                            progress: data?['donatedAmount'] !=
+                                                        null &&
+                                                    data?['totalAmount'] != null
+                                                ? (data!['donatedAmount']
+                                                            as num)
+                                                        .toDouble() /
+                                                    (data['totalAmount'] as num)
+                                                        .toDouble()
+                                                : 0.0,
                                           ),
-                                        );
-                                      } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Project not found'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
+                                        ),
+                                      );
                                     } catch (e) {
-                                      print('Error navigating to project details: $e');
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      print(
+                                          'Error navigating to project details: $e');
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
-                                          content: Text('Error loading project details'),
+                                          content: Text(
+                                              'Error loading project details'),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -393,4 +408,4 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
       ),
     );
   }
-} 
+}
