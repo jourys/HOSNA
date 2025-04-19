@@ -267,7 +267,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
-          padding: EdgeInsets.all(30),
+          padding: EdgeInsets.all(14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -281,22 +281,24 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
               Text(_organizationName,
                   style: TextStyle(
                       color: Colors.blue[900],
-                      fontSize: 22,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              SizedBox(height: 30),
+              
+              SizedBox(height: 16),
               Expanded(
+                 child: Scrollbar( // Add scrollbar here
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      infoRow('Phone Number : ', _phone),
-                      infoRow('Email : ', _email),
-                      infoRow('License Number : ', _licenseNumber),
-                      infoRow('City : ', _organizationCity),
-                      infoRow('Website : ', _organizationURL),
-                      infoRow('Establishment Date : ', _establishmentDate),
-                      infoRow('Description : ', _description),
-                      SizedBox(height: 100),
+                  InfoRow(title: 'phone : ', value: _phone),             // Phone
+InfoRow(title: 'Email : ', value: _email),                // Email
+InfoRow(title: 'License : ', value: _licenseNumber),      // License Number
+InfoRow(title: 'Location : ', value: _organizationCity),  // City
+InfoRow(title: 'Website : ', value: _organizationURL),    // Website
+InfoRow(title: 'Founded : ', value: _establishmentDate),  // Establishment Date
+InfoRow(title: 'About : ', value: _description),          // Description
+
+                      SizedBox(height: 20),
                       Center(
                         child: SizedBox(
                             height: MediaQuery.of(context).size.height * .066,
@@ -353,7 +355,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                           Radius.circular(24)))),
                             )),
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 12),
                       Center(
                         child: SizedBox(
                             height: MediaQuery.of(context).size.height * .066,
@@ -403,6 +405,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                   ),
                 ),
               ),
+              ),
             ],
           ),
         ),
@@ -410,31 +413,98 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     );
   }
 
-  Widget infoRow(String title, String value) {
+
+}
+
+class InfoRow extends StatefulWidget {
+  final String title;
+  final String value;
+
+  const InfoRow({super.key, required this.title, required this.value});
+
+  @override
+  State<InfoRow> createState() => _InfoRowState();
+}
+
+class _InfoRowState extends State<InfoRow> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    bool isLong = widget.value.length > 40;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: Colors.blue[900],
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            )
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label and Value in a Row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Label
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[900],
+                    ),
+                  ),
+                ),
+                // Value
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    _isExpanded || !isLong
+                        ? widget.value
+                        : widget.value.substring(0, 60) + '...',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+            // "More"/"Less" button
+            if (isLong)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: Text(
+                    _isExpanded ? "less" : "more",
+                    style: TextStyle(
+                      color: Colors.blue[900],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

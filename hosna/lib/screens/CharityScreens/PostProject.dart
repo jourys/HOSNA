@@ -4,6 +4,7 @@ import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/DraftsPage.dart';
+import 'package:hosna/screens/NotificationService.dart';
 import 'dart:convert';
 
 class PostProject extends StatefulWidget {
@@ -813,6 +814,17 @@ class _PostProjectScreenState extends State<PostProject> {
         totalAmount,
         _selectedProjectType ?? 'Other',
       );
+
+       // Send notifications to donors
+       try {
+          await NotificationService().sendVotingStatusNotification(
+          _projectNameController.text,
+          "voting"
+        );
+        print("✅ Notifications sent for project state change to voting");
+      } catch (e) {
+        print("❌ Error sending notifications: $e");
+      }
 
       print("✅ Project successfully posted!");
  Navigator.pop(context);

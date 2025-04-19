@@ -5,7 +5,7 @@ import 'package:web3dart/web3dart.dart';
 class BlockchainService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x2bbf496a6df44fbd91b14dbf682e43162ec4f3da';
+  final String contractAddress = '0xB149FF5f41242E9F4bAE264bDc34A441425a7b89';
   final String votingContractAddress =
       '0x10cB71B23561853CB19fEB587f31B1962b4fc802';
   late Web3Client _web3Client;
@@ -970,6 +970,7 @@ class BlockchainService {
     }
   }
 
+
   Future<double> getProjectDonations(int projectId) async {
     try {
       final contract = await _getContract();
@@ -1484,4 +1485,31 @@ class BlockchainService {
       return null;
     }
   }
+
+
+  Future<double> fetchDonatedAmountForProject(int projectId) async {
+  try {
+    final contract = await _getContract(); // Replace with your contract loading logic
+    final getProjectFunction = contract.function('getProject');
+
+    final result = await _web3Client.call(
+      contract: contract,
+      function: getProjectFunction,
+      params: [BigInt.from(projectId)],
+    );
+
+    // result[5] = donatedAmount in Wei
+    BigInt donatedAmountInWei = result[5] as BigInt;
+
+    // Convert from Wei to Ether
+    double donatedInEth = donatedAmountInWei / BigInt.from(10).pow(18);
+
+    print("🔵 Fetched donated amount for project $projectId: $donatedInEth ETH");
+    return donatedInEth;
+  } catch (e) {
+    print("🔻 Error fetching donated amount for project $projectId: $e");
+    return 0.0;
+  }
+}
+
 }

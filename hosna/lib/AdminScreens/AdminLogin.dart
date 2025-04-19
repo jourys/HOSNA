@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 const MaterialColor customColor = MaterialColor(
   _customColorPrimaryValue,
@@ -25,7 +28,11 @@ const MaterialColor customColor = MaterialColor(
 
 const int _customColorPrimaryValue = 0xFF184787;
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(MyApp());
 }
 
@@ -110,7 +117,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   late ContractFunction _verifyLogin;
   final String rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String contractAddress = "0xC0707D3cdd5238908d86712A09098c57675796C0";
+  final String contractAddress = "0xC933012E3293Cb81Be4cE8393A1fc24C9cD47E2A";
 
   @override
   void initState() {

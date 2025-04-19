@@ -311,8 +311,9 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
               }),
         ],
         // Setting the height of the AppBar using preferredSize
-        toolbarHeight: 80, // Adjust the height here
+        toolbarHeight: 60, // Adjust the height here
       ),
+    
       body: Container(
         color: Colors.blue[900],
         child: Container(
@@ -321,10 +322,12 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
-          padding: EdgeInsets.all(50),
+          padding: EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            
             children: [
+              SizedBox(height: 40),
               CircleAvatar(
                 radius: 38,
                 backgroundColor: Colors.transparent,
@@ -347,8 +350,9 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      infoRow('Phone Number : ', _phone),
-                      infoRow('Email : ', _email),
+                     InfoRow(title: 'Phone : ', value: _phone),
+InfoRow(title: 'Email : ', value: _email),
+
                       SizedBox(height: 200),
                       Center(
                         child: SizedBox(
@@ -465,32 +469,98 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
       ),
     );
   }
+}
 
-  Widget infoRow(String title, String value) {
+
+class InfoRow extends StatefulWidget {
+  final String title;
+  final String value;
+
+  const InfoRow({super.key, required this.title, required this.value});
+
+  @override
+  State<InfoRow> createState() => _InfoRowState();
+}
+
+class _InfoRowState extends State<InfoRow> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    bool isLong = widget.value.length > 40;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: Colors.blue[900],
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            )
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label and Value in a Row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Label
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[900],
+                    ),
+                  ),
+                ),
+                // Value
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    _isExpanded || !isLong
+                        ? widget.value
+                        : widget.value.substring(0, 60) + '...',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+            // "More"/"Less" button
+            if (isLong)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: Text(
+                    _isExpanded ? "less" : "more",
+                    style: TextStyle(
+                      color: Colors.blue[900],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

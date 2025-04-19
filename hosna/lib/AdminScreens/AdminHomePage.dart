@@ -3,6 +3,8 @@ import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/charityRequests.dart';
 import 'AdminSidebar.dart'; //
+import 'package:hosna/screens/BrowseProjects.dart';
+
 
 class AdminHomePage extends StatefulWidget {
   @override
@@ -63,7 +65,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const AdminBrowseProjects(),
+      builder: (context) => const BrowseProjects(walletAddress: ''),
     ),
   );
 }),

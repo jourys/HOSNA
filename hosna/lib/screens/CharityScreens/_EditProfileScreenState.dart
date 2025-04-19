@@ -338,47 +338,144 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       SnackBar(content: Text(message)),
     );
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit Profile'),
-        backgroundColor: Colors.blue[900],
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.white, // Make the background of the body white
+   appBar: PreferredSize(
+  preferredSize: Size.fromHeight(40), // Increase the height of the app bar
+  child: AppBar(
+    backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Blue color for the top bar
+    elevation: 0, // Remove shadow
+    automaticallyImplyLeading: false, // Disable automatic leading widget
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back, // Back arrow icon
+        color: Colors.white, // White color for the icon
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildTextField(nameController, 'Organization Name'),
-              _buildTextField(emailController, 'Email'),
-              _buildTextField(phoneController, 'Phone', isPhone: true),
-              _buildTextField(licenseController, 'License Number'),
-              _buildTextField(cityController, 'City'),
-              _buildTextField(websiteController, 'Website'),
-              _buildTextField(dateController, 'Establishment Date'),
-              _buildTextField(descriptionController, 'Description',
-                  maxLines: 3),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  print("🟢 Save Changes Button Clicked!");
-                  _updateCharityData(); // Wait for update to finish before navigating
-                },
-                child: Text('Save Changes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[900],
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
+      onPressed: () {
+        Navigator.of(context).pop(); // Go back to the previous screen
+      },
+    ),
+    flexibleSpace: Padding(
+      padding: EdgeInsets.only(bottom: 10), // Move text down a bit
+      child: Align(
+        alignment: Alignment.bottomCenter, // Center text vertically
+        child: Text(
+          "Edit Profile", // Updated text
+          style: TextStyle(
+            color: Colors.white, // White text color
+            fontSize: 24, // Font size
+            fontWeight: FontWeight.bold, // Bold font weight
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+),
+
+    body: Stack(
+      children: [
+        // Blue background below the container
+        Container(
+          color: Color.fromRGBO(24, 71, 137, 1), // Blue color for background
+          height: double.infinity, // Fill the entire screen height
+        ),
+        // Positioned container above the blue background
+        Positioned(
+          top: 2, // Adjust this to control how far below the app bar it is
+          left: 0,
+          right: 0,
+          child: ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(30), // Rounded top-left corner
+              topRight: Radius.circular(30), // Rounded top-right corner
+            ),
+            child: Container(
+              padding: EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white, // White background for the container
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: Offset(0, 5), // Shadow effect to make it look like it pops up
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView( // Make the entire form scrollable
+                child: Column(
+                  children: [
+                    // Profile picture (Network Image) with a circular shape
+                  Stack(
+  alignment: Alignment.bottomRight, // Position the pen icon in the bottom-right corner
+  children: [
+    CircleAvatar(
+      radius: 50, // Adjust the radius to your preference
+      backgroundColor: const Color.fromARGB(255, 197, 194, 194), // Optional: Set a background color for the avatar
+      child: Icon(
+        Icons.account_circle, // Default avatar icon
+        size: 100, // Adjust the size as needed
+        color: Colors.white, // Set the color for the icon
+      ),
+    ),
+   Positioned(
+  bottom: 3, // Position the pen icon at the bottom
+  right: 0, // Position the pen icon to the right
+  child: Icon(
+    Icons.edit, // Pen icon
+    size: 48, // Size of the pen icon
+    color: Color.fromRGBO(24, 71, 137, 1), // Set the pen icon color
+  ),
+),
+
+  ],
+),
+                    SizedBox(height: 16), // Space between image and text field
+                    _buildTextField(nameController, 'Organization Name'),
+                    _buildTextField(emailController, 'Email'),
+                    _buildTextField(phoneController, 'Phone', isPhone: true),
+                    _buildTextField(licenseController, 'License Number'),
+                    _buildTextField(cityController, 'City'),
+                    _buildTextField(websiteController, 'Website'),
+                    _buildTextField(dateController, 'Establishment Date'),
+                    _buildTextField(descriptionController, 'Description', maxLines: 3),
+                    SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        print("🟢 Save Changes Button Clicked!");
+                        _updateCharityData(); // Wait for update to finish before navigating
+                      },
+                      child: Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(300, 50),
+                        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(
+                            color: Color.fromRGBO(24, 71, 137, 1),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildTextField(
     TextEditingController controller,

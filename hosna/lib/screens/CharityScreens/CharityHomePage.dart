@@ -10,6 +10,10 @@ import 'dart:convert';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:hosna/screens/NotificationService.dart';
+
+import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
+
 class CharityEmployeeHomePage extends StatefulWidget {
   const CharityEmployeeHomePage({super.key});
 
@@ -28,6 +32,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     _loadWalletAndProjects();
     _loadOrganizationData();
     printUserType();
+    _checkProjectStates();
   }
 
   Future<void> printUserType() async {
@@ -43,23 +48,6 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     } else {
       print("No user type found in SharedPreferences");
     }
-  }
-
-  Future<bool> _isVotingInitiated(String projectId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        return data?['votingInitiated'] == true;
-      }
-    } catch (e) {
-      print("❌ Error checking votingInitiated: $e");
-    }
-    return false;
   }
 
   Future<void> _loadWalletAndProjects() async {
@@ -93,8 +81,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
       final projectId = id.toString();
       bool isCanceled = await _isProjectCanceled(projectId);
-      // bool hasVoting = await blockchainService.hasExistingVoting(id);
-      bool hasVoting = await _isVotingInitiated(projectId);
+      bool hasVoting = await blockchainService.hasExistingVoting(id);
 
       // Get project status from blockchain data
       String status = await _getProjectState(project);
@@ -136,6 +123,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     });
 
     print("✅ Filtered Projects Count: ${_projects.length}");
+    await _checkProjectStates();
   }
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
@@ -249,7 +237,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     return DeployedContract(
       ContractAbi.fromJson(contractAbi, 'CharityRegistration'),
-      EthereumAddress.fromHex('0x02b0d417D48eEA64Aae9AdA80570783034ED6839'),
+      EthereumAddress.fromHex('0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7'),
     );
   }
 
@@ -258,20 +246,20 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
+        preferredSize: const Size.fromHeight(70),
         child: AppBar(
           backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
           elevation: 0,
           automaticallyImplyLeading: false,
           flexibleSpace: Padding(
-            padding: const EdgeInsets.only(left: 20, bottom: 20),
+            padding: const EdgeInsets.only(left: 30, bottom: 20),
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 60),
+                    padding: const EdgeInsets.only(top: 38),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -279,187 +267,214 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                           "Good Day, ${_organizationName}!",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 27,
+                            fontSize: 23,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: SizedBox(
-                      width: 120,
-                      height: 80,
-                      child: IconButton(
-                        icon: const Icon(Icons.account_circle,
-                            size: 85, color: Colors.white),
+                   Row(
+
+                    children: [
+
+                      IconButton(
+
+                        icon: const Icon(
+
+                          Icons.notifications,
+
+                          color: Colors.white,
+
+                          size: 30,
+
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => ProfileScreenCharity()),
+                                builder: (context) => CharityNotificationsPage(),
+
+                            ),
                           );
                         },
                       ),
-                    ),
-                  )
+                    SizedBox(width: 10),
+
+                      SizedBox(
+
+                        width: 100,
+
+                        height: 80,
+
+                        child: IconButton(
+
+                          icon: const Icon(Icons.account_circle,
+
+                              size: 85, color: Colors.white),
+
+                          onPressed: () {
+
+                            Navigator.push(
+
+                              context,
+
+                              MaterialPageRoute(
+
+                                  builder: (context) => ProfileScreenCharity()),
+
+                            );
+
+                          },
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final screenHeight = constraints.maxHeight;
-          final totalAvailable = screenHeight - 8; // space for the SizedBox
-          final halfHeight = totalAvailable / 2;
-
-          return Container(
-            color: Colors.white,
-            child: Column(
-              children: [
-                // 🟦 Top Half - Projects Awaiting Your Vote
-                Container(
-                  height: halfHeight,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section title + arrow
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const CanceledFailedProjects(),
-                            ),
-                          );
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Text(
-                              'Projects Awaiting Your Vote',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                            ),
-                          ],
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  // Projects Awaiting section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Scrollable list of voting projects
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: _projects.map((project) {
-                              final status = project['status'];
-                              final color = status == 'failed'
-                                  ? Colors.red
-                                  : (status == 'canceled'
-                                      ? Colors.orange
-                                      : Colors.blue);
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _buildProjectCard(
-                                  project['name'],
-                                  status[0].toUpperCase() + status.substring(1),
-                                  color,
-                                  '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Header with arrow
+                        InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const CanceledFailedProjects(),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Projects Awaiting You To Start Voting',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromRGBO(24, 71, 137, 1),
+                                  ),
                                 ),
-                              );
-                            }).toList(),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
+                        // Projects list
+                        ..._projects.map((project) {
+                          final status = project['status'];
+                          final color = status == 'failed'
+                              ? Colors.red
+                              : (status == 'canceled'
+                                  ? Colors.orange
+                                  : Colors.blue);
 
-                // 🟩 Bottom Half - Draft Projects
-                Container(
-                  height: halfHeight,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+                          return _buildProjectCard(
+                            project['name'],
+                            status[0].toUpperCase() + status.substring(1),
+                            color,
+                            '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                          );
+                        }).toList(),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section title + arrow
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DraftsPage(
-                                walletAddress: walletAddress,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Text(
-                              'Draft Projects',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                            ),
-                          ],
+                  const SizedBox(height: 24),
+                  // Draft Projects section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Scrollable list of draft projects
-                      Expanded(
-                        child: FutureBuilder<List<Map<String, dynamic>>>(
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Header with arrow
+                        InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DraftsPage(
+                                  walletAddress: walletAddress,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Draft Projects',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromRGBO(24, 71, 137, 1),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Draft projects list
+                        FutureBuilder<List<Map<String, dynamic>>>(
                           future: _loadDrafts(),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
@@ -469,45 +484,40 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                             }
 
                             if (snapshot.hasError) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text('Error loading drafts'),
-                              );
+                              return Center(
+                                  child: Text('Error loading drafts'));
                             }
 
                             final drafts = snapshot.data ?? [];
 
                             if (drafts.isEmpty) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16.0),
+                              return Padding(
+                                padding: const EdgeInsets.all(16.0),
                                 child: Text(
                                   'No draft projects available',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
                                 ),
                               );
                             }
 
-                            return SingleChildScrollView(
-                              child: Column(
-                                children: drafts
-                                    .map((draft) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 12),
-                                          child: _buildDraftCard(draft),
-                                        ))
-                                    .toList(),
-                              ),
+                            return Column(
+                              children: drafts.map((draft) {
+                                return _buildDraftCard(draft);
+                              }).toList(),
                             );
                           },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -702,5 +712,226 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
         ),
       ],
     );
+  }
+  Future<void> _checkProjectStates() async {
+
+    try {
+
+      final prefs = await SharedPreferences.getInstance();
+
+      final savedWallet = prefs.getString('walletAddress');
+
+
+
+      if (savedWallet == null) {
+
+        print("❌ No wallet address found for checking project states");
+
+        return;
+
+      }
+
+
+
+      // Get organization's projects
+
+      final blockchainService = BlockchainService();
+
+      final myProjects = await blockchainService.fetchOrganizationProjects(savedWallet);
+
+      
+
+      // Process each project
+
+      for (var project in myProjects) {
+
+        final projectId = project['id'].toString();
+
+        
+
+        // Get current project details from Firestore
+
+        final projectDoc = await FirebaseFirestore.instance
+
+            .collection('projects')
+
+            .doc(projectId)
+
+            .get();
+
+            
+
+        if (!projectDoc.exists) continue;
+
+        
+
+        final data = projectDoc.data() as Map<String, dynamic>;
+
+        
+
+        // Check project state
+
+        final bool isCanceled = data['isCanceled'] ?? false;
+
+        final bool isCompleted = project['donatedAmount'] >= project['totalAmount'];
+
+        final bool isEnded = DateTime.now().isAfter(project['endDate']);
+
+        final bool votingInitiated = data['votingInitiated'] ?? false;
+
+        final bool hasVoting = await blockchainService.hasExistingVoting(project['id']);
+
+        final bool votingEnded = hasVoting && DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch((data['votingEndDate'] ?? 0) * 1000));
+
+        
+
+        // Determine current state
+
+        String currentState;
+
+        if (isCanceled) {
+
+          currentState = votingInitiated ? "voting" : "canceled";
+
+          if (votingEnded) currentState = "ended";
+
+        } else if (isCompleted) {
+
+          currentState = "in-progress"; // Project funded successfully
+
+        } else if (isEnded) {
+
+          currentState = "ended";
+
+        } else {
+
+          currentState = "active";
+
+        }
+
+        
+
+        // Get previous state
+
+        String previousState = data['currentState'] ?? 'active';
+
+        
+
+        print("Project ${project['name']} - Current state: $currentState, Previous state: $previousState");
+
+        
+
+        // Only handle state changes
+
+        if (currentState != previousState) {
+
+          print("🔄 Project state changed from $previousState to $currentState for project ${project['name']}");
+
+          
+
+          // Update current state in Firestore
+
+          await FirebaseFirestore.instance
+
+              .collection('projects')
+
+              .doc(projectId)
+
+              .update({'currentState': currentState});
+
+          
+
+          // Create a notification for charity employee based on specific state changes (R1 and R2)
+
+          if ((currentState == "in-progress" && previousState == "active") || // R1: Project funded -> in-progress 
+
+              (currentState == "ended" && previousState == "voting")) {       // R2: Voting ended -> ended
+
+            
+
+            try {
+
+              // Create a unique notification ID
+
+              final notificationId = 'charity_${projectId}_${currentState}_${DateTime.now().millisecondsSinceEpoch}';
+
+              
+
+              // Create notification in Firestore
+
+              await FirebaseFirestore.instance
+
+                  .collection('charity_notifications')
+
+                  .doc(notificationId)
+
+                  .set({
+
+                    'charityAddress': savedWallet,
+
+                    'projectId': projectId,
+
+                    'projectName': project['name'] ?? 'Unknown Project',
+
+                    'message': _getStatusChangeMessage(currentState, project['name'] ?? 'Unknown Project'),
+
+                    'type': 'status_change',
+
+                    'status': currentState,
+
+                    'timestamp': FieldValue.serverTimestamp(),
+
+                    'isRead': false,
+
+                  });
+
+                  
+
+              print("✅ Notification created for charity: $savedWallet about project state change to $currentState");
+
+            } catch (e) {
+
+              print("❌ Error creating notification: $e");
+
+            }
+
+          }
+
+        }
+
+      }
+
+      
+
+      print("✅ Completed checking all project states");
+
+    } catch (e) {
+
+      print("❌ Error checking project states: $e");
+
+    }
+
+  }
+
+
+
+  String _getStatusChangeMessage(String status, String projectName) {
+
+    switch (status) {
+
+      case 'in-progress':
+
+        return 'Project "$projectName" has been fully funded and is now in progress!';
+
+      case 'ended':
+
+        return 'The voting period for project "$projectName" has ended.';
+
+      default:
+
+        return 'Project "$projectName" status has changed to $status.';
+
+    }
+
   }
 }

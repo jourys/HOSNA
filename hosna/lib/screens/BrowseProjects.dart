@@ -302,19 +302,31 @@ if (votingId != null) {
     }
 
     return Scaffold(
+       backgroundColor: (userType == 0 || userType == 1)
+      ? const Color.fromRGBO(24, 71, 137, 1)
+      : null,
       appBar: userType != 0 && userType != 1
           ? null
           : AppBar(
-              title: Text('Browse Projects'),
-              backgroundColor: appBarBackgroundColor,
-              foregroundColor: appBarTitleColor,
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.refresh),
-                  onPressed: _fetchProjects,
-                ),
-              ],
-            ),
+  automaticallyImplyLeading: false, // Removes the default back arrow
+  centerTitle: true, // Centers the title
+  title: const Text(
+    'Browse Projects',
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize : 23,
+    ),
+  ),
+  backgroundColor: appBarBackgroundColor,
+  foregroundColor: appBarTitleColor,
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.refresh),
+      onPressed: _fetchProjects,
+    ),
+  ],
+),
+
       body: userType != 0 && userType != 1
           ? Container(
               color: Colors.white,
@@ -422,6 +434,10 @@ if (votingId != null) {
                                   ),
                                 ],
                               ),
+
+
+
+                              
                               if (_selectedProjectType != null ||
                                   _showMyProjects)
                                 Padding(
@@ -636,8 +652,17 @@ if (votingId != null) {
                 ],
               ),
             )
-          : Column(
-              children: [
+          : Container(
+  margin: EdgeInsets.only(top: 1), // Increase this value to lift it higher
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.only(
+      topLeft: Radius.circular(24),
+      topRight: Radius.circular(24),
+    ),
+  ),
+  child: Column(
+    children: [
                 // Search and Filter for non-admin users
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -903,9 +928,13 @@ if (votingId != null) {
                                 }).toList(),
                               ),
                             ),
-                ),
-              ],
-            ),
+                ), // pad
+                ],  //ch
+  ), //col
+),
+
+
+
     );
   }
 }

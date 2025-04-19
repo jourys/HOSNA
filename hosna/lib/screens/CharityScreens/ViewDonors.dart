@@ -17,8 +17,8 @@ class ViewDonorsPage extends StatefulWidget {
 
 class _ViewDonorsPageState extends State<ViewDonorsPage> {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String donationContractAddress = '0x74409493A94E68496FA90216fc0A40BAF98CF0B9';
-  final String donorContractAddress = '0x761a4F03a743faf9c0Eb3440ffeAB086Bd099fbc';
+  final String donationContractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45';
+  final String donorContractAddress = '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
 
   late Web3Client _web3Client;
   late DeployedContract _donationContract;
@@ -107,62 +107,65 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
     return null;
   }
 
-  Future<void> _fetchDonorsWithProfiles() async {
-    try {
-      final result = await _web3Client.call(
-        contract: _donationContract,
-        function: _getProjectDonorsWithAmounts,
-        params: [BigInt.from(widget.projectId)],
-      );
+ Future<void> _fetchDonorsWithProfiles() async {
+  try {
+    final result = await _web3Client.call(
+      contract: _donationContract,
+      function: _getProjectDonorsWithAmounts,
+      params: [BigInt.from(widget.projectId)],
+    );
 
-      final addresses = result[0] as List;
-      final anonymousAmounts = result[1] as List;
-      final nonAnonymousAmounts = result[2] as List;
+    final addresses = result[0] as List;
+    final anonymousAmounts = result[1] as List;
+    final nonAnonymousAmounts = result[2] as List;
 
-      List<Map<String, dynamic>> donors = [];
+    List<Map<String, dynamic>> donors = [];
 
-      for (int i = 0; i < addresses.length; i++) {
-        final EthereumAddress addr = addresses[i];
-        final BigInt anonAmount = anonymousAmounts[i];
-        final BigInt nonAnonAmount = nonAnonymousAmounts[i];
+    for (int i = 0; i < addresses.length; i++) {
+      final EthereumAddress addr = addresses[i];
+      final BigInt anonAmount = anonymousAmounts[i];
+      final BigInt nonAnonAmount = nonAnonymousAmounts[i];
 
-          try {
-            final profile = await _web3Client.call(
-              contract: _donorContract,
-              function: _getDonor,
-              params: [addr],
-            );
+      try {
+        final profile = await _web3Client.call(
+          contract: _donorContract,
+          function: _getDonor,
+          params: [addr],
+        );
 
-            final walletAddress = profile[4].toString();
-            final profilePic = await _fetchProfilePicture(walletAddress);
+        final walletAddress = profile[4].toString();
+        final profilePic = await _fetchProfilePicture(walletAddress);
 
-            donors.add({
-              'firstName': profile[0],
-              'lastName': profile[1],
-              'email': profile[2],
-              'phone': profile[3],
-              'wallet': walletAddress,
-              'anonymousAmount': anonAmount,
-              'nonAnonymousAmount': nonAnonAmount,
-              'profile_picture': profilePic,
-            });
-          } catch (e) {
-            print("Error fetching profile: $e");
-          }
-        }
-      
-
-      setState(() {
-        donorProfiles = donors;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Error: $e");
-      setState(() {
-        _isLoading = false;
-      });
+        donors.add({
+          'firstName': profile[0],
+          'lastName': profile[1],
+          'email': profile[2],
+          'phone': profile[3],
+          'wallet': walletAddress,
+          'anonymousAmount': anonAmount,
+          'nonAnonymousAmount': nonAnonAmount,
+          'totalAmount': anonAmount + nonAnonAmount, // Add total
+          'profile_picture': profilePic,
+        });
+      } catch (e) {
+        print("Error fetching profile: $e");
+      }
     }
+
+    // Sort donors by total amount in descending order
+    donors.sort((a, b) => (b['totalAmount'] as BigInt).compareTo(a['totalAmount'] as BigInt));
+
+    setState(() {
+      donorProfiles = donors;
+      _isLoading = false;
+    });
+  } catch (e) {
+    print("Error: $e");
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   void _navigateToDetails(Map<String, dynamic> donor) {
     Navigator.push(
@@ -242,7 +245,7 @@ Widget build(BuildContext context) {
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
                               "Donated amount: ${nonAnon.toStringAsFixed(8)} ETH",
-                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                             ),
                           ),
                           onTap: () => _navigateToDetails(donor),
@@ -295,7 +298,7 @@ Widget build(BuildContext context) {
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
                               "Donated amount: ${anon.toStringAsFixed(8)} ETH",
-                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                             ),
                           ),
                           trailing: Row(

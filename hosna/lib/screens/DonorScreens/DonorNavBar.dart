@@ -232,17 +232,32 @@ class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
             },
            child: FloatingActionButton(
   onPressed: _launchEmail,
-  backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Remove background color
-  elevation: 5, // Add subtle shadow for elevation
+  backgroundColor: Colors.white,
+  elevation: 5,
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(50), // Circular button with no background
+    borderRadius: BorderRadius.circular(50),
   ),
-  child: const Icon(
-    Icons.mail,
-    color: Color.fromRGBO(24, 71, 137, 1), // Icon color matching border
-    size: 35, // Icon size
+  child: ShaderMask(
+    shaderCallback: (Rect bounds) {
+      return const LinearGradient(
+        colors: [
+          Color(0xFF0D1B2A), 
+          Color(0xFF1B365D), 
+          Color(0xFF4B9CD3), 
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds);
+    },
+    blendMode: BlendMode.srcIn, 
+    child: const Icon(
+      Icons.mail,
+      color: Colors.white,
+      size: 35,
+    ),
   ),
 ),
+
 
           ),
         ),

@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminSidebar.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert'; // For jsonDecode & jsonEncode
+import 'package:http/http.dart'; // For Client
+import 'package:web3dart/web3dart.dart'; // For Web3
+import 'package:cloud_firestore/cloud_firestore.dart'; // For Firestore
 
 class CharityRequests extends StatefulWidget {
   @override
@@ -40,24 +44,48 @@ class _CharityRequestsState extends State<CharityRequests> {
   }
 
   Future<void> _loadCharityRequests() async {
-    // Fetch pending charity wallet addresses from Firebase
-    List<String> walletAddresses = await fetchPendingCharities();
-    setState(() {
-      pendingWalletAddresses = walletAddresses;
-    });
+  print("🔄 Fetching pending charity wallet addresses...");
 
-    // Fetch details for each wallet address from the smart contract
-    for (String walletAddress in walletAddresses) {
-      CharityService charityService = CharityService();
-      var details = await charityService.getCharityDetails(walletAddress);
+  // Fetch pending charities from Firestore
+  List<String> walletAddresses = await fetchPendingCharities();
+
+  print("✅ Wallet addresses fetched: $walletAddresses");
+
+  // Initialize CharityService
+  final charityService = CharityService(
+    rpcUrl: 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac',
+    contractAddress: '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7',
+  );
+
+  await charityService.initialize();
+
+  setState(() {
+    pendingWalletAddresses = walletAddresses;
+  });
+
+  // Fetch and store charity details
+  for (String walletAddress in walletAddresses) {
+    print("🔍 Fetching charity details for wallet: $walletAddress");
+
+    var details = await charityService.getCharityDetails(walletAddress);
+
+    if (details != null) {
+      print("📄 Details fetched for wallet $walletAddress: $details");
 
       setState(() {
         charityDetails[walletAddress] = details;
       });
+
+      print("✅ Charity details for wallet $walletAddress added to state.");
+    } else {
+      print("⚠️ No details found for wallet: $walletAddress");
     }
   }
 
-  @override
+  print("🎉 Charity request loading complete!");
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,13 +128,8 @@ class _CharityRequestsState extends State<CharityRequests> {
                                 pendingWalletAddresses[index];
                             var details = charityDetails[walletAddress];
 
-                            if (details == null) {
-                              return ListTile(
-                                title: Text('Loading...'),
-                              );
-                            }
-
-                            return GestureDetector(
+                          if (details == null) return SizedBox.shrink();
+                      return GestureDetector(
                               onTap: () {
                                 showDialog(
                                   context: context,
@@ -119,9 +142,9 @@ class _CharityRequestsState extends State<CharityRequests> {
                                             15), // Optional: Rounded corners
                                       ),
                                       child: Container(
-                                        width: 600, // Set a fixed square width
+                                        width: 800, // Set a fixed square width
                                         height:
-                                            600, // Set a fixed square height        padding: EdgeInsets.all(20), // Padding around content
+                                            800, // Set a fixed square height        padding: EdgeInsets.all(20), // Padding around content
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           crossAxisAlignment: CrossAxisAlignment
@@ -168,8 +191,8 @@ class _CharityRequestsState extends State<CharityRequests> {
                                                             'licenseNumber']),
                                                     _buildDetailRow('City:',
                                                         details['city']),
-                                                    _buildDetailRow('Website:',
-                                                        details['website']),
+                                                _buildDetailRow('Website:', details['website'] ?? 'N/A'),
+
                                                     _buildDetailRow(
                                                         'Description:',
                                                         details['description']),
@@ -415,247 +438,110 @@ class _CharityRequestsState extends State<CharityRequests> {
   }
 }
 
-class CharityService {
-  final String rpcUrl =
-      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
 
-  final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
-  late Web3Client _client;
-  late DeployedContract _contract;
-  late ContractFunction _getCharityFunction;
-  String abi = '''
-[
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_email",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_phone",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_licenseNumber",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_city",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_description",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_website",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_establishmentDate",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "_wallet",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "_password",
-        "type": "string"
-      }
-    ],
-    "name": "registerCharity",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_email",
-        "type": "string"
-      }
-    ],
-    "name": "checkCharityExists",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllCharities",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "wallets",
-        "type": "address[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "names",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "emails",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "phones",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "cities",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "websites",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "descriptions",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "licenseNumbers",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "establishmentDates",
-        "type": "string[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_email",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "_wallet",
-        "type": "address"
-      }
-    ],
-    "name": "forceLinkEmailToWallet",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_wallet",
-        "type": "address"
-      }
-    ],
-    "name": "getCharity",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "email",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "phone",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "licenseNumber",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "city",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "description",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "website",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "establishmentDate",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-]
-''';
+  class CharityService {
+  final String rpcUrl;
+  final String contractAddress;
+  late final Web3Client _client;
+  late final DeployedContract _contract;
 
-  CharityService() {
-    _client = Web3Client(rpcUrl, http.Client());
-    _contract = DeployedContract(
-      ContractAbi.fromJson(abi, 'CharityRegistration'),
-      EthereumAddress.fromHex(contractAddress),
-    );
-    _getCharityFunction = _contract.function('getCharity');
+  final String abiString = '''
+  [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getAllCharities",
+      "outputs": [
+        { "name": "wallets", "type": "address[]" },
+        { "name": "names", "type": "string[]" },
+        { "name": "emails", "type": "string[]" },
+        { "name": "phones", "type": "string[]" },
+        { "name": "cities", "type": "string[]" },
+        { "name": "websites", "type": "string[]" },
+        { "name": "descriptions", "type": "string[]" },
+        { "name": "licenseNumbers", "type": "string[]" },
+        { "name": "establishmentDates", "type": "string[]" }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+  ''';
+
+  CharityService({
+    required this.rpcUrl,
+    required this.contractAddress,
+  }) {
+    _client = Web3Client(rpcUrl, Client());
   }
 
-  Future<Map<String, dynamic>> getCharityDetails(String walletAddress) async {
-    EthereumAddress address = EthereumAddress.fromHex(walletAddress);
-    List<dynamic> results = await _client.call(
+  Future<void> initialize() async {
+    try {
+      var abi = jsonDecode(abiString);
+      _contract = DeployedContract(
+        ContractAbi.fromJson(jsonEncode(abi), "CharityRegistration"),
+        EthereumAddress.fromHex(contractAddress),
+      );
+    } catch (e) {
+      throw Exception("Failed to load contract: $e");
+    }
+  }
+
+  Future<List<String>> fetchPendingCharities() async {
+    List<String> walletAddresses = [];
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('accountStatus', isEqualTo: 'pending')
+          .where('userType', isEqualTo: 1)
+          .get();
+
+      snapshot.docs.forEach((doc) {
+        walletAddresses.add(doc['walletAddress']);
+      });
+    } catch (e) {
+      print("Error fetching charity wallet addresses: $e");
+    }
+
+    return walletAddresses;
+  }
+
+  Future<Map<String, dynamic>?> getCharityDetails(String walletAddress) async {
+    final function = _contract.function('getAllCharities');
+    final result = await _client.call(
       contract: _contract,
-      function: _getCharityFunction,
-      params: [address],
+      function: function,
+      params: [],
     );
 
-    return {
-      'name': results[0],
-      'email': results[1],
-      'phone': results[2],
-      'licenseNumber': results[3],
-      'city': results[4],
-      'description': results[5],
-      'website': results[6],
-      'establishmentDate': results[7],
-    };
+    List<dynamic> wallets = result[0];
+    List<dynamic> names = result[1];
+    List<dynamic> emails = result[2];
+    List<dynamic> phones = result[3];
+    List<dynamic> cities = result[4];
+    List<dynamic> websites = result[5];
+    List<dynamic> descriptions = result[6];
+    List<dynamic> licenseNumbers = result[7];
+    List<dynamic> establishmentDates = result[8];
+
+    for (int i = 0; i < wallets.length; i++) {
+      if (wallets[i].toString().toLowerCase() == walletAddress.toLowerCase()) {
+        return {
+          "wallet": wallets[i].toString(),
+          "name": names[i],
+          "email": emails[i],
+          "phone": phones[i],
+          "city": cities[i],
+          "website": websites[i],
+          "description": descriptions[i],
+          "licenseNumber": licenseNumbers[i],
+          "establishmentDate": establishmentDates[i],
+        };
+      }
+    }
+
+    return null; // Not found
   }
 }
