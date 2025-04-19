@@ -35,6 +35,14 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
     _initializeWeb3();
     _fetchProfilePicture();
     _getDonorData();
+    _loadEmailFromPrefs();
+  }
+
+  Future<void> _loadEmailFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _email = prefs.getString('donorEmail') ?? '';
+    });
   }
 
   Future<void> _fetchProfilePicture() async {
@@ -252,6 +260,9 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
         _email = result[2] as String;
         _phone = result[3] as String;
       });
+
+      final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('donorEmail', _email);
 
       print("✅ Donor data retrieved successfully!");
     } catch (e) {
