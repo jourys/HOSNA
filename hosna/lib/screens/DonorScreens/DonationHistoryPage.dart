@@ -77,7 +77,8 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                     'Unknown Project';
                 projectType =
                     data['projectType'] ?? donation['projectType'] ?? 'Unknown';
-                totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
+                totalAmount =
+                    data['totalAmount'] ?? donation['totalAmount'] ?? 0.0;
                 description = data['description'] ?? '';
 
                 // Calculate status based on dates and amounts
@@ -87,8 +88,8 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                   final now = DateTime.now();
                   final startDate = data['startDate']?.toDate() ?? now;
                   final endDate = data['endDate']?.toDate();
-                  final donatedAmount = data['donatedAmount'] ?? 0.0;
-
+                  final donatedAmount =
+                      data['donatedAmount'] ?? donation['donatedAmount'] ?? 0.0;
                   if (donatedAmount >= totalAmount) {
                     status = 'completed';
                   } else if (endDate != null && now.isAfter(endDate)) {
@@ -118,10 +119,11 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
               'totalAmount': totalAmount,
               'description': description,
               'progress': progress,
-              'formattedDate': DateFormat('MMM d, yyyy').format(
-                DateTime.fromMillisecondsSinceEpoch(
-                    int.parse(donation['timestamp'].toString())),
-              ),
+              'formattedDate': donation['endDate'] != null
+                  ? DateFormat('yyyy-MM-dd').format(
+                      DateTime.fromMillisecondsSinceEpoch(
+                          int.parse(donation['endDate'].toString())))
+                  : 'N/A',
             };
           }).toList(),
         );
@@ -319,7 +321,7 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                                         ),
                                       ),
                                       Text(
-                                        'Date: ${donation['formattedDate']}',
+                                        'End Date: ${donation['formattedDate']}',
                                         style: TextStyle(
                                           color: Colors.grey[600],
                                         ),
@@ -349,38 +351,36 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                                           builder: (context) => ProjectDetails(
                                             projectId: int.parse(
                                                 donation['id'].toString()),
-                                            projectName: donation['name'] ??
-                                                'Unknown Project', // 👈 Use from local donation
+                                            projectName:
+                                                donation['projectName'] ??
+                                                    'Unknown Project',
                                             description:
-                                                data?['description'] ?? '',
+                                                donation['description'] ?? '',
                                             startDate: DateFormat('yyyy-MM-dd')
-                                                .format(data?['startDate']
-                                                        ?.toDate() ??
-                                                    DateTime.now()),
-                                            deadline: DateFormat('yyyy-MM-dd')
-                                                .format(data?['endDate']
-                                                        ?.toDate() ??
-                                                    DateTime.now()),
+                                                .format(DateTime
+                                                    .fromMillisecondsSinceEpoch(
+                                                        donation['timestamp'])),
+                                            deadline: donation['endDate'] !=
+                                                    null
+                                                ? DateFormat('yyyy-MM-dd')
+                                                    .format(DateTime
+                                                        .fromMillisecondsSinceEpoch(
+                                                            donation[
+                                                                'endDate']))
+                                                : '',
                                             totalAmount:
-                                                (data?['totalAmount'] ?? 0.0)
-                                                    .toDouble(),
-                                            projectType: data?['projectType'] ??
-                                                'Unknown',
-                                            projectCreatorWallet:
-                                                data?['projectCreatorWallet'] ??
-                                                    '',
+                                                donation['totalAmount'] ?? 0.0,
                                             donatedAmount:
-                                                (data?['donatedAmount'] ?? 0.0)
-                                                    .toDouble(),
-                                            progress: data?['donatedAmount'] !=
-                                                        null &&
-                                                    data?['totalAmount'] != null
-                                                ? (data!['donatedAmount']
-                                                            as num)
-                                                        .toDouble() /
-                                                    (data['totalAmount'] as num)
-                                                        .toDouble()
-                                                : 0.0,
+                                                donation['donatedAmount'] ??
+                                                    0.0,
+                                            projectType:
+                                                donation['projectType'] ??
+                                                    'Unknown',
+                                            projectCreatorWallet: donation[
+                                                    'projectCreatorWallet'] ??
+                                                '',
+                                            progress:
+                                                donation['progress'] ?? 0.0,
                                           ),
                                         ),
                                       );
