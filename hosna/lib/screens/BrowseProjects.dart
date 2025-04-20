@@ -2,12 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
+import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/AdminScreens/AdminSidebar.dart';
+
+
+
+
+
+
+
 
 class BrowseProjects extends StatefulWidget {
   final String walletAddress;
@@ -28,6 +36,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
   bool isCanceled = false; // Default value
   String projectState = "";
   bool isSidebarVisible = false; // To toggle the sidebar visibility
+late GetCharityByWallet _charityService;
 
   final List<String> _projectTypes = [
     'All',
@@ -45,13 +54,15 @@ class _BrowseProjectsState extends State<BrowseProjects> {
   void initState() {
     super.initState();
     _getUserType();
-    _fetchProjects();
+   
     // Simulate loading delay
     Future.delayed(Duration(seconds: 2), () {
       setState(() {
         Loading = false;
       });
     });
+     _fetchProjects();
+     _charityService = GetCharityByWallet();
   }
 
 // Future<void> _loadProjectState(String projectId) async {
@@ -93,7 +104,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
 
       List<Map<String, dynamic>> projects = [];
 
-      for (int i = 39; i < projectCount; i++) {
+      for (int i = 0; i < projectCount; i++) {
         try {
           final project = await _blockchainService.getProjectDetails(i);
           if (project.containsKey("error")) {
@@ -572,12 +583,30 @@ if (votingId != null) {
                                                                     .grey[600]),
                                                           ),
                                                           SizedBox(height: 8),
-                                                          Text(
-                                                            'Posted by: ${project['organization']}',
-                                                            style: TextStyle(
-                                                                color: Colors
-                                                                    .grey[600]),
-                                                          ),
+                                                         FutureBuilder<String>(
+  future: _charityService.getCharityName(
+    EthereumAddress.fromHex(project['organization']),
+  ),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return Text(
+        'Posted by: loading...',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    } else if (snapshot.hasError || snapshot.data == null) {
+      return Text(
+        'Posted by: Unknown',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    } else {
+      return Text(
+        'Posted by: ${snapshot.data}',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    }
+  },
+),
+
                                                           SizedBox(height: 16),
                                                           LinearProgressIndicator(
                                                             value: progress,
@@ -864,12 +893,30 @@ if (votingId != null) {
                                                             Colors.grey[600]),
                                                   ),
                                                   SizedBox(height: 8),
-                                                  Text(
-                                                    'Posted by: ${project['organization']}',
-                                                    style: TextStyle(
-                                                        color:
-                                                            Colors.grey[600]),
-                                                  ),
+                                                  FutureBuilder<String>(
+  future: _charityService.getCharityName(
+    EthereumAddress.fromHex(project['organization']),
+  ),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return Text(
+        'Posted by: loading...',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    } else if (snapshot.hasError || snapshot.data == null) {
+      return Text(
+        'Posted by: Unknown',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    } else {
+      return Text(
+        'Posted by: ${snapshot.data}',
+        style: TextStyle(color: Colors.grey[600]),
+      );
+    }
+  },
+),
+
                                                   SizedBox(height: 16),
                                                   LinearProgressIndicator(
                                                     value: progress,
@@ -936,5 +983,67 @@ if (votingId != null) {
 
 
     );
+  }
+}
+
+
+class GetCharityByWallet {
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
+
+  late Web3Client _web3Client;
+  late EthereumAddress _contractAddress;
+  late DeployedContract _contract;
+
+  final String _abi = '''
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_wallet",
+        "type": "address"
+      }
+    ],
+    "name": "getCharity",
+    "outputs": [
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "string", "name": "email", "type": "string" },
+      { "internalType": "string", "name": "phone", "type": "string" },
+      { "internalType": "string", "name": "licenseNumber", "type": "string" },
+      { "internalType": "string", "name": "city", "type": "string" },
+      { "internalType": "string", "name": "description", "type": "string" },
+      { "internalType": "string", "name": "website", "type": "string" },
+      { "internalType": "string", "name": "establishmentDate", "type": "string" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+''';
+
+  GetCharityByWallet() {
+    _web3Client = Web3Client(rpcUrl, Client());
+    _contractAddress =
+        EthereumAddress.fromHex("0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7");
+    _loadContract();
+  }
+
+  Future<void> _loadContract() async {
+    _contract = DeployedContract(
+      ContractAbi.fromJson(_abi, "CharityRegistration"),
+      _contractAddress,
+    );
+  }
+
+  Future<String> getCharityName(EthereumAddress walletAddress) async {
+    final function = _contract.function('getCharity');
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: function,
+      params: [walletAddress],
+    );
+
+    return result[0] as String; // Only return the name
   }
 }

@@ -278,28 +278,28 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
                     children: [
 
-                      IconButton(
+                      // IconButton(
 
-                        icon: const Icon(
+                      //   icon: const Icon(
 
-                          Icons.notifications,
+                      //     Icons.notifications,
 
-                          color: Colors.white,
+                      //     color: Colors.white,
 
-                          size: 30,
+                      //     size: 30,
 
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => CharityNotificationsPage(),
+                      //   ),
+                      //   onPressed: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //           builder: (context) => CharityNotificationsPage(),
 
-                            ),
-                          );
-                        },
-                      ),
-                    SizedBox(width: 10),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                    // SizedBox(width: 10),
 
                       SizedBox(
 
