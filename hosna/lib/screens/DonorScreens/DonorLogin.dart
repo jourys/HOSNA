@@ -9,6 +9,7 @@ import 'package:web3dart/web3dart.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // For Firebase Authentication
 import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 
 class DonorLogInPage extends StatefulWidget {
   const DonorLogInPage({super.key});
@@ -37,9 +38,11 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final String _contractAddress = "0xE50FF5B540dB6280903FccDb7917F1271233D24E";
+  final String _contractAddress = "0xD46BB4e42CB4215c2E9DCeB16F99bD4940104E39";
   final String _lookupContractAddress =
       "0xCa74e468bB8f3b2BF030a1787872C0Cad3c57b8b";
+  final creatorPrivateKey =
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
   @override
   void initState() {
@@ -64,28 +67,10 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     print(
         'Attempting to authenticate user with email: $email and password: $password');
 
-    // Contract for donor authentication
-    final authContract = DeployedContract(
-      ContractAbi.fromJson(
-        '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
-        'DonorAuth',
-      ),
-      EthereumAddress.fromHex(_contractAddress.toString()),
-    );
-
-    final authFunction = authContract.function('loginDonor');
-
     try {
-      print('Calling the loginDonor function on the contract...');
-      final authResult = await _web3Client.call(
-        contract: authContract,
-        function: authFunction,
-        params: [email, password],
-      );
+      bool authSuccess = await _checkAuth(email, password);
 
-      print('Auth result: $authResult');
-
-      if (authResult.isNotEmpty && authResult[0] == true) {
+      if (authSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
         );
@@ -168,6 +153,100 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     }
   }
 
+  Future<bool> _checkAuth(String email, String password) async {
+    bool authSuccess = false;
+    bool firebaseAuthSuccess = await _tryFirebaseAuth(email, password);
+    print('Firebase authentication success: $firebaseAuthSuccess');
+    bool blockchainAuthSuccess = await _tryBlockchainAuth(email, password);
+    print('Blockchain authentication success: $blockchainAuthSuccess');
+    // if (!firebaseAuthSuccess) {
+    //   return;
+    // }
+
+    if (blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+    } else if (!blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+      await _blockchainPasswordChange(email, password);
+    } else if (!firebaseAuthSuccess && blockchainAuthSuccess) {
+      try {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        authSuccess = true;
+      } 
+      on FirebaseAuthException catch (e) {
+        print("Firebase authentication error: ${e.code} - ${e.message}");
+        authSuccess = false;
+      } 
+    }
+    return authSuccess;
+  }
+  
+  Future<void> _blockchainPasswordChange(String email, String password) async {
+
+      // Get the owner's credentials to pay for the gas fees
+    final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
+        creatorPrivateKey); // Private key of contract owner
+    final creatorWallet = await creatorCredentials.extractAddress();
+    print("Creator's wallet address: $creatorWallet");
+
+    // Define the contract and function reference
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[{
+		"inputs": [
+          {
+            "internalType": "string",
+            "name": "_email",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "_newPassword",
+            "type": "string"
+          }
+        ],
+        "name": "changePassword",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }]''',
+        'DonorAuth', // Contract name
+      ),
+      EthereumAddress.fromHex(_contractAddress.toString()),
+    );
+    print("Contract instantiated: $contract");
+
+    final changePassword = contract.function('changePassword');
+    print("Function reference obtained: $changePassword");
+
+
+    try {
+      // Send the transaction to register the donor using the creator's wallet for gas
+      final result = await _web3Client.sendTransaction(
+        creatorCredentials, // Use the creator's credentials to sign the transaction
+        web3.Transaction.callContract(
+          contract: contract,
+          function: changePassword,
+          parameters: [
+            email,
+            password,
+          ],
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
+        ),
+        chainId: 11155111, // Replace with your network chain ID
+      );
+      print("Transaction result: $result");
+
+    } catch (e) {
+      print("Error changing password: $e");
+
+    }
+  }
+
   // Function to retrieve the private key from SharedPreferences
   Future<String?> _getPrivateKey(String walletAddress) async {
     try {
@@ -196,6 +275,65 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     } catch (e) {
       print('⚠️ Error retrieving private key: $e');
       return null;
+    }
+  }
+
+  Future<bool> _tryFirebaseAuth(String email, String password) async {
+     try {
+       await FirebaseAuth.instance.signInWithEmailAndPassword(
+         email: email,
+         password: password,
+       );
+       print("✅ Firebase authentication successful");
+       return true;
+     } on FirebaseAuthException catch (e) {
+       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+       String errorMessage;
+       switch (e.code) {
+         case 'user-not-found':
+           errorMessage = 'No user found with this email.';
+           break;
+         case 'wrong-password':
+           errorMessage = 'Wrong password provided.';
+           break;
+         case 'invalid-email':
+           errorMessage = 'The email address is not valid.';
+           break;
+         case 'user-disabled':
+           errorMessage = 'This user account has been disabled.';
+           break;
+         default:
+           errorMessage = e.message ?? 'Authentication failed';
+       }
+       return false;
+     }
+   }
+
+   Future<bool> _tryBlockchainAuth(String email, String password) async {
+    try {
+      // Contract for donor authentication
+      final authContract = DeployedContract(
+        ContractAbi.fromJson(
+          '[{"constant":true,"inputs":[{"name":"_email","type":"string"},{"name":"_password","type":"string"}],"name":"loginDonor","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"}]',
+          'DonorAuth',
+        ),
+        EthereumAddress.fromHex(_contractAddress.toString()),
+      );
+
+      final authFunction = authContract.function('loginDonor');
+
+      final authResult = await _web3Client.call(
+        contract: authContract,
+        function: authFunction,
+        params: [email, password],
+      );
+
+      print('Auth result: $authResult');
+
+      return authResult.isNotEmpty && authResult[0] == true;
+    } catch (e) {
+      print('❌ Error during blockchain authentication: $e');
+      return false;
     }
   }
 

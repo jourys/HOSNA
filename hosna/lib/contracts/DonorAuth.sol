@@ -33,4 +33,33 @@ contract DonorAuth {
         // Return true if authentication is successful
         return true;
     }
+
+    // Change password when current password is known
+    function changePassword(
+        string memory _email,
+        string memory _newPassword
+    ) external {
+        address donorAddress = donorRegistry.emailToAddress(_email);
+        (
+            string memory firstName,
+            string memory lastName,
+            string memory email,
+            string memory phone,
+            address walletAddress,
+            bool registered
+        ) = donorRegistry.getDonor(donorAddress);
+        
+        require(registered, "Donor not registered");
+        
+        donorRegistry.deleteDonor(donorAddress);
+        donorRegistry.registerDonor(
+            firstName,
+            lastName,
+            email,
+            phone,
+            _newPassword,
+            walletAddress
+        );
+        
+    }
 }

@@ -10,9 +10,11 @@ import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:web3dart/web3dart.dart' as web3;
+import 'package:hosna/screens/PasswordResetPage.dart';
 
 class CharityLogInPage extends StatefulWidget {
   const CharityLogInPage({super.key});
@@ -33,6 +35,10 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   final String _lookupContractAddress =
       "0xC6bbeC9116dB9955987b21f0093cabA4dF895EBF";
   bool _isPasswordVisible = false; // Track password visibility
+  final creatorPrivateKey =
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+  final String _charityRegistryAddress =
+        "0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7";
 
   @override
   void initState() {
@@ -58,24 +64,9 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     print("📌 Raw Password: $password");
 
     try {
-      final contract = DeployedContract(
-        ContractAbi.fromJson(
-          '''[{"constant": true, "inputs": [{"name": "_email", "type": "string"}, {"name": "_password", "type": "string"}], "name": "loginCharity", "outputs": [{"name": "", "type": "bool"}], "payable": false, "stateMutability": "view", "type": "function"}]''',
-          'CharityAuth',
-        ),
-        EthereumAddress.fromHex(_contractAddress),
-      );
+      bool authSuccess = await _checkAuth(email, password);
 
-      final loginCharityFunction = contract.function('loginCharity');
-      final result = await _web3Client.call(
-        contract: contract,
-        function: loginCharityFunction,
-        params: [email, password],
-      );
-
-      print("📌 Contract call result: $result");
-
-      if (result.isNotEmpty && result[0] == true) {
+      if (authSuccess) {
         print("✅ Login successful!");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful!')),
@@ -294,6 +285,302 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     }
   }
 
+  Future<bool> _checkAuth(String email, String password) async {
+    bool authSuccess = false;
+    bool firebaseAuthSuccess = await _tryFirebaseAuth(email, password);
+    print('Firebase authentication success: $firebaseAuthSuccess');
+    bool blockchainAuthSuccess = await _tryBlockchainAuth(email, password);
+    print('Blockchain authentication success: $blockchainAuthSuccess');
+    // if (!firebaseAuthSuccess) {
+    //   return;
+    // }
+
+    if (blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+    } else if (!blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+      await _blockchainPasswordChange(email, password);
+    } else if (!firebaseAuthSuccess && blockchainAuthSuccess) {
+      try {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        authSuccess = true;
+      } 
+      on FirebaseAuthException catch (e) {
+        print("Firebase authentication error: ${e.code} - ${e.message}");
+        authSuccess = false;
+      } 
+    }
+    return authSuccess;
+  }
+  
+  Future<void> _blockchainPasswordChange(String email, String password) async {
+
+      // Get the owner's credentials to pay for the gas fees
+    final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
+        creatorPrivateKey); // Private key of contract owner
+    final creatorWallet = await creatorCredentials.extractAddress();
+    print("Creator's wallet address: $creatorWallet");
+
+    // Define the contract and function reference
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[
+          {
+            "inputs": [
+              {
+                "internalType": "address",
+                "name": "_wallet",
+                "type": "address"
+              }
+            ],
+            "name": "getCharity",
+            "outputs": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "email",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "phone",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "licenseNumber",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "city",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "website",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "establishmentDate",
+                "type": "string"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },{
+            "inputs": [
+              {
+                "internalType": "string",
+                "name": "_email",
+                "type": "string"
+              }
+            ],
+            "name": "debugEmailMapping",
+            "outputs": [
+              {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },{
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_wallet",
+              "type": "address"
+            }
+          ],
+          "name": "deleteCharity",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },{
+          "constant": false,
+          "inputs": [
+            {"name": "_name", "type": "string"},
+            {"name": "_email", "type": "string"},
+            {"name": "_phone", "type": "string"},
+            {"name": "_licenseNumber", "type": "string"},
+            {"name": "_city", "type": "string"},
+            {"name": "_description", "type": "string"},
+            {"name": "_website", "type": "string"},
+            {"name": "_establishmentDate", "type": "string"},
+            {"name": "_wallet", "type": "address"},
+            {"name": "_password", "type": "string"}          
+            ],
+          "name": "registerCharity",
+          "outputs": [],
+          "payable": false,
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }]''',
+        'CharityRegistry', // Contract name
+      ),
+      EthereumAddress.fromHex(_charityRegistryAddress),
+    );
+    print("Contract instantiated: $contract");
+
+    final deleteCharity = contract.function('deleteCharity');
+    final registerCharity = contract.function('registerCharity');
+    final debugEmailMapping = contract.function('debugEmailMapping');
+    final getCharity = contract.function('getCharity');
+    print("Function reference obtained: $deleteCharity");
+
+    final authResult = await _web3Client.call(
+        contract: contract,
+        function: debugEmailMapping,
+        params: [email],
+      );
+
+    final charityWalletAddress = authResult[0];
+
+    final charityDetails = await _web3Client.call(
+        contract: contract,
+        function: getCharity,
+        params: [charityWalletAddress],
+      );
+
+    final charityName = charityDetails[0];
+    final charityEmail = charityDetails[1];
+    final charityPhone = charityDetails[2];
+    final charityLicenseNumber = charityDetails[3];
+    final charityCity = charityDetails[4];
+    final charityDescription = charityDetails[5];
+    final charityWebsite = charityDetails[6];
+    final charityEstablishmentDate = charityDetails[7];
+
+    print("Charity details: $charityDetails");
+    
+
+
+    try {
+      // Send the transaction to register the donor using the creator's wallet for gas
+      final result = await _web3Client.sendTransaction(
+        creatorCredentials, // Use the creator's credentials to sign the transaction
+        web3.Transaction.callContract(
+          contract: contract,
+          function: deleteCharity,
+          parameters: [
+            charityWalletAddress,  
+          ],
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
+        ),
+        chainId: 11155111, // Replace with your network chain ID
+      );
+      print("Transaction result: $result");
+
+    } catch (e) {
+      print("Error changing password: $e");
+
+    }
+    try {
+      // Send the transaction to register the donor using the creator's wallet for gas
+      final result = await _web3Client.sendTransaction(
+        creatorCredentials, // Use the creator's credentials to sign the transaction
+        web3.Transaction.callContract(
+          contract: contract,
+          function: registerCharity,
+          parameters: [
+            charityName,
+            charityEmail,
+            charityPhone,
+            charityLicenseNumber,
+            charityCity,
+            charityDescription,
+            charityWebsite,
+            charityEstablishmentDate,
+            charityWalletAddress,
+            password,
+          ],
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
+        ),
+        chainId: 11155111, // Replace with your network chain ID
+      );
+      print("Transaction result: $result");
+
+    } catch (e) {
+      print("Error changing password: $e");
+
+    }
+  }
+
+  Future<bool> _tryFirebaseAuth(String email, String password) async {
+     try {
+       await FirebaseAuth.instance.signInWithEmailAndPassword(
+         email: email,
+         password: password,
+       );
+       print("✅ Firebase authentication successful");
+       return true;
+     } on FirebaseAuthException catch (e) {
+       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+       String errorMessage;
+       switch (e.code) {
+         case 'user-not-found':
+           errorMessage = 'No user found with this email.';
+           break;
+         case 'wrong-password':
+           errorMessage = 'Wrong password provided.';
+           break;
+         case 'invalid-email':
+           errorMessage = 'The email address is not valid.';
+           break;
+         case 'user-disabled':
+           errorMessage = 'This user account has been disabled.';
+           break;
+         default:
+           errorMessage = e.message ?? 'Authentication failed';
+       }
+       return false;
+     }
+   }
+
+   Future<bool> _tryBlockchainAuth(String email, String password) async {
+    try {
+      final authContract = DeployedContract(
+        ContractAbi.fromJson(
+          '''[{"constant": true, "inputs": [{"name": "_email", "type": "string"}, {"name": "_password", "type": "string"}], "name": "loginCharity", "outputs": [{"name": "", "type": "bool"}], "payable": false, "stateMutability": "view", "type": "function"}]''',
+          'CharityAuth',
+        ),
+        EthereumAddress.fromHex(_contractAddress),
+      );
+
+      final loginCharityFunction = authContract.function('loginCharity');
+
+      final authResult = await _web3Client.call(
+        contract: authContract,
+        function: loginCharityFunction,
+        params: [email, password],
+      );
+
+      print('Auth result: $authResult');
+
+      return authResult.isNotEmpty && authResult[0] == true;
+    } catch (e) {
+      print('❌ Error during blockchain authentication: $e');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -354,6 +641,32 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                 ),
               ),
               SizedBox(height: 30),
+               Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        // Navigate to the Reset Password page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const PasswordResetPage(), // الانتقال إلى صفحة إعادة تعيين كلمة المرور
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Forgot your password?',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
                   onPressed: () => _authenticateCharity(),

@@ -10,6 +10,7 @@ import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/SuspensionListener.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DonorSignUpPage extends StatefulWidget {
   const DonorSignUpPage({super.key});
@@ -180,6 +181,11 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signup successful!')),
+      );
+
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
       _storePrivateKey(walletAddress.toString(), _privateKey);
       print("private key stoooored in shared pref.");

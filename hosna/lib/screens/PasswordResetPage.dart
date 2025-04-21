@@ -15,18 +15,32 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   // Function to send password reset email
   Future<void> resetPassword() async {
     try {
-      // Send the password reset email using Firebase
-      await FirebaseAuth.instance.sendPasswordResetEmail(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text,
+        password: "123456",
       );
-      setState(() {
-        _message = 'Password reset link sent to ${_emailController.text}.';
-      });
-    } catch (e) {
-      setState(() {
-        _message = 'Failed to send password reset email. Please try again.';
-      });
+    } 
+    on FirebaseAuthException catch (e) {
+      print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+    } 
+    finally {
+      try {
+        // Send the password reset email using Firebase
+        await FirebaseAuth.instance.sendPasswordResetEmail(
+          email: _emailController.text,
+        );
+        setState(() {
+          _message = 'Password reset link sent to ${_emailController.text}.';
+        });
+      } catch (e) {
+        setState(() {
+          _message = 'Failed to send password reset email. Please try again.';
+        });
+      }
     }
+
+
+    
   }
 
   @override
