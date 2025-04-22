@@ -126,7 +126,7 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
     return Scaffold(
       backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(80), // Increases app bar height
+        preferredSize: Size.fromHeight(60), // Increases app bar height
         child: AppBar(
           backgroundColor: Color.fromRGBO(24, 71, 137, 1),
           elevation: 0, // Remove shadow
@@ -136,18 +136,9 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
             child: Align(
               alignment: Alignment.bottomCenter, // Center and move down
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 25,
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
+                
                   Text(
                     "Notifications",
                     style: TextStyle(

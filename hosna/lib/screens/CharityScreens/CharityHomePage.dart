@@ -259,7 +259,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 38),
+                    padding: const EdgeInsets.only(top: 60),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -305,7 +305,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
                         width: 100,
 
-                        height: 80,
+                        height: 50,
 
                         child: IconButton(
 
