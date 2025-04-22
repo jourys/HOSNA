@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
@@ -16,6 +17,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
+
 
 
 
@@ -1648,6 +1650,34 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
       },
       donationAmountInEth
     );
+    // Send confirmation email
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        String userEmail = prefs.getString('donorEmail') ?? '';
+
+        print(userEmail);
+
+        if (userEmail != null) {
+          final response = await http.post(
+            Uri.parse(
+                'https://us-central1-hosna2.cloudfunctions.net/sendDonationEmail'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': userEmail}),
+          );
+
+          if (response.statusCode == 200) {
+            print('Confirmation email sent to $userEmail');
+          } else {
+            print('Failed to send email. Status: ${response.statusCode}');
+            print('Response body: ${response.body}');
+          }
+        } else {
+          print('User email is null. Cannot send confirmation email.');
+        }
+      } catch (e) {
+        print('Error sending confirmation email: $e');
+      }
+      
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error processing donation: $e')),
