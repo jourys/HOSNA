@@ -351,7 +351,7 @@ class _PostProjectScreenState extends State<PostProject> {
                       ),
                       SizedBox(
                           height:
-                              100), // Increased white space below the buttons
+                              120), // Increased white space below the buttons
                     ],
                   )
                 ],

@@ -160,6 +160,8 @@ late GetCharityByWallet _charityService;
       _showMyProjects = false;
     });
   }
+
+
 Future<String> _getProjectState(Map<String, dynamic> project) async {
   DateTime now = DateTime.now();
   String projectId = project['id'].toString(); // Ensure it's a String
@@ -296,7 +298,7 @@ if (votingId != null) {
     return (wei / BigInt.from(10).pow(18));
   }
 
-  @override
+
  @override
 Widget build(BuildContext context) {
   Color appBarBackgroundColor = Color.fromRGBO(24, 71, 137, 1);

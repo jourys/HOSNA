@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,8 +16,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
-import 'package:hosna/screens/NotificationService.dart';
-import 'package:http/http.dart' as http;
+
 
 
 class ProjectDetails extends StatefulWidget {
@@ -176,7 +175,7 @@ Future<void> _fetchVotingStatus() async {
     });
 
     // Check voting status from Firestore
-    final projectDocRef = firestore.FirebaseFirestore.instance
+    final projectDocRef = FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString());
 
@@ -206,10 +205,10 @@ Future<void> _fetchVotingStatus() async {
 }
 
 
-StreamSubscription<firestore.DocumentSnapshot>? _projectSubscription;
+StreamSubscription<DocumentSnapshot>? _projectSubscription;
 
 void _listenToProjectState() {
-  _projectSubscription = firestore.FirebaseFirestore.instance
+  _projectSubscription = FirebaseFirestore.instance
       .collection('projects')
       .doc(widget.projectId.toString())
       .snapshots()
@@ -220,7 +219,7 @@ void _listenToProjectState() {
 
         // Ensure 'isCanceled' exists in the document
         if (!data.containsKey('isCanceled')) {
-          firestore.FirebaseFirestore.instance
+          FirebaseFirestore.instance
               .collection('projects')
               .doc(widget.projectId.toString())
               .update({'isCanceled': false});
@@ -437,9 +436,8 @@ void dispose() {
 
 Future<String> determineProjectState(String projectId) async {
   print("📥 Fetching project with ID: $projectId");
-final docRef = firestore.FirebaseFirestore.instance.collection('projects').doc(projectId);
-firestore.DocumentSnapshot doc = await docRef.get();
-String previousState = "";
+final docRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
+DocumentSnapshot doc = await docRef.get();
 
 if (!doc.exists) {
   print("⚠️ Document does not exist for project ID: $projectId");
@@ -449,25 +447,14 @@ if (!doc.exists) {
     'isCanceled': false,
     'isCompleted': false,
     'votingInitiated': false,
-    'isEnded': false,
-    'currentState': 'upcoming'
+  
   });
 
   print("✅ Created default document for project ID: $projectId");
 
   // Re-fetch the document after creating it
   doc = await docRef.get();
-  previousState = "upcoming";
-
-  } else {
-
-    // If document exists, get the previous state
-
-    final existingData = doc.data() as Map<String, dynamic>;
-
-    previousState = existingData['currentState'] ?? "unknown";
-
-  }
+}
 
 // Now it's safe to cast
 final data = doc.data() as Map<String, dynamic>;
@@ -481,114 +468,42 @@ final data = doc.data() as Map<String, dynamic>;
   print("❌ isCanceled: $isCanceled");
 
   // 🆕 Get votingId and check if endedisEnded = false;
-isEnded = false;
 final votingId = data['votingId'];
 if (votingId != null) {
-  final votingDocRef = firestore.FirebaseFirestore.instance
+  final votingDocRef = FirebaseFirestore.instance
       .collection("votings")
       .doc(votingId.toString());
 
   final votingDoc = await votingDocRef.get();
+  final votingData = votingDoc.data();
+
   if (votingDoc.exists) {
-
-      final votingData = votingDoc.data();
-
-      // If 'IsEnded' is missing, create it with default false
-
-      if (!votingData!.containsKey('IsEnded')) {
-
-        await votingDocRef.update({'IsEnded': false});
-
-        print("✅ 'IsEnded' field added to voting document $votingId.");
-
-      }
-
-  isEnded = votingData['IsEnded'] ?? false;
-
-    } else {
-
-      print("⚠️ Voting document not found for ID: $votingId.");
+    // If 'IsEnded' is missing, create it with default false
+    if (!votingData!.containsKey('IsEnded')) {
+      await votingDocRef.update({'IsEnded': false});
+      print("✅ 'IsEnded' field added to voting document $votingId.");
     }
 
-    
+    isEnded = votingData['IsEnded'] ?? false;
+  } else {
+    print("⚠️ Voting document not found for ID: $votingId.");
+  }
 }
+
+
+
 
  print("is ended : $isEnded");
 
-  // Set the global isCompleted value if it exists in Firestore
 
-  if (data.containsKey('isCompleted')) {
-
-    isCompleted = data['isCompleted'];
-
-  }
 // Set the global isCompleted value if it exists in Firestore
 if (data.containsKey('isCompleted')) {
   isCompleted = data['isCompleted'] ;
 }
 
-  // Determine the current state
-
-  String currentState = getProjectState(data, votingInitiated, isCanceled, isEnded, isCompleted);
-
-  print("current state : $currentState");
-
-  print("previous state : $previousState");
-
-  // Compare current state with previous state
-
-  if (currentState != previousState) {
-
-    print("🔄 Project state changed from $previousState to $currentState");
-
-    
-
-    // Update the current state in Firestore
-
-    await docRef.update({'currentState': currentState});
-
-    
-
-    // Only send notifications for these specific state changes
-
-    if (currentState == "voting" || currentState == "ended" || 
-
-        currentState == "in-progress" || currentState == "completed") {
-
-      
-
-      // Send notifications to donors
-
-      try {
-
-        final blockchainService = BlockchainService();
-
-        final notificationService = NotificationService();
-
-        await notificationService.sendProjectStatusNotification(
-
-          int.parse(projectId),
-
-          data['name'] ?? "Unknown Project",
-
-          currentState
-
-        );
-
-        print("✅ Notifications sent for project state change to $currentState");
-
-      } catch (e) {
-
-        print("❌ Error sending notifications: $e");
-
-      }
-
-    }
-
-  }
         
 
-  return currentState;
+  return getProjectState(data, votingInitiated, isCanceled, isEnded , isCompleted);
 }
 
 String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool isCanceled, bool isEnded, bool isCompleted) {
@@ -600,8 +515,8 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
     return "upcoming";
   } else if (project['startDate'] is DateTime) {
     startDate = project['startDate'];
-  } else if (project['startDate'] is firestore.Timestamp) {
-    startDate = (project['startDate'] as firestore.Timestamp).toDate();
+  } else if (project['startDate'] is Timestamp) {
+    startDate = (project['startDate'] as Timestamp).toDate();
   } else {
     startDate = DateTime.parse(project['startDate'].toString());
   }
@@ -612,8 +527,8 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
     return "active";
   } else if (project['endDate'] is DateTime) {
     endDate = project['endDate'];
-  } else if (project['endDate'] is firestore.Timestamp) {
-    endDate = (project['endDate'] as firestore.Timestamp).toDate();
+  } else if (project['endDate'] is Timestamp) {
+    endDate = (project['endDate'] as Timestamp).toDate();
   } else {
     endDate = DateTime.parse(project['endDate'].toString());
   }
@@ -657,7 +572,7 @@ String getProjectState(Map<String, dynamic> project, bool votingInitiated, bool 
 }
 Future<void> _markProjectAsCompleted() async {
     try {
-      await firestore.FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('projects')
           .doc(widget.projectId.toString())
           .update({'isCompleted': true});
@@ -1019,7 +934,7 @@ if (userType == 1 &&
              if (votingInitiated) {
   try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -1085,7 +1000,7 @@ if (userType == 1 &&
              if (votingInitiated) {
   try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -1150,7 +1065,7 @@ if (canVote && votingInitiated && userType == 0 && (!isEnded))
    onPressed: ()async {
     try {
     // 🔍 Step 1: Fetch the votingId from Firestore
-    firestore.DocumentSnapshot projectSnapshot = await firestore.FirebaseFirestore.instance
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
         .collection('projects')
         .doc(widget.projectId.toString())
         .get();
@@ -1314,21 +1229,21 @@ if (canVote && votingInitiated && userType == 0 && (!isEnded))
                                       print("Project canceled: $isCanceled");
                                     });
 
-                                    firestore.DocumentSnapshot document =
-                                        await firestore.FirebaseFirestore.instance
+                                    DocumentSnapshot document =
+                                        await FirebaseFirestore.instance
                                             .collection('projects')
                                             .doc(widget.projectId.toString())
                                             .get();
 
                                     if (document.exists) {
-                                      await firestore.FirebaseFirestore.instance
+                                      await FirebaseFirestore.instance
                                           .collection('projects')
                                           .doc(widget.projectId.toString())
                                           .update({'isCanceled': true});
                                       print("Project state updated in Firestore.");
                                     } else {
                                       print("Project document not found. Creating a new project...");
-                                      await firestore.FirebaseFirestore.instance
+                                      await FirebaseFirestore.instance
                                           .collection('projects')
                                           .doc(widget.projectId.toString())
                                           .set({'isCanceled': true});
@@ -1445,11 +1360,6 @@ void showCancelSuccessPopup(BuildContext context) {
 
 // Function to show confirmation dialog before cancellation
 Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
-  // Create a TextEditingController for the justification field
-
-  final justificationController = TextEditingController();
-
-  String? justification;
   return await showDialog<bool>(
     context: context,
     barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
@@ -1457,87 +1367,19 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
       return AlertDialog(
         backgroundColor: Colors.white, // Set background to white
         title: const Text(
-          'Confirm Cancelation',
+          'Confirm cancelation',
           style: TextStyle(
             fontWeight: FontWeight.bold, // Make title bold
             fontSize: 22, // Increase title font size
           ),
           textAlign: TextAlign.center, // Center the title text
         ),
-        content: SingleChildScrollView(
-
-          child: Column(
-
-            mainAxisSize: MainAxisSize.min,
-
-            children: [
-
-              const Text(
-
-                'Are you sure you want to cancel this project?',
-
-                style: TextStyle(
-
-                  fontSize: 18, // Make content text bigger
-
-                ),
-
-                textAlign: TextAlign.center, // Center the content text
-
-              ),
-
-              const SizedBox(height: 20),
-
-              const Text(
-
-                'Please provide a justification:',
-
-                style: TextStyle(
-
-                  fontSize: 16,
-
-                  fontWeight: FontWeight.bold,
-
-                ),
-
-                textAlign: TextAlign.left,
-
-              ),
-
-              const SizedBox(height: 10),
-
-              TextField(
-
-                controller: justificationController,
-
-                maxLines: 3,
-
-                decoration: InputDecoration(
-
-                  hintText: 'Enter reason for cancellation...',
-
-                  border: OutlineInputBorder(
-
-                    borderRadius: BorderRadius.circular(8),
-
-                  ),
-
-                  filled: true,
-
-                  fillColor: Colors.grey[100],
-
-                ),
-
-                onChanged: (value) {
-
-                  justification = value;
-
-                },
-
-              ),
-
-            ],
+        content: const Text(
+          'Are you sure you want to cancel this project ?',
+          style: TextStyle(
+            fontSize: 18, // Make content text bigger
           ),
+          textAlign: TextAlign.center, // Center the content text
         ),
         actions: <Widget>[
           Row(
@@ -1565,29 +1407,7 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
               const SizedBox(width: 20), // Add space between buttons
               OutlinedButton(
                 onPressed: () {
-                  // Validate if justification is provided
-
-                  if (justificationController.text.trim().isEmpty) {
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-
-                      const SnackBar(
-
-                        content: Text('Please provide a justification for cancellation.'),
-
-                        backgroundColor: Colors.red,
-
-                      ),
-
-                    );
-
-                  } else {
-
-                    // Store the justification and proceed
-
-                    Navigator.pop(context, true);
-
-                  }
+                  Navigator.pop(context, true); // Return true after confirming save
                 },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
@@ -1610,135 +1430,7 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
         actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
       );
     },
-  ).then((confirmed) {
-
-    if (confirmed == true && justificationController.text.trim().isNotEmpty) {
-
-      // Store the justification
-
-      _storeCancellationJustification(widget.projectId.toString(), justificationController.text.trim());
-
-      return true;
-
-    }
-
-    return false;
-
-  });
-
-}
-
-
-
-// Function to store cancellation justification and send notification to project creator
-
-Future<void> _storeCancellationJustification(String projectId, String justification) async {
-
-  try {
-
-    // Update Firestore with the cancellation justification
-
-    await firestore.FirebaseFirestore.instance
-
-        .collection('projects')
-
-        .doc(projectId)
-
-        .update({
-
-          'isCanceled': true,
-
-          'cancellationReason': justification,
-
-          'cancelledAt': firestore.FieldValue.serverTimestamp(),
-
-        });
-
-        
-
-    print("✅ Project cancellation with justification stored: $justification");
-
-    
-
-    // Send notification to project creator
-
-    await _sendCancellationNotification(projectId, justification);
-
-  } catch (e) {
-
-    print("❌ Error storing cancellation justification: $e");
-
-  }
-
-}
-
-
-
-// Function to send cancellation notification to project creator
-
-Future<void> _sendCancellationNotification(String projectId, String justification) async {
-
-  try {
-
-    // Get the project creator wallet address from the widget
-
-    final creatorAddress = widget.projectCreatorWallet;
-
-    
-
-    if (creatorAddress.isEmpty) {
-
-      print("❌ No project creator wallet address found");
-
-      return;
-
-    }
-
-    
-
-    // Create notification for project creator
-
-    final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
-
-    
-
-    await firestore.FirebaseFirestore.instance
-
-        .collection('charity_notifications')
-
-        .doc(notificationId)
-
-        .set({
-
-          'charityAddress': creatorAddress,
-
-          'projectId': projectId,
-
-          'projectName': widget.projectName,
-
-          'message': 'Your project "${widget.projectName}" has been cancelled by an admin. Reason: $justification',
-
-          'type': 'project_cancellation',
-
-          'status': 'canceled',
-
-          'timestamp': firestore.FieldValue.serverTimestamp(),
-
-          'isRead': false,
-
-          'cancellationReason': justification,
-
-        });
-
-        
-
-    print("✅ Cancellation notification sent to project creator: $creatorAddress");
-
-  } catch (e) {
-
-    print("❌ Error sending cancellation notification: $e");
-
-  }
+  ) ?? false; // If null, default to false
 }
 
  Widget _buildDetailItem(String title, String value) {
@@ -1956,37 +1648,6 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
       },
       donationAmountInEth
     );
-
-
-// Send confirmation email
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        String userEmail = prefs.getString('donorEmail') ?? '';
-
-        print(userEmail);
-
-        if (userEmail != null) {
-          final response = await http.post(
-            Uri.parse(
-                'https://us-central1-hosna2.cloudfunctions.net/sendDonationEmail'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': userEmail}),
-          );
-
-          if (response.statusCode == 200) {
-            print('Confirmation email sent to $userEmail');
-          } else {
-            print('Failed to send email. Status: ${response.statusCode}');
-            print('Response body: ${response.body}');
-          }
-        } else {
-          print('User email is null. Cannot send confirmation email.');
-        }
-      } catch (e) {
-        print('Error sending confirmation email: $e');
-      }
-
-
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error processing donation: $e')),
@@ -2280,7 +1941,7 @@ Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
 Future<Map<String, dynamic>> fetchProjectFirestoreData(BigInt projectId) async {
   try {
     // Reference to the Firestore collection containing project data
-    final projectDocRef = firestore.FirebaseFirestore.instance.collection('projects').doc(projectId.toString());
+    final projectDocRef = FirebaseFirestore.instance.collection('projects').doc(projectId.toString());
 
     // Fetch the document data
     final projectSnapshot = await projectDocRef.get();
@@ -2686,13 +2347,13 @@ class _ReportPopupState extends State<ReportPopup> {
                     return;
                   }
 
-                await   firestore.FirebaseFirestore.instance.collection('reports').add({
+                await FirebaseFirestore.instance.collection('reports').add({
   'title': title,
   'description': description,
   'complainant': walletAddress,
   'targetCharityAddress': widget.projectCreatorWallet,
   'project_id': widget.projectId,
-  'timestamp':  firestore.FieldValue.serverTimestamp(),
+  'timestamp': FieldValue.serverTimestamp(),
   'complaintType': 'project', // ✅ Added the complaintType field
 });
 
@@ -2801,4 +2462,3 @@ class _ReportPopupState extends State<ReportPopup> {
   }
 
 }
-
