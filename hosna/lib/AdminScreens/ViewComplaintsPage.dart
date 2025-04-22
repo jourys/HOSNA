@@ -906,12 +906,10 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                             textStyle: TextStyle(fontSize: 18),
                           ),
                           onPressed: () async {
-                            bool shouldDelete =
-                                await _showDeleteConfirmationDialog(context);
-                            if (shouldDelete) {
-                              await _deleteComplaint(complaint['id']);
-                              Navigator.pop(
-                                  context); // Go back to the previous page
+                            final result = await _showDeleteConfirmationDialog(context);
+                            if (result != null && result['confirmed'] == true) {
+                              await _deleteComplaint(complaint['id'], result['justification']);
+                              Navigator.pop(context); // Go back to the previous page
                               showSuccessPopup(context);
                             }
                           },
@@ -940,19 +938,63 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     return 'N/A';
   }
 
-  Future<void> _deleteComplaint(String complaintDocId) async {
+  Future<void> _deleteComplaint(String complaintDocId, String justification) async {
     if (!mounted) return;
 
     try {
       print("🗑️ Deleting complaint from Firestore...");
 
-      // Deleting the complaint from Firestore
+      // First get the complaint data
+      final complaintDoc = await FirebaseFirestore.instance
+          .collection('reports')
+          .doc(complaintDocId)
+          .get();
+      
+      if (!complaintDoc.exists) {
+        print("❌ Complaint not found.");
+        return;
+      }
+
+      final complaintData = complaintDoc.data()!;
+      
+      // Add deletion metadata to the complaint
+      final deletedComplaintData = {
+        ...complaintData,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': FirebaseAuth.instance.currentUser?.email ?? 'Admin',
+        'deletionJustification': justification,
+      };
+      
+      // Store the deleted complaint in a separate collection
+      await FirebaseFirestore.instance
+          .collection('deletedReports')
+          .doc(complaintDocId)
+          .set(deletedComplaintData);
+      
+      // Send notification to the complainant
+      if (complaintData.containsKey('complainant')) {
+        final complainantAddress = complaintData['complainant'];
+        
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': complainantAddress,
+          'title': 'Complaint Deleted',
+          'message': 'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification',
+          'timestamp': FieldValue.serverTimestamp(),
+          'read': false,
+          'type': 'complaint_deleted',
+          'complaintId': complaintDocId,
+        });
+        
+        print("✅ Notification sent to complainant $complainantAddress");
+      }
+
+      // Delete the original complaint
       await FirebaseFirestore.instance
           .collection('reports')
           .doc(complaintDocId)
           .delete();
 
-      print("✅ Complaint deleted successfully!");
+      print("✅ Complaint deleted and archived successfully!");
 
       // Fetch updated complaints to reflect changes
       await _fetchComplaints();
@@ -964,142 +1006,137 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     }
   }
 
-// Future<void> _deleteComplaint(int complaintId) async {
-//   if (!mounted) return;
-
-//   try {
-//     // Credentials for the sender (private key)
-//     var credentials = await _web3Client.credentialsFromPrivateKey(
-//       '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'
-//     );
-
-//     print("🗑️ Deleting complaint...");
-
-//     // Sending the transaction to delete the complaint
-//     var transaction = await _web3Client.sendTransaction(
-//       credentials,
-//       web3.Transaction.callContract(
-//         contract: _contract,
-//         function: _deleteComplaintFunction,
-//         parameters: [BigInt.from(complaintId)],
-//         gasPrice: EtherAmount.inWei(BigInt.from(5000000000)), // Set an appropriate gas price
-//         maxGas: 200000, // Set the max gas limit (you might need to adjust this)
-//       ),
-//       chainId: 11155111, // Sepolia testnet
-//     );
-
-//     // Confirming the transaction receipt
-//     var receipt = await _web3Client.getTransactionReceipt(transaction);
-//     if (receipt == null) {
-//       print('❌ Transaction failed or is pending. Please check the transaction status.');
-//       return;
-//     }
-
-//     // Check if the transaction was successful (receipt status 1 means success)
-//     if (receipt.status == 1) {
-//       print("✅ Complaint deleted successfully!");
-
-//       // Fetch updated complaints to reflect changes
-//       await _fetchComplaints();
-//     } else {
-//       print('❌ Deletion failed. Transaction receipt status: ${receipt.status}');
-//     }
-//   } catch (e) {
-//     print('❌ Error deleting complaint: $e');
-//   }
-// }
-
-  Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
+  Future<Map<String, dynamic>?> _showDeleteConfirmationDialog(BuildContext context) async {
     print("🚀 Showing delete confirmation dialog...");
+    
+    // Controller for the justification text field
+    final TextEditingController justificationController = TextEditingController();
+    bool isJustificationValid = false;
 
-    return await showDialog<bool>(
+    return await showDialog<Map<String, dynamic>>(
           context: context,
           barrierDismissible:
               false, // Prevent dismissing the dialog by tapping outside
           builder: (BuildContext context) {
             print("🔧 Building the dialog...");
 
-            return AlertDialog(
-              backgroundColor: Colors.white, // Set background to white
-              title: const Text(
-                'Confirm Deletion',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold, // Make title bold
-                  fontSize: 22, // Increase title font size
-                ),
-                textAlign: TextAlign.center, // Center the title text
-              ),
-              content: const Text(
-                'Are you sure you want to delete this complaint ?',
-                style: TextStyle(
-                  fontSize: 18, // Make content text bigger
-                ),
-                textAlign: TextAlign.center, // Center the content text
-              ),
-              actions: <Widget>[
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the buttons
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        print("❌ Cancel clicked - Deletion not confirmed.");
-                        Navigator.pop(context, false); // Return false on cancel
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Color.fromRGBO(
-                              24, 71, 137, 1), // Border color for Cancel button
-                          width: 3,
-                        ),
-                        backgroundColor: Color.fromRGBO(24, 71, 137,
-                            1), // Background color for Cancel button
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 20, // Increase font size for buttons
-                          color: Colors
-                              .white, // White text color for Cancel button
-                        ),
-                      ),
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  backgroundColor: Colors.white, // Set background to white
+                  title: const Text(
+                    'Confirm Deletion',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, // Make title bold
+                      fontSize: 22, // Increase title font size
                     ),
-                    const SizedBox(width: 20), // Add space between the buttons
-                    OutlinedButton(
-                      onPressed: () {
-                        print("✅ Yes clicked - Deletion confirmed.");
-                        Navigator.pop(context,
-                            true); // Return true after confirming deletion
-                        // If you want to navigate back to the previous page or perform additional actions:
-                        // Navigator.pop(context); // This line is for returning to the previous page, if needed
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Color.fromRGBO(
-                              212, 63, 63, 1), // Border color for Yes button
-                          width: 3,
-                        ),
-                        backgroundColor: Color.fromRGBO(
-                            212, 63, 63, 1), // Background color for Yes button
-                      ),
-                      child: const Text(
-                        '   Yes   ',
+                    textAlign: TextAlign.center, // Center the title text
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Are you sure you want to delete this complaint?',
                         style: TextStyle(
-                          fontSize: 20, // Increase font size for buttons
-                          color:
-                              Colors.white, // White text color for Yes button
+                          fontSize: 18, // Make content text bigger
                         ),
+                        textAlign: TextAlign.center, // Center the content text
                       ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Please provide a justification for deleting this complaint:',
+                        style: TextStyle(
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.left,
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: justificationController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: 'Enter justification here...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          errorText: !isJustificationValid && justificationController.text.isNotEmpty 
+                              ? 'Justification must be at least 10 characters' 
+                              : null,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            isJustificationValid = value.trim().length >= 10;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  actions: <Widget>[
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center, // Center the buttons
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            print("❌ Cancel clicked - Deletion not confirmed.");
+                            Navigator.pop(context, null); // Return null on cancel
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Color.fromRGBO(
+                                  24, 71, 137, 1), // Border color for Cancel button
+                              width: 3,
+                            ),
+                            backgroundColor: Color.fromRGBO(24, 71, 137,
+                                1), // Background color for Cancel button
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 20, // Increase font size for buttons
+                              color: Colors
+                                  .white, // White text color for Cancel button
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20), // Add space between the buttons
+                        OutlinedButton(
+                          onPressed: justificationController.text.trim().length >= 10 ? () {
+                            print("✅ Yes clicked - Deletion confirmed with justification: ${justificationController.text}");
+                            Navigator.pop(context, {
+                              'confirmed': true,
+                              'justification': justificationController.text.trim()
+                            });
+                          } : null,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Color.fromRGBO(
+                                  212, 63, 63, 1), // Border color for Yes button
+                              width: 3,
+                            ),
+                            backgroundColor: Color.fromRGBO(
+                                212, 63, 63, 1), // Background color for Yes button
+                            disabledBackgroundColor: Colors.grey,
+                          ),
+                          child: const Text(
+                            '   Yes   ',
+                            style: TextStyle(
+                              fontSize: 20, // Increase font size for buttons
+                              color:
+                                  Colors.white, // White text color for Yes button
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-              actionsPadding: const EdgeInsets.symmetric(
-                  vertical: 10), // Add padding for the actions
+                  actionsPadding: const EdgeInsets.symmetric(
+                      vertical: 10), // Add padding for the actions
+                );
+              }
             );
           },
-        ) ??
-        false; // If null, default to false
+        );
   }
 
   void showSuccessPopup(BuildContext context) {

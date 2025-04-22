@@ -55,6 +55,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
       
       // 2. Then load status change notifications
       await _loadStatusChangeNotifications(notifications);
+      
+      // 3. Load complaint notifications
+      await _loadComplaintNotifications(notifications);
 
       // Sort notifications by timestamp (newest first)
       notifications.sort((a, b) {
@@ -198,6 +201,62 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  Future<void> _loadComplaintNotifications(List<Map<String, dynamic>> notifications) async {
+    try {
+      print("🔍 Loading complaint notifications for donor: ${widget.walletAddress}");
+      
+      // Query notifications collection for complaints related to this user
+      final complaintsSnapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: widget.walletAddress)
+          .where('type', whereIn: ['complaint_deleted', 'complaint_restored'])
+          .orderBy('timestamp', descending: true)
+          .get();
+      
+      print("📊 Found ${complaintsSnapshot.docs.length} complaint notifications");
+      
+      for (var doc in complaintsSnapshot.docs) {
+        final data = doc.data();
+        
+        // Check if this notification has already been read
+        final readStatusRef = FirebaseFirestore.instance
+            .collection('notification_read_status')
+            .doc('${widget.walletAddress}_${doc.id}');
+            
+        final readStatusDoc = await readStatusRef.get();
+        final bool isRead = readStatusDoc.exists && readStatusDoc.data()?['isRead'] == true;
+        
+        IconData typeIcon;
+        Color typeColor;
+        
+        // Set appropriate icon and color based on notification type
+        if (data['type'] == 'complaint_deleted') {
+          typeIcon = Icons.delete;
+          typeColor = Colors.red;
+        } else { // complaint_restored
+          typeIcon = Icons.restore;
+          typeColor = Colors.green;
+        }
+        
+        notifications.add({
+          'id': doc.id,
+          'type': 'complaint_notification',
+          'subtype': data['type'],
+          'title': data['title'] ?? 'Complaint Update',
+          'message': data['message'] ?? 'Your complaint has been updated',
+          'complaintId': data['complaintId'],
+          'timestamp': data['timestamp']?.toDate() ?? DateTime.now(),
+          'isRead': isRead,
+          'readStatusRef': readStatusRef,
+          'typeIcon': typeIcon,
+          'typeColor': typeColor,
+        });
+      }
+    } catch (e) {
+      print("❌ Error loading complaint notifications: $e");
+    }
+  }
+
   Future<void> _markAsRead(String notificationId) async {
     try {
       await FirebaseFirestore.instance
@@ -288,6 +347,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       return _buildStatusChangeNotificationCard(notification);
     } else if (type == 'voting_global') {
       return _buildGlobalVotingNotificationCard(notification);
+    } else if (type == 'complaint_notification') {
+      return _buildComplaintNotificationCard(notification);
     }
     
     // Fallback for unknown notification types
@@ -543,6 +604,78 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
           
           // TODO: Navigate to voting page if needed
+        },
+      ),
+    );
+  }
+
+  Widget _buildComplaintNotificationCard(Map<String, dynamic> notification) {
+    // Format timestamp
+    String timeAgo = '';
+    if (notification['timestamp'] != null) {
+      timeAgo = timeago.format(notification['timestamp']);
+    }
+    
+    final bool isRead = notification['isRead'] ?? false;
+    final IconData typeIcon = notification['typeIcon'] ?? Icons.report_problem;
+    final Color typeColor = notification['typeColor'] ?? Colors.orange;
+    
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: isRead ? 1 : 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isRead 
+            ? BorderSide.none 
+            : BorderSide(color: typeColor, width: 1),
+      ),
+      color: isRead ? Colors.white : typeColor.withOpacity(0.05),
+      child: ListTile(
+        leading: Icon(
+          typeIcon,
+          color: typeColor,
+          size: 32,
+        ),
+        title: Text(
+          notification['title'],
+          style: TextStyle(
+            fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notification['message'],
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              timeAgo,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        onTap: () {
+          // Mark notification as read
+          if (!isRead && notification['readStatusRef'] != null) {
+            notification['readStatusRef'].set({
+              'isRead': true,
+              'readAt': FieldValue.serverTimestamp(),
+              'donorAddress': widget.walletAddress,
+              'notificationId': notification['id'],
+            }, SetOptions(merge: true));
+            
+            // Update UI immediately
+            setState(() {
+              notification['isRead'] = true;
+            });
+          }
         },
       ),
     );
