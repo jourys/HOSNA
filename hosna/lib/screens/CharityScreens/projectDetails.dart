@@ -1493,7 +1493,8 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
                 const SizedBox(height: 10),
                 TextField(
                   controller: amountController,
-                  keyboardType: TextInputType.number,
+                 keyboardType: TextInputType.numberWithOptions(decimal: true),
+
                   decoration: InputDecoration(
                     hintText: 'Amount',
                     border: OutlineInputBorder(
