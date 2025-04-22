@@ -11,6 +11,7 @@ import 'package:hosna/AdminScreens/SuspendedAccountsPage.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:http/http.dart';
+import 'package:hosna/AdminScreens/DeletedComplaintsPage.dart';
 
 class AdminSidebar extends StatelessWidget {
   final bool isSidebarVisible;
@@ -55,6 +56,9 @@ class AdminSidebar extends StatelessWidget {
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(context, "Complaints",
               () => _navigateTo(context, ViewComplaintsPage())),
+          Divider(color: Color.fromRGBO(24, 71, 137, 1)),
+          _buildSidebarItem(context, "Deleted Complaints",
+              () => _navigateTo(context, DeletedComplaintsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(context, "Terms & Conditions",
               () => _navigateTo(context, AdminTermsAndConditionsPage())),

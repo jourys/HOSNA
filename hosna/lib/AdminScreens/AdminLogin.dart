@@ -9,6 +9,8 @@ import 'package:web3dart/web3dart.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:web3dart/web3dart.dart' as web3;
 
 const MaterialColor customColor = MaterialColor(
   _customColorPrimaryValue,
@@ -115,9 +117,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   late Web3Client _web3Client;
   late DeployedContract _contract;
   late ContractFunction _verifyLogin;
+  late ContractFunction _updateAdminCredentials;
   final String rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final String contractAddress = "0xC933012E3293Cb81Be4cE8393A1fc24C9cD47E2A";
+  final creatorPrivateKey =
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
   @override
   void initState() {
@@ -129,7 +134,24 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     _web3Client = Web3Client(rpcUrl, Client());
 
     String abi = '''
-    [
+    [{
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "_newEmail",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "_newPassword",
+            "type": "string"
+          }
+        ],
+        "name": "updateAdminCredentials",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
       {
         "constant": true,
         "inputs": [
@@ -150,6 +172,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     );
 
     _verifyLogin = _contract.function("verifyLogin");
+    _updateAdminCredentials = _contract.function("updateAdminCredentials");
   }
 
   Future<bool> _login() async {
@@ -168,22 +191,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     try {
       print("🛠 Calling smart contract...");
 
-      final result = await _web3Client.call(
-        contract: _contract,
-        function: _verifyLogin,
-        params: [email, password],
-      );
-
-      print("✅ Smart contract response: $result");
-
-      bool isValid = result.isNotEmpty && result[0] as bool;
-      print("🔍 Debug: Login valid? $isValid");
-
-      setState(() {
-        _statusMessage = isValid ? "Login Successful!" : "Invalid credentials!";
-      });
-
-      return isValid; // Return the result for navigation handling
+      final authResult = await _checkAuth(email, password);
+      return authResult;
     } catch (e, stackTrace) {
       print("❌ Error during login: $e");
       print("📜 StackTrace: $stackTrace");
@@ -197,6 +206,117 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         _isLoading = false;
       });
       print("🛑 Login process finished.");
+    }
+  }
+
+  Future<bool> _checkAuth(String email, String password) async {
+    bool authSuccess = false;
+    bool firebaseAuthSuccess = await _tryFirebaseAuth(email, password);
+    print('Firebase authentication success: $firebaseAuthSuccess');
+    bool blockchainAuthSuccess = await _tryBlockchainAuth(email, password);
+    print('Blockchain authentication success: $blockchainAuthSuccess');
+    // if (!firebaseAuthSuccess) {
+    //   return;
+    // }
+
+    if (blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+    } else if (!blockchainAuthSuccess && firebaseAuthSuccess) {
+      authSuccess = true;
+      await _blockchainPasswordChange(email, password);
+    } else if (!firebaseAuthSuccess && blockchainAuthSuccess) {
+      try {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        authSuccess = true;
+      } 
+      on FirebaseAuthException catch (e) {
+        print("Firebase authentication error: ${e.code} - ${e.message}");
+        authSuccess = false;
+      } 
+    }
+    return authSuccess;
+  }
+  
+  Future<void> _blockchainPasswordChange(String email, String password) async {
+
+      // Get the owner's credentials to pay for the gas fees
+    final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
+        creatorPrivateKey); // Private key of contract owner
+    final creatorWallet = await creatorCredentials.extractAddress();
+    print("Creator's wallet address: $creatorWallet");
+
+    try {
+      // Send the transaction to register the donor using the creator's wallet for gas
+      final result = await _web3Client.sendTransaction(
+        creatorCredentials, // Use the creator's credentials to sign the transaction
+        web3.Transaction.callContract(
+          contract: _contract,
+          function: _updateAdminCredentials,
+          parameters: [
+            email,
+            password,
+          ],
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
+          maxGas: 1000000,
+        ),
+        chainId: 11155111, // Replace with your network chain ID
+      );
+      print("Transaction result: $result");
+
+    } catch (e) {
+      print("Error changing password: $e");
+
+    }
+  }
+
+  Future<bool> _tryFirebaseAuth(String email, String password) async {
+     try {
+       await FirebaseAuth.instance.signInWithEmailAndPassword(
+         email: email,
+         password: password,
+       );
+       print("✅ Firebase authentication successful");
+       return true;
+     } on FirebaseAuthException catch (e) {
+       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+       String errorMessage;
+       switch (e.code) {
+         case 'user-not-found':
+           errorMessage = 'No user found with this email.';
+           break;
+         case 'wrong-password':
+           errorMessage = 'Wrong password provided.';
+           break;
+         case 'invalid-email':
+           errorMessage = 'The email address is not valid.';
+           break;
+         case 'user-disabled':
+           errorMessage = 'This user account has been disabled.';
+           break;
+         default:
+           errorMessage = e.message ?? 'Authentication failed';
+       }
+       return false;
+     }
+   }
+
+   Future<bool> _tryBlockchainAuth(String email, String password) async {
+    try {
+      final result = await _web3Client.call(
+        contract: _contract,
+        function: _verifyLogin,
+        params: [email, password],
+      );
+
+      print('Auth result: $result');
+
+      return result.isNotEmpty && result[0] == true;
+    } catch (e) {
+      print('❌ Error during blockchain authentication: $e');
+      return false;
     }
   }
 
