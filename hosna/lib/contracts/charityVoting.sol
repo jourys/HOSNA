@@ -203,4 +203,11 @@ contract CharityVoting {
         remainingHours = (timeLeft % 1 days) / 1 hours;
         remainingMinutes = (timeLeft % 1 hours) / 1 minutes;
     }
+
+    function hasAlreadyVoted(
+        uint256 votingId,
+        address donor
+    ) public view returns (bool) {
+        return votingSessions[votingId].hasVoted[donor];
+    }
 }
