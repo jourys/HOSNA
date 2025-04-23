@@ -74,7 +74,7 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     const int chainId = 11155111;
 
     _contractAddressEth = EthereumAddress.fromHex(
-      "0x619038eB1634155b26CB927ad09b5Fc14A6082cb", 
+      "0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8", 
     );
     print("📦 Contract address set: $_contractAddressEth");
 

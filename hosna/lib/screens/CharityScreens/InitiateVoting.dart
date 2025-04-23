@@ -162,7 +162,7 @@ Future<void> _initializeBlockchain() async {
     print('Web3 client initialized.');
 
     // Set the contract address
-    _contractAddress = EthereumAddress.fromHex('0x619038eB1634155b26CB927ad09b5Fc14A6082cb');
+    _contractAddress = EthereumAddress.fromHex('0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8');
     print('Contract address set to $_contractAddress');
 
     // Load the contract
@@ -1060,7 +1060,7 @@ class VoteListener {
   VoteListener({required this.projectId}); // <-- Add constructor
 
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x619038eB1634155b26CB927ad09b5Fc14A6082cb';
+  final String contractAddress = '0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8';
 
   late Web3Client _client;
   late Credentials _credentials;
@@ -1078,168 +1078,191 @@ late String projectType;
 
 bool isEnded = false;
 
+final String contractABI = '''
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getVotes",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "candidate",
+        "type": "string"
+      }
+    ],
+    "name": "vote",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "candidate",
+        "type": "string"
+      }
+    ],
+    "name": "VoteCast",
+    "type": "event"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "votingId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getVotingDetails",
+    "outputs": [
+      {
+        "name": "projectNames",
+        "type": "string[]"
+      },
+      {
+        "name": "percentages",
+        "type": "uint256[]"
+      },
+      {
+        "name": "remainingMonths",
+        "type": "uint256"
+      },
+      {
+        "name": "remainingDays",
+        "type": "uint256"
+      },
+      {
+        "name": "remainingHours",
+        "type": "uint256"
+      },
+      {
+        "name": "remainingMinutes",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "votingId",
+        "type": "uint256"
+      },
+      {
+        "name": "projectIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "fundProject",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "votingId",
+        "type": "uint256"
+      }
+    ],
+    "name": "endVoting",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "votingId",
+        "type": "uint256"
+      }
+    ],
+    "name": "cancelVoting",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "votingDuration",
+        "type": "uint256"
+      },
+      {
+        "name": "_projectIds",
+        "type": "uint256[]"
+      },
+      {
+        "name": "_projectNames",
+        "type": "string[]"
+      }
+    ],
+    "name": "initiateVoting",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "votingId",
+        "type": "uint256"
+      },
+      {
+        "name": "donor",
+        "type": "address"
+      }
+    ],
+    "name": "hasAlreadyVoted",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+''';
 
-  final String contractABI = '''
-  [
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "getVotes",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "candidate",
-          "type": "string"
-        }
-      ],
-      "name": "vote",
-      "outputs": [],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "name": "voter",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "name": "candidate",
-          "type": "string"
-        }
-      ],
-      "name": "VoteCast",
-      "type": "event"
-    },
-    {
-      "constant": true,
-      "inputs": [
-        {
-          "name": "votingId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getVotingDetails",
-      "outputs": [
-        {
-          "name": "projectNames",
-          "type": "string[]"
-        },
-        {
-          "name": "percentages",
-          "type": "uint256[]"
-        },
-        {
-          "name": "remainingMonths",
-          "type": "uint256"
-        },
-        {
-          "name": "remainingDays",
-          "type": "uint256"
-        },
-        {
-          "name": "remainingHours",
-          "type": "uint256"
-        },
-        {
-          "name": "remainingMinutes",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "votingId",
-          "type": "uint256"
-        },
-        {
-          "name": "projectIndex",
-          "type": "uint256"
-        }
-      ],
-      "name": "fundProject",
-      "outputs": [],
-      "payable": true,
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "votingId",
-          "type": "uint256"
-        }
-      ],
-      "name": "endVoting",
-      "outputs": [],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "votingId",
-          "type": "uint256"
-        }
-      ],
-      "name": "cancelVoting",
-      "outputs": [],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "votingDuration",
-          "type": "uint256"
-        },
-        {
-          "name": "_projectIds",
-          "type": "uint256[]"
-        },
-        {
-          "name": "_projectNames",
-          "type": "string[]"
-        }
-      ],
-      "name": "initiateVoting",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ]
-  ''';
 
   late ContractEvent voteCastEvent;
   StreamSubscription<FilterEvent>? _subscription;
@@ -1524,6 +1547,30 @@ Future<void> fetchAndStoreProjectDetails() async {
   print("🏢 Organization: $organization");
   print("🏷️ Project Type: $projectType");
 }
+
+Future<bool> hasDonorAlreadyVoted(int votingId, EthereumAddress donorAddress) async {
+    initializeClient();
+      await initializeCredentials();
+
+      final EthereumAddress contractAddr = EthereumAddress.fromHex(contractAddress);
+
+      _contract = DeployedContract(
+        ContractAbi.fromJson(contractABI, 'CharityVoting'),
+        contractAddr,
+      );
+
+
+  final function = _contract.function('hasAlreadyVoted');
+
+  final result = await _client.call(
+    contract: _contract,
+    function: function,
+    params: [BigInt.from(votingId), donorAddress],
+  );
+
+  return result.first as bool;
+}
+
 
 }
 

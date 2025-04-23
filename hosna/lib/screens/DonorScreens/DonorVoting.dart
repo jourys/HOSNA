@@ -87,7 +87,7 @@ RefundService? refundService;
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x619038eB1634155b26CB927ad09b5Fc14A6082cb");
+        EthereumAddress.fromHex("0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
@@ -143,6 +143,8 @@ Future<void> initRefundService() async {
   }
 
   setState(() => _isLoadingRefundService = false); // Done loading
+
+
 }
 
   Future<void> _fetchVotingData() async {
@@ -268,6 +270,7 @@ Future<void> _submitVote() async {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vote submitted successfully!")),
       );
+
     } else if (receipt == null) {
       print("⏰ Transaction receipt timed out.");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -495,9 +498,11 @@ foregroundColor: Colors.white,
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('✅ Refund requested!')),
               );
+                Navigator.pop(context);
             } else if (selectedProjectIndex.startsWith('vote_')) {
               // تصويت
               await _submitVote(); // تأكدي إنها معرفة وتعتمد على selectedProjectIndex
+                Navigator.pop(context);
             } else {
               // حالة غير متوقعة
               throw Exception("❌ Invalid selection value");

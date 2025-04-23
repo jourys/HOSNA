@@ -55,6 +55,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final donorServices = DonorServices();
   bool canVote = false; // To store the result of whether the user can vote
  bool hasRefunded = false;
+   bool hasVoted = false;
+
   int? userType;
   final TextEditingController amountController = TextEditingController();
   String? globalWalletAddress;
@@ -64,6 +66,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
    bool votingInitiated = false; // Initialize votingInitiated as false
 bool isEnded = false;
 bool isCompleted = false;
+
   // Web3 Variables
   late Web3Client _web3client;
   final String rpcUrl =
@@ -110,8 +113,70 @@ _loadProjectState();
      _listenToProjectState();
                   _fetchVotingStatus();
     checkRefundStatus();
+    checkIfDonorVoted();
 
   }
+  Future<void> checkIfDonorVoted() async {
+  try {
+    print("🔍 Starting checkIfDonorVoted...");
+
+    // Step 1: Fetch the project document
+    print("📡 Fetching project document for projectId: ${widget.projectId}");
+    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .get();
+
+    if (!projectSnapshot.exists) {
+      print("❌ Project document does not exist for projectId: ${widget.projectId}");
+      return;
+    }
+
+    // Step 2: Get data from the document
+    final data = projectSnapshot.data() as Map<String, dynamic>;
+    print("✅ Project data retrieved: $data");
+
+    // Step 3: Extract and parse votingId
+    final votingIdStr = data['votingId'].toString();
+    print("🔢 Extracted votingId as String: $votingIdStr");
+
+    final int votingId = int.parse(votingIdStr);
+    print("🔁 Parsed votingId to int: $votingId");
+
+    // Step 4: Initialize VoteListener
+    final VoteListener voteListener = VoteListener(projectId: widget.projectId);
+    print("🛠️ VoteListener initialized with projectId: ${widget.projectId}");
+
+    // Step 5: Prepare Ethereum address
+    final String? wallet = globalWalletAddress;
+    if (wallet == null || wallet.isEmpty) {
+      print("⚠️ globalWalletAddress is null or empty.");
+      return;
+    }
+    final EthereumAddress ethAddress = EthereumAddress.fromHex(wallet);
+    print("💳 Ethereum address parsed: $ethAddress");
+
+    // Step 6: Initialize client (without await, since it doesn't return a Future)
+    voteListener.initializeClient(); // Call without awaiting
+
+    // Step 7: Call hasDonorAlreadyVoted
+    print("🗳️ Calling hasDonorAlreadyVoted with votingId: $votingId and address: $ethAddress");
+    hasVoted = await voteListener.hasDonorAlreadyVoted(votingId, ethAddress);
+
+    // Step 8: Log the result
+    if (hasVoted) {
+      print("✅ The donor has already voted.");
+    } else {
+      print("🆕 The donor has not voted yet.");
+    }
+
+  } catch (e, stackTrace) {
+    print("🔥 Error in checkIfDonorVoted: $e");
+    print("📍 Stack trace:\n$stackTrace");
+  }
+}
+
+
 
 
 
@@ -1029,7 +1094,8 @@ if (userType == 1 &&
 if (canVote && votingInitiated && userType == 0 && (!isEnded))
   Center(
     child:  ElevatedButton(
-      onPressed: hasRefunded
+      
+      onPressed: ( hasRefunded || hasVoted)
           ? null // ❌ disables the button
           : () async {
               try {
@@ -1066,7 +1132,7 @@ if (canVote && votingInitiated && userType == 0 && (!isEnded))
                 padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               ),
-      child: Text(hasRefunded ? "Already Refunded" : "Cast Your Vote " , style: const TextStyle(
+      child: Text( "Cast Your Vote " , style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
