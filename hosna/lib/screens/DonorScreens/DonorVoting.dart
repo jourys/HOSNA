@@ -432,87 +432,26 @@ foregroundColor: Colors.white,
                         ),
                         Center(
   child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40), // Increased padding for a larger container
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFCDD2), // Very light grey background
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFB71C1C), width: 1), // Dark red border
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.access_time, color: Color(0xFFB71C1C) , size : 50), // Dark red icon
-        const SizedBox(width: 8),
-        RichText(
-          text: TextSpan(
-            children: [
-              const TextSpan(
-                text: "Countdown :   ",
-                style: TextStyle(
-                  fontFamily: 'Georgia', // Set to Georgia font
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Color(0xFFB71C1C), // Dark red for the label
-                ),
-              ),
-              TextSpan(
-                text: "$remainingDays",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontFamily: 'Georgia', // Set to Georgia font
-                  color: Color(0xFFB71C1C), // Dark red for days
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const TextSpan(
-                text: " d   ",
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFFB71C1C), // Dark red for "d"
-                  fontFamily: 'Georgia', // Set to Georgia font
-                ),
-              ),
-              TextSpan(
-                text: "$remainingHours",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontFamily: 'Georgia', // Set to Georgia font
-                  color: Color(0xFFB71C1C), // Dark red for hours
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const TextSpan(
-                text: " h   ",
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFFB71C1C), // Dark red for "h"
-                  fontFamily: 'Georgia', // Set to Georgia font
-                ),
-              ),
-              TextSpan(
-                text: "$remainingMinutes",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontFamily: 'Georgia', // Set to Georgia font
-                  color: Color(0xFFB71C1C), // Dark red for minutes
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const TextSpan(
-                text: " m",
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFFB71C1C), // Dark red for "m"
-                  fontFamily: 'Georgia', // Set to Georgia font
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
+  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+  decoration: BoxDecoration(
+    color: const Color.fromARGB(255, 251, 216, 219),
+    borderRadius: BorderRadius.circular(20),
+  ),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _buildTimeCard(remainingDays.toString(), 'Days'),
+      _buildColon(),
+      _buildTimeCard(remainingHours.toString(), 'Hours'),
+      _buildColon(),
+      _buildTimeCard(remainingMinutes.toString(), 'Minutes'),
+    ],
   ),
 ),
+
+),
+
 
 
                         Column(
@@ -526,7 +465,7 @@ foregroundColor: Colors.white,
       ),
     ),
 
- const SizedBox(height: 20),
+ const SizedBox(height: 1),
   ElevatedButton(
   onPressed: isSubmitting
       ? null
@@ -589,7 +528,7 @@ foregroundColor: Colors.white,
           mainAxisSize: MainAxisSize.min,
           children: const [
             Text(
-              "Submit Vote  ",
+              "Submit   ",
               style: TextStyle(fontSize: 20),
             ),
             SizedBox(width: 20),
@@ -597,6 +536,7 @@ foregroundColor: Colors.white,
           ],
         ),
 ),
+ const SizedBox(height: 20),
 
 
   
@@ -610,6 +550,57 @@ foregroundColor: Colors.white,
     ),
   );
 }
+
+
+// Widget for time unit card
+Widget _buildTimeCard(String value, String label) {
+  return Column(
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            color: Color(0xFFB71C1C),
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Georgia',
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFFB71C1C),
+          fontFamily: 'Georgia',
+        ),
+      ),
+    ],
+  );
+}
+
+// Widget for colon separator
+Widget _buildColon() {
+  return const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 8),
+    child: Text(
+      ":",
+      style: TextStyle(
+        fontSize: 24,
+        color: Color(0xFFB71C1C),
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Georgia',
+      ),
+    ),
+  );
+}
+
 }
 
 class VotingGlassEffectContainer extends StatelessWidget {
