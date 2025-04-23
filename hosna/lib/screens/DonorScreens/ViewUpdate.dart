@@ -22,13 +22,13 @@ class _ViewUpdateState extends State<ViewUpdate> {
         children: [
           // AppBar
           PreferredSize(
-            preferredSize: const Size.fromHeight(100),
+            preferredSize: const Size.fromHeight(60),
             child: AppBar(
               backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
               elevation: 0,
               leading: Container(),
               flexibleSpace: Padding(
-                padding: const EdgeInsets.only(left: 20, bottom: 20),
+                padding: const EdgeInsets.only(left: 20, top: 50),
                 child: Align(
                   alignment: Alignment.bottomLeft,
                   child: Row(
@@ -39,10 +39,10 @@ class _ViewUpdateState extends State<ViewUpdate> {
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Text(
-                        "Updates",
+                        "              Updates",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 27,
+                          fontSize: 25,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
