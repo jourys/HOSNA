@@ -54,7 +54,7 @@ class ProjectDetails extends StatefulWidget {
 class _ProjectDetailsState extends State<ProjectDetails> {
   final donorServices = DonorServices();
   bool canVote = false; // To store the result of whether the user can vote
-
+ bool hasRefunded = false;
   int? userType;
   final TextEditingController amountController = TextEditingController();
   String? globalWalletAddress;
@@ -109,11 +109,22 @@ _loadProjectState();
 
      _listenToProjectState();
                   _fetchVotingStatus();
-
+    checkRefundStatus();
 
   }
 
 
+
+  Future<void> checkRefundStatus() async {
+final refundService = RefundService(
+  userAddress: EthereumAddress.fromHex(globalWalletAddress ?? ''),
+  userCredentials: EthPrivateKey.fromHex(globalPrivateKey.toString()), // replace with your actual private key or secure retrieval method
+);
+    final result = await refundService.hasRequestedRefund(1);
+    setState(() {
+      hasRefunded = result;
+    });
+  }
 
 Future<void> _loadProjectState() async {
    setState(() {
@@ -583,49 +594,6 @@ Future<void> _markProjectAsCompleted() async {
       print("Error marking project as completed: $e");
     }
   }
-Widget _buildCreativeProjectType(String type) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.blue.shade50, // Light blue background for contrast
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: Colors.blue.shade200, width: 2), // Subtle border
-      boxShadow: [
-        BoxShadow(
-          color: Colors.blue.shade100,
-          blurRadius: 8,
-          offset: Offset(2, 4), // Shadow effect
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Icon(
-          Icons.label_important, // Optional: Add an icon
-          color: Colors.blue.shade600,
-          size: 20,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          type,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade700,
-            letterSpacing: 1.2, // Spacing between letters
-            shadows: [
-              Shadow(
-                blurRadius: 2.0,
-                color: Colors.blue.shade300,
-                offset: Offset(1.5, 1.5),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
 Widget _buildTypeItem(String title, String value) {
   return Padding(
@@ -991,7 +959,10 @@ else {
             ),
           ),
 
-                 
+
+
+
+
 if (userType == 1 &&
     (projectState == "voting")
      && widget.projectCreatorWallet == globalWalletAddress
@@ -1054,59 +1025,52 @@ if (userType == 1 &&
 
 
 
+
 if (canVote && votingInitiated && userType == 0 && (!isEnded))
   Center(
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-      ),
-   onPressed: ()async {
-    try {
-    // 🔍 Step 1: Fetch the votingId from Firestore
-    DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(widget.projectId.toString())
-        .get();
+    child:  ElevatedButton(
+      onPressed: hasRefunded
+          ? null // ❌ disables the button
+          : () async {
+              try {
+                DocumentSnapshot projectSnapshot = await FirebaseFirestore.instance
+                    .collection('projects')
+                    .doc(widget.projectId.toString())
+                    .get();
 
-    if (projectSnapshot.exists) {
-      final data = projectSnapshot.data() as Map<String, dynamic>;
-      final votingId = data['votingId'].toString();
+                if (projectSnapshot.exists) {
+                  final data = projectSnapshot.data() as Map<String, dynamic>;
+                  final votingId = data['votingId']?.toString();
 
-      if (votingId != null) {
-        // ✅ Step 2: Navigate to VotingDetailsPage with the votingId
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DonorVotePage(
-              projectId: widget.projectId.toString(),
-              walletAddress: globalWalletAddress ?? '',
-              votingId: votingId.toString(), // 👈 Pass it here
-            ),
-          ),
-        );
-      } else {
-        print("❌ votingId is null");
-        // Optionally show a snackbar or alert to user
-      }
-    }
-  } catch (e) {
-    print("❌ Error fetching votingId: $e");
-  }
-},
-
-
-      child: Text(
-        "Cast Your Vote!",
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
+                  if (votingId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DonorVotePage(
+                          projectId: widget.projectId.toString(),
+                          walletAddress: globalWalletAddress ?? '',
+                          votingId: votingId,
+                        ),
+                      ),
+                    );
+                  } else {
+                    print("❌ votingId is null");
+                    // Show snackbar if needed
+                  }
+                }
+              } catch (e) {
+                print("❌ Error fetching votingId: $e");
+              }
+            }, style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+      child: Text(hasRefunded ? "Already Refunded" : "Cast Your Vote " , style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),),
     ),
   ), 
                             if (userType == 1 &&

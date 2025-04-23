@@ -767,4 +767,20 @@ class RefundService {
       throw Exception('❌ Failed to fetch refund request count: $e');
     }
   }
+  
+   Future<bool> hasRequestedRefund(int projectId) async {
+    final getDonorInfoFunction = donationContract.function('getDonorInfo');
+
+    final result = await web3client.call(
+      contract: donationContract,
+      function: getDonorInfoFunction,
+      params: [BigInt.from(projectId), userAddress],
+    );
+
+    final BigInt totalAnonymous = result[0] as BigInt;
+    final BigInt totalNonAnonymous = result[1] as BigInt;
+
+    // If both are zero, the user has likely already refunded
+    return totalAnonymous == BigInt.zero && totalNonAnonymous == BigInt.zero;
+  }
 }
