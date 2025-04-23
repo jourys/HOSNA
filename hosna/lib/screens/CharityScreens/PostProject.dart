@@ -674,48 +674,45 @@ class _PostProjectScreenState extends State<PostProject> {
     );
   }
 
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    DateTime today = DateTime.now();
-    DateTime firstSelectableDate = DateTime(today.year, today.month,
-        today.day); // Ensures past dates aren't selectable
+ Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+  DateTime today = DateTime.now();
+  DateTime firstSelectableDate = today.add(Duration(days: 1)); // Disable today
 
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: firstSelectableDate,
-      firstDate: firstSelectableDate, // Prevent selecting past dates
-      lastDate: DateTime(2101),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Color.fromRGBO(
-                  24, 71, 137, 1), // Header background & selected date
-              onPrimary: Colors.white, // Text color on primary color
-              onSurface: Color.fromRGBO(24, 71, 137, 1), // Default text color
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor:
-                    Color.fromRGBO(24, 71, 137, 1), // Button text color
-              ),
+  DateTime? picked = await showDatePicker(
+    context: context,
+    initialDate: firstSelectableDate,
+    firstDate: firstSelectableDate, // Prevent selecting today and past dates
+    lastDate: DateTime(2101),
+    builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.light(
+            primary: Color.fromRGBO(24, 71, 137, 1),
+            onPrimary: Colors.white,
+            onSurface: Color.fromRGBO(24, 71, 137, 1),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: Color.fromRGBO(24, 71, 137, 1),
             ),
           ),
-          child: child!,
-        );
-      },
-    );
+        ),
+        child: child!,
+      );
+    },
+  );
 
-    if (picked != null) {
-      setState(() {
-        // Set the date value in the appropriate controller
-        if (isStartDate) {
-          _startDateController.text = picked.toString().split(' ')[0];
-        } else {
-          _deadlineController.text = picked.toString().split(' ')[0];
-        }
-      });
-    }
+  if (picked != null) {
+    setState(() {
+      if (isStartDate) {
+        _startDateController.text = picked.toString().split(' ')[0];
+      } else {
+        _deadlineController.text = picked.toString().split(' ')[0];
+      }
+    });
   }
+}
+
 
   Future<void> _saveProject() async {
     if (_projectNameController.text.isEmpty) {
