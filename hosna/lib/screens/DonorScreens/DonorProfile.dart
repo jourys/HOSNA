@@ -398,11 +398,11 @@ InfoRow(title: 'Email : ', value: _email),
                                     '✅ User logged out. Session cleared but private key and wallet address retained.');
 
                                 // Navigate to UsersPage
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const UsersPage()),
-                                );
+                              Navigator.pushAndRemoveUntil(
+                                      context,
+    MaterialPageRoute(builder: (context) => UsersPage()),
+    (route) => false,
+  );
                               },
                               child: const Text(
                                 'Log out',

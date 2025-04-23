@@ -240,13 +240,14 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         String accountStatus = userDoc['accountStatus'];
 
         if (accountStatus == 'approved') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  CharityMainScreen(walletAddress: walletAddress),
-            ),
-          );
+         Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(
+    builder: (context) => CharityMainScreen(walletAddress: walletAddress),
+  ),
+  (route) => false, 
+);
+
         } else if (accountStatus == 'pending') {
           Navigator.pushReplacement(
             context,

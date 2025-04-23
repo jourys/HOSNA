@@ -127,12 +127,14 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           SuspensionListener(walletAddress);
 
           // Navigate to MainScreen
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainScreen(walletAddress: walletAddress),
-            ),
-          );
+         Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(walletAddress: walletAddress),
+  ),
+  (route) => false, 
+);
+
         } else {
           print('❌ Wallet address not found or invalid address');
           ScaffoldMessenger.of(context).showSnackBar(
