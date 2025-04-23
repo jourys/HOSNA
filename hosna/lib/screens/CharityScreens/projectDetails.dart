@@ -112,7 +112,7 @@ _loadProjectState();
 
      _listenToProjectState();
                   _fetchVotingStatus();
-    checkRefundStatus();
+    
     checkIfDonorVoted();
 
   }
@@ -168,28 +168,47 @@ _loadProjectState();
       print("✅ The donor has already voted.");
     } else {
       print("🆕 The donor has not voted yet.");
+    
     }
-
+checkRefundStatus();
   } catch (e, stackTrace) {
     print("🔥 Error in checkIfDonorVoted: $e");
     print("📍 Stack trace:\n$stackTrace");
   }
 }
 
+Future<void> checkRefundStatus() async {
+  print("🔍 Starting refund status check...");
 
+  print("📦 Creating RefundService with:");
+  print("   - Wallet Address: $globalWalletAddress");
+  print("   - Private Key Exists: ${globalPrivateKey != null}");
 
+  final refundService = RefundService(
+    userAddress: EthereumAddress.fromHex(globalWalletAddress ?? ''),
+    userCredentials: EthPrivateKey.fromHex(globalPrivateKey.toString()),
+  );
 
+  print("📤 Calling hasRequestedRefund for project ID: ${widget.projectId}");
 
-  Future<void> checkRefundStatus() async {
-final refundService = RefundService(
-  userAddress: EthereumAddress.fromHex(globalWalletAddress ?? ''),
-  userCredentials: EthPrivateKey.fromHex(globalPrivateKey.toString()), // replace with your actual private key or secure retrieval method
-);
-    final result = await refundService.hasRequestedRefund(1);
+  try {
+    final result = await refundService.hasRequestedRefund(widget.projectId);
+
+    print("✅ Refund status received: $result");
+
     setState(() {
       hasRefunded = result;
     });
+
+    print("🧠 hasRefunded state updated to: $hasRefunded");
+  } catch (e) {
+    print("❌ Error while checking refund status: $e");
   }
+
+  print("✅ Finished refund status check.");
+}
+
+
 
 Future<void> _loadProjectState() async {
    setState(() {
@@ -1027,11 +1046,13 @@ else {
 
 
 
-
-if (userType == 1 &&
-    (projectState == "voting")
-     && widget.projectCreatorWallet == globalWalletAddress
+if (( ( hasRefunded || hasVoted)    || (userType==1 &&  widget.projectCreatorWallet == globalWalletAddress )) &&
+    (projectState == "voting" || projectState == "ended" )
+     
     )
+
+
+
  Center(
             child: ElevatedButton(
               onPressed: () async {
@@ -1068,9 +1089,6 @@ if (userType == 1 &&
   }
 }
 
-               
-
-               
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color.fromRGBO(24, 71, 137, 1),

@@ -687,9 +687,35 @@ class RefundService {
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" },
+        { "internalType": "address", "name": "donor", "type": "address" }
+      ],
+      "name": "getDonorInfo",
+      "outputs": [
+        { "internalType": "uint256", "name": "", "type": "uint256" },
+        { "internalType": "uint256", "name": "", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "projectId", "type": "uint256" }
+      ],
+      "name": "getProjectDonorsWithAmounts",
+      "outputs": [
+        { "internalType": "address[]", "name": "", "type": "address[]" },
+        { "internalType": "uint256[]", "name": "", "type": "uint256[]" },
+        { "internalType": "uint256[]", "name": "", "type": "uint256[]" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     }
   ]
-  ''';
+''';
 
   RefundService({
     required this.userAddress,
@@ -773,19 +799,57 @@ class RefundService {
     }
   }
   
-   Future<bool> hasRequestedRefund(int projectId) async {
-    final getDonorInfoFunction = donationContract.function('getDonorInfo');
+  Future<bool> hasRequestedRefund(int projectId) async {
+  try {
+    print("🔍 Checking if user has requested refund for projectId: $projectId");
 
-    final result = await web3client.call(
+    final EthereumAddress address = await userCredentials.extractAddress();
+    print("👤 User address: $address");
+
+    final getDonorInfoFunction = donationContract.function('getDonorInfo');
+    final getDonorsFunction = donationContract.function('getProjectDonorsWithAmounts');
+
+    print("📥 Fetching donor info from contract...");
+    final List<dynamic> donorInfo = await web3client.call(
       contract: donationContract,
       function: getDonorInfoFunction,
-      params: [BigInt.from(projectId), userAddress],
+      params: [BigInt.from(projectId), address],
     );
 
-    final BigInt totalAnonymous = result[0] as BigInt;
-    final BigInt totalNonAnonymous = result[1] as BigInt;
+    final BigInt anonymousAmount = donorInfo[0] as BigInt;
+    final BigInt nonAnonymousAmount = donorInfo[1] as BigInt;
 
-    // If both are zero, the user has likely already refunded
-    return totalAnonymous == BigInt.zero && totalNonAnonymous == BigInt.zero;
+    print("💰 Anonymous amount: $anonymousAmount");
+    print("💵 Non-anonymous amount: $nonAnonymousAmount");
+
+    if (anonymousAmount == BigInt.zero && nonAnonymousAmount == BigInt.zero) {
+      print("⚠️ Both amounts are zero, checking if user still exists in donor list...");
+
+      final List<dynamic> donorsList = await web3client.call(
+        contract: donationContract,
+        function: getDonorsFunction,
+        params: [BigInt.from(projectId)],
+      );
+
+      final List<EthereumAddress> donorAddresses =
+          (donorsList[0] as List).cast<EthereumAddress>();
+
+      final bool isStillDonor = donorAddresses.contains(address);
+      print("📋 Is user still in donor list? ${isStillDonor ? 'Yes' : 'No'}");
+
+      final bool refunded = !isStillDonor;
+      print(refunded
+          ? "✅ User likely requested a refund"
+          : "🟡 User has 0 donation, but still listed as donor");
+      return refunded;
+    }
+
+    print("🟢 User still has donation amount, refund not requested");
+    return false;
+  } catch (e) {
+    print("❌ Error in hasRequestedRefund: $e");
+    return false;
   }
+}
+
 }
