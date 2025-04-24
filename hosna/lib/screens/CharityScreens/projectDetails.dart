@@ -1003,6 +1003,7 @@ if (userType == 1 &&
           context,
           MaterialPageRoute(
             builder: (context) => VotingDetailsPage(
+              projectId: widget.projectId.toString(),
               walletAddress: globalWalletAddress ?? '',
               votingId: votingId.toString(), // 👈 Pass it here
             ),
@@ -1074,6 +1075,7 @@ if (( ( hasRefunded || hasVoted)    || (userType==1 &&  widget.projectCreatorWal
           context,
           MaterialPageRoute(
             builder: (context) => VotingDetailsPage(
+              projectId: widget.projectId.toString(),
               walletAddress: globalWalletAddress ?? '',
               votingId: votingId.toString(), // 👈 Pass it here
             ),
