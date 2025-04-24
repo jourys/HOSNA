@@ -274,10 +274,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                       ],
                     ),
                   ),
-                   Row(
-
+                  Row(
                     children: [
-
                       // IconButton(
 
                       //   icon: const Icon(
@@ -299,40 +297,24 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                       //     );
                       //   },
                       // ),
-                    // SizedBox(width: 10),
+                      // SizedBox(width: 10),
 
                       SizedBox(
-
                         width: 100,
-
                         height: 50,
-
                         child: IconButton(
-
                           icon: const Icon(Icons.account_circle,
-
                               size: 85, color: Colors.white),
-
                           onPressed: () {
-
                             Navigator.push(
-
                               context,
-
                               MaterialPageRoute(
-
                                   builder: (context) => ProfileScreenCharity()),
-
                             );
-
                           },
-
                         ),
-
                       ),
-
                     ],
-
                   ),
                 ],
               ),
@@ -371,40 +353,23 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                     child: Column(
                       children: [
                         // Header with arrow
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const CanceledFailedProjects(),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Projects Awaiting You To Start Voting',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromRGBO(24, 71, 137, 1),
                               ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Projects Awaiting You To Start Voting',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color.fromRGBO(24, 71, 137, 1),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                ),
-                              ],
                             ),
                           ),
                         ),
+
                         // Projects list
-                        ..._projects.map((project) {
+                        ..._projects.take(2).map((project) {
                           final status = project['status'];
                           final color = status == 'failed'
                               ? Colors.red
@@ -419,6 +384,36 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                             '${(project['progress'] * 100).toStringAsFixed(0)}%',
                           );
                         }).toList(),
+                        if (_projects.length > 2)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CanceledFailedProjects(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                              ),
+                              label: const Text(
+                                'See All',
+                                style: TextStyle(
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.only(right: 16),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -440,39 +435,21 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                     child: Column(
                       children: [
                         // Header with arrow
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DraftsPage(
-                                  walletAddress: walletAddress,
-                                ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Draft Projects',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromRGBO(24, 71, 137, 1),
                               ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Draft Projects',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color.fromRGBO(24, 71, 137, 1),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                ),
-                              ],
                             ),
                           ),
                         ),
+
                         // Draft projects list
                         FutureBuilder<List<Map<String, dynamic>>>(
                           future: _loadDrafts(),
@@ -504,9 +481,51 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                             }
 
                             return Column(
-                              children: drafts.map((draft) {
-                                return _buildDraftCard(draft);
-                              }).toList(),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ...drafts
+                                    .take(2)
+                                    .map((draft) => _buildDraftCard(draft))
+                                    .toList(),
+                                if (drafts.length > 2)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 8.0, right: 16.0),
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => DraftsPage(
+                                                  walletAddress: walletAddress),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 14,
+                                          color: Color.fromRGBO(24, 71, 137, 1),
+                                        ),
+                                        label: const Text(
+                                          'See All',
+                                          style: TextStyle(
+                                            color:
+                                                Color.fromRGBO(24, 71, 137, 1),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: Size(0, 0),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             );
                           },
                         ),
@@ -713,225 +732,153 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
       ],
     );
   }
+
   Future<void> _checkProjectStates() async {
-
     try {
-
       final prefs = await SharedPreferences.getInstance();
 
       final savedWallet = prefs.getString('walletAddress');
 
-
-
       if (savedWallet == null) {
-
         print("❌ No wallet address found for checking project states");
 
         return;
-
       }
-
-
 
       // Get organization's projects
 
       final blockchainService = BlockchainService();
 
-      final myProjects = await blockchainService.fetchOrganizationProjects(savedWallet);
-
-      
+      final myProjects =
+          await blockchainService.fetchOrganizationProjects(savedWallet);
 
       // Process each project
 
       for (var project in myProjects) {
-
         final projectId = project['id'].toString();
-
-        
 
         // Get current project details from Firestore
 
         final projectDoc = await FirebaseFirestore.instance
-
             .collection('projects')
-
             .doc(projectId)
-
             .get();
-
-            
 
         if (!projectDoc.exists) continue;
 
-        
-
         final data = projectDoc.data() as Map<String, dynamic>;
-
-        
 
         // Check project state
 
         final bool isCanceled = data['isCanceled'] ?? false;
 
-        final bool isCompleted = project['donatedAmount'] >= project['totalAmount'];
+        final bool isCompleted =
+            project['donatedAmount'] >= project['totalAmount'];
 
         final bool isEnded = DateTime.now().isAfter(project['endDate']);
 
         final bool votingInitiated = data['votingInitiated'] ?? false;
 
-        final bool hasVoting = await blockchainService.hasExistingVoting(project['id']);
+        final bool hasVoting =
+            await blockchainService.hasExistingVoting(project['id']);
 
-        final bool votingEnded = hasVoting && DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch((data['votingEndDate'] ?? 0) * 1000));
-
-        
+        final bool votingEnded = hasVoting &&
+            DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch(
+                (data['votingEndDate'] ?? 0) * 1000));
 
         // Determine current state
 
         String currentState;
 
         if (isCanceled) {
-
           currentState = votingInitiated ? "voting" : "canceled";
 
           if (votingEnded) currentState = "ended";
-
         } else if (isCompleted) {
-
           currentState = "in-progress"; // Project funded successfully
-
         } else if (isEnded) {
-
           currentState = "ended";
-
         } else {
-
           currentState = "active";
-
         }
-
-        
 
         // Get previous state
 
         String previousState = data['currentState'] ?? 'active';
 
-        
-
-        print("Project ${project['name']} - Current state: $currentState, Previous state: $previousState");
-
-        
+        print(
+            "Project ${project['name']} - Current state: $currentState, Previous state: $previousState");
 
         // Only handle state changes
 
         if (currentState != previousState) {
-
-          print("🔄 Project state changed from $previousState to $currentState for project ${project['name']}");
-
-          
+          print(
+              "🔄 Project state changed from $previousState to $currentState for project ${project['name']}");
 
           // Update current state in Firestore
 
           await FirebaseFirestore.instance
-
               .collection('projects')
-
               .doc(projectId)
-
               .update({'currentState': currentState});
-
-          
 
           // Create a notification for charity employee based on specific state changes (R1 and R2)
 
-          if ((currentState == "in-progress" && previousState == "active") || // R1: Project funded -> in-progress 
+          if ((currentState == "in-progress" &&
+                  previousState ==
+                      "active") || // R1: Project funded -> in-progress
 
-              (currentState == "ended" && previousState == "voting")) {       // R2: Voting ended -> ended
-
-            
+              (currentState == "ended" && previousState == "voting")) {
+            // R2: Voting ended -> ended
 
             try {
-
               // Create a unique notification ID
 
-              final notificationId = 'charity_${projectId}_${currentState}_${DateTime.now().millisecondsSinceEpoch}';
-
-              
+              final notificationId =
+                  'charity_${projectId}_${currentState}_${DateTime.now().millisecondsSinceEpoch}';
 
               // Create notification in Firestore
 
               await FirebaseFirestore.instance
-
                   .collection('charity_notifications')
-
                   .doc(notificationId)
-
                   .set({
+                'charityAddress': savedWallet,
+                'projectId': projectId,
+                'projectName': project['name'] ?? 'Unknown Project',
+                'message': _getStatusChangeMessage(
+                    currentState, project['name'] ?? 'Unknown Project'),
+                'type': 'status_change',
+                'status': currentState,
+                'timestamp': FieldValue.serverTimestamp(),
+                'isRead': false,
+              });
 
-                    'charityAddress': savedWallet,
-
-                    'projectId': projectId,
-
-                    'projectName': project['name'] ?? 'Unknown Project',
-
-                    'message': _getStatusChangeMessage(currentState, project['name'] ?? 'Unknown Project'),
-
-                    'type': 'status_change',
-
-                    'status': currentState,
-
-                    'timestamp': FieldValue.serverTimestamp(),
-
-                    'isRead': false,
-
-                  });
-
-                  
-
-              print("✅ Notification created for charity: $savedWallet about project state change to $currentState");
-
+              print(
+                  "✅ Notification created for charity: $savedWallet about project state change to $currentState");
             } catch (e) {
-
               print("❌ Error creating notification: $e");
-
             }
-
           }
-
         }
-
       }
 
-      
-
       print("✅ Completed checking all project states");
-
     } catch (e) {
-
       print("❌ Error checking project states: $e");
-
     }
-
   }
 
-
-
   String _getStatusChangeMessage(String status, String projectName) {
-
     switch (status) {
-
       case 'in-progress':
-
         return 'Project "$projectName" has been fully funded and is now in progress!';
 
       case 'ended':
-
         return 'The voting period for project "$projectName" has ended.';
 
       default:
-
         return 'Project "$projectName" status has changed to $status.';
-
     }
-
   }
 }

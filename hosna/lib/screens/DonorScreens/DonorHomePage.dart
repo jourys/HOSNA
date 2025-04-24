@@ -315,48 +315,126 @@ class _HomePageState extends State<HomePage> {
             child: Text('No projects currently need your vote'),
           )
         else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: votingProjects.length,
-            itemBuilder: (context, index) {
-              final project = votingProjects[index];
-              final progress = ((project['donatedAmount'] ?? 0.0) /
-                      (project['totalAmount'] ?? 1.0) *
-                      100)
-                  .toStringAsFixed(1);
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _getEligibleVotingProjects(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
 
-              return Card(
-                margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: ListTile(
-                  title: Text(project['name'] ?? 'Unnamed Project'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Progress: $progress%'),
-                      if (project['votingDeadline'] != null)
-                        Text('Voting Deadline: ${project['votingDeadline']}'),
-                    ],
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Error loading voting projects: ${snapshot.error}',
+                    style: TextStyle(color: Colors.red),
                   ),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/donor_voting',
-                        arguments: {
-                          'projectId': project['id'],
-                          'projectName': project['name'],
+                );
+              }
+
+              final eligibleProjects = snapshot.data ?? [];
+
+              if (eligibleProjects.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('No projects currently need your vote'),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: eligibleProjects.length,
+                itemBuilder: (context, index) {
+                  final project = eligibleProjects[index];
+                  final progress = ((project['donatedAmount'] ?? 0.0) /
+                          (project['totalAmount'] ?? 1.0) *
+                          100)
+                      .toStringAsFixed(1);
+
+                  return Card(
+                    margin:
+                        EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: ListTile(
+                      title: Text(project['name'] ?? 'Unnamed Project'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Progress: $progress%'),
+                          if (project['votingDeadline'] != null)
+                            Text(
+                                'Voting Deadline: ${project['votingDeadline']}'),
+                        ],
+                      ),
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/donor_voting',
+                            arguments: {
+                              'projectId': project['id'],
+                              'projectName': project['name'],
+                            },
+                          );
                         },
-                      );
-                    },
-                    child: Text('Vote'),
-                  ),
-                ),
+                        child: Text('Vote'),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
       ],
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _getEligibleVotingProjects() async {
+    if (walletAddress == null) return [];
+
+    final donorServices = DonorServices();
+    List<Map<String, dynamic>> eligibleProjects = [];
+
+    for (var project in votingProjects) {
+      try {
+        final canVote = await donorServices.checkIfDonorCanVote(
+          BigInt.from(project['id']),
+          walletAddress!,
+        );
+
+        if (canVote) {
+          // Check Firestore for 'votingInitiated' and ensure not ended
+          final projectDoc = await FirebaseFirestore.instance
+              .collection('projects')
+              .doc(project['id'].toString())
+              .get();
+
+          if (projectDoc.exists) {
+            final data = projectDoc.data()!;
+            final isEnded = data['IsEnded'] ?? false;
+            final votingInitiated = data['votingInitiated'] ?? false;
+
+            if (votingInitiated && !isEnded) {
+              // Only then add it
+              project['votingDeadline'] = DateTime.fromMillisecondsSinceEpoch(
+                project['endTime'] * 1000,
+              ).toString();
+
+              eligibleProjects.add(project);
+            }
+          }
+        }
+      } catch (e) {
+        print("❌ Error in eligibility check: $e");
+      }
+    }
+
+    return eligibleProjects;
   }
 
   Future<Map<String, dynamic>?> _fetchLatestProjectDetails(
