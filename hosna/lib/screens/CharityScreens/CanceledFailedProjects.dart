@@ -45,7 +45,8 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
     print('🧾 Logged-in Wallet Address: $walletAddress');
 
     final blockchainService = BlockchainService();
-    final myProjects = await blockchainService.fetchOrganizationProjects(walletAddress!);
+    final myProjects =
+        await blockchainService.fetchOrganizationProjects(walletAddress!);
 
     List<Map<String, dynamic>> filtered = [];
 
@@ -59,7 +60,7 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
       final projectId = id.toString();
       bool isCanceled = await _isProjectCanceled(projectId);
       bool hasVoting = await blockchainService.hasExistingVoting(id);
-      
+
       String status = await _getProjectState(project);
 
       print("🔍 Checking Project ID: $projectId");
@@ -100,7 +101,7 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
     DateTime now = DateTime.now();
-    
+
     DateTime startDate = project['startDate'] != null
         ? (project['startDate'] is DateTime
             ? project['startDate']
@@ -184,15 +185,21 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    project['name'],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      project['name'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(
+                      width: 10), // Add spacing between text and badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -235,7 +242,7 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
         title: const Text(
-          'Canceled & Failed Projects',
+          'Ended and failed Projects',
           style: TextStyle(color: Colors.white),
         ),
         leading: IconButton(
@@ -273,4 +280,4 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
             ),
     );
   }
-} 
+}
