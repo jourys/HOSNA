@@ -99,7 +99,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   Future<void> _registerDonor() async {
     print("Registering donor...");
     final creatorPrivateKey =
-        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
     // Generate a unique private key for the donor
     _privateKey = _generatePrivateKey();
     print("Generated private key: $_privateKey");

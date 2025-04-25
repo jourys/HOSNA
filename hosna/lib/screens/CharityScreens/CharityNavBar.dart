@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
 import 'package:hosna/screens/CharityScreens/PostProject.dart';
+import 'package:hosna/screens/NotificationListener.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 
 import 'package:hosna/screens/organizations.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
@@ -20,7 +23,10 @@ class CharityMainScreen extends StatefulWidget {
   _CharityMainScreenState createState() => _CharityMainScreenState();
 }
 
-class _CharityMainScreenState extends State<CharityMainScreen> {
+class _CharityMainScreenState extends State<CharityMainScreen> with WidgetsBindingObserver {
+
+   late ProjectNotificationListener projectNotificationListener;
+   
   int _selectedIndex = 0;
   String? walletAddress;
   String? firstName;
@@ -35,11 +41,37 @@ class _CharityMainScreenState extends State<CharityMainScreen> {
     ];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadWalletAddress();
+ @override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addObserver(this); // Add this line
+  _loadWalletAddress();
+
+  projectNotificationListener = ProjectNotificationListener(
+    blockchainService: BlockchainService(),
+    notificationService: NotificationService(),
+  );
+        // projectNotificationListener.checkProjectsForCreator();
+
+ 
+  
+}
+
+  
+ @override
+void dispose() {
+  WidgetsBinding.instance.removeObserver(this); // Always clean up
+  super.dispose();
+}
+
+
+@override
+void didChangeAppLifecycleState(AppLifecycleState state) {
+  if (state == AppLifecycleState.resumed) {
+    // projectNotificationListener.checkProjectsForCreator();
   }
+}
+
 
   Future<void> _loadWalletAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

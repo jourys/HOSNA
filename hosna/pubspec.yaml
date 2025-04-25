@@ -56,6 +56,9 @@ dependencies:
   crypto: ^3.0.6
   timeago: ^3.2.2 # please check if it compatible if not delete it and then try adding it again "I could not add it the way you do"
   lottie: ^3.3.1
+  flutter_local_notifications: ^19.1.0
+  permission_handler: ^12.0.0+1
+  workmanager: ^0.5.2
   # ethereum: ^0.2.1
   
   
