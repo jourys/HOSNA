@@ -17,7 +17,6 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
-import 'package:hosna/screens/NotificationService.dart';
 
 
 
