@@ -30,22 +30,25 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
     try {
       final querySnapshot = await _firestore
           .collection('users')
-          .where('isSuspended', isEqualTo: true)
+          .where('isSuspend', isEqualTo: true)
           .get();
       
       final accounts = querySnapshot.docs.map((doc) {
         final data = doc.data();
         return {
           'id': doc.id,
-          'name': data['name'] ?? 'Unknown',
+          // 'name': data['name'] ?? 'Unknown',
           'email': data['email'] ?? 'No email',
-          'phoneNumber': data['phoneNumber'] ?? 'No phone',
-          'city': data['city'] ?? 'Unknown',
-          'suspendedAt': (data['suspendedAt'] as Timestamp).toDate(),
+          // 'phoneNumber': data['phoneNumber'] ?? 'No phone',
+          // 'city': data['city'] ?? 'Unknown',
+          'suspendedAt': data['suspendedAt'] != null 
+              ? (data['suspendedAt'] as Timestamp).toDate() 
+              : DateTime.now(),
           'suspensionReason': data['suspensionReason'] ?? 'No reason provided',
         };
       }).toList();
       
+      print(accounts);
       setState(() {
         _suspendedAccounts = accounts;
         _filteredAccounts = accounts;
@@ -100,23 +103,21 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
         _filteredAccounts = _suspendedAccounts;
       } else {
         _filteredAccounts = _suspendedAccounts.where((account) {
-          final name = account['name'].toString().toLowerCase();
+          
           final email = account['email'].toString().toLowerCase();
-          final city = account['city'].toString().toLowerCase();
+          
           final searchLower = query.toLowerCase();
           
-          return name.contains(searchLower) || 
-                 email.contains(searchLower) || 
-                 city.contains(searchLower);
+          return email.contains(searchLower);
         }).toList();
       }
     });
   }
 
-  Future<void> _reactivateAccount(String userId, String userName) async {
+  Future<void> _reactivateAccount(String userId) async {
     try {
       await _firestore.collection('users').doc(userId).update({
-        'isSuspended': false,
+        'isSuspend': false,
         'reactivatedAt': FieldValue.serverTimestamp(),
         'reactivatedBy': FirebaseAuth.instance.currentUser?.email ?? 'Admin',
       });
@@ -154,7 +155,7 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$userName\'s account has been reactivated successfully'),
+          content: Text('The account has been reactivated successfully'),
           backgroundColor: Colors.green,
         ),
       );
@@ -223,10 +224,10 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDetailRow('Name', account['name']),
+                            // _buildDetailRow('Name', account['name']),
                             _buildDetailRow('Email', account['email']),
-                            _buildDetailRow('Phone', account['phoneNumber']),
-                            _buildDetailRow('City', account['city']),
+                            // _buildDetailRow('Phone', account['phoneNumber']),
+                            // _buildDetailRow('City', account['city']),
                             _buildDetailRow('Suspended Since', 
                               DateFormat('MMMM d, yyyy').format(account['suspendedAt'])),
                             SizedBox(height: 16),
@@ -345,7 +346,7 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
-                            _reactivateAccount(account['id'], account['name']);
+                            _reactivateAccount(account['id']);
                           },
                           icon: Icon(Icons.restore),
                           label: Text('Reactivate Account'),
@@ -461,7 +462,7 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                account['name'],
+                                                (index+1).toString(),
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
@@ -469,7 +470,7 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
                                               ),
                                             ),
                                             ElevatedButton.icon(
-                                              onPressed: () => _reactivateAccount(account['id'], account['name']),
+                                              onPressed: () => _reactivateAccount(account['id']),
                                               icon: Icon(Icons.restore),
                                               label: Text('Reactivate'),
                                               style: ElevatedButton.styleFrom(
@@ -481,8 +482,8 @@ class _SuspendedAccountsPageState extends State<SuspendedAccountsPage> {
                                         ),
                                         SizedBox(height: 10),
                                         Text('Email: ${account['email']}'),
-                                        Text('Phone: ${account['phoneNumber']}'),
-                                        Text('City: ${account['city']}'),
+                                        // Text('Phone: ${account['phoneNumber']}'),
+                                        // Text('City: ${account['city']}'),
                                         SizedBox(height: 10),
                                         Text(
                                           'Suspended since: ${DateFormat('MMM d, yyyy').format(account['suspendedAt'])}',
