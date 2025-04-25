@@ -27,14 +27,14 @@ void main() async {
     );
     print("✅ Firebase initialized successfully 🎉");
     
-   late ProjectNotificationListener projectNotificationListener;
+//    late ProjectNotificationListener projectNotificationListener;
 
-  projectNotificationListener = ProjectNotificationListener(
-    blockchainService: BlockchainService(),
-    notificationService: NotificationService(),
-  );
+//   projectNotificationListener = ProjectNotificationListener(
+//     blockchainService: BlockchainService(),
+//     notificationService: NotificationService(),
+//   );
 
- projectNotificationListener.checkProjectsForCreator();
+//  projectNotificationListener.checkProjectsForCreator();
   } catch (e) {
     print("❌ Error initializing Firebase: $e ");
   }

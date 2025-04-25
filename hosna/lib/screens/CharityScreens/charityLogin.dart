@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
+import 'package:hosna/screens/NotificationListener.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/crypto.dart';
@@ -240,6 +242,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         String accountStatus = userDoc['accountStatus'];
 
         if (accountStatus == 'approved') {
+
+
+ late ProjectNotificationListener projectNotificationListener;
+
+  projectNotificationListener = ProjectNotificationListener(
+    blockchainService: BlockchainService(),
+    notificationService: NotificationService(),
+  );
+
+ projectNotificationListener.checkProjectsForCreator();
+
+
          Navigator.pushAndRemoveUntil(
   context,
   MaterialPageRoute(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/DonorScreens/DonorNavBar.dart';
+import 'package:hosna/screens/NotificationListener.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 import 'package:hosna/screens/PasswordResetPage.dart';
 import 'package:hosna/screens/DonorScreens/DonorSignup.dart';
 import 'package:http/http.dart';
@@ -125,6 +128,16 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
             print('Error saving wallet address or retrieving private key: $e');
           }
           SuspensionListener(walletAddress);
+
+
+ late ProjectNotificationListener projectNotificationListener;
+
+  projectNotificationListener = ProjectNotificationListener(
+    blockchainService: BlockchainService(),
+    notificationService: NotificationService(),
+  );
+
+ projectNotificationListener.checkProjectsForCreator();
 
           // Navigate to MainScreen
          Navigator.pushAndRemoveUntil(
