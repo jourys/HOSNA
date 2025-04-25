@@ -17,7 +17,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
-
+import 'package:hosna/screens/NotificationService.dart';
 
 
 
@@ -1412,6 +1412,10 @@ void showCancelSuccessPopup(BuildContext context) {
 
 // Function to show confirmation dialog before cancellation
 Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+  // Create a TextEditingController for the justification field
+  final justificationController = TextEditingController();
+  String? justification;
+
   return await showDialog<bool>(
     context: context,
     barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
@@ -1419,19 +1423,83 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
       return AlertDialog(
         backgroundColor: Colors.white, // Set background to white
         title: const Text(
-          'Confirm cancelation',
+          'Confirm Cancelation',
           style: TextStyle(
             fontWeight: FontWeight.bold, // Make title bold
             fontSize: 22, // Increase title font size
           ),
           textAlign: TextAlign.center, // Center the title text
         ),
-        content: const Text(
-          'Are you sure you want to cancel this project ?',
+        content: SingleChildScrollView(
+
+          child: Column(
+
+            mainAxisSize: MainAxisSize.min,
+
+            children: [
+
+              const Text(
+
+                'Are you sure you want to cancel this project?',
           style: TextStyle(
             fontSize: 18, // Make content text bigger
           ),
           textAlign: TextAlign.center, // Center the content text
+          
+              ),
+
+              const SizedBox(height: 20),
+
+              const Text(
+
+                'Please provide a justification:',
+
+                style: TextStyle(
+
+                  fontSize: 16,
+
+                  fontWeight: FontWeight.bold,
+
+                ),
+
+                textAlign: TextAlign.left,
+
+              ),
+
+              const SizedBox(height: 10),
+
+              TextField(
+
+                controller: justificationController,
+
+                maxLines: 3,
+
+                decoration: InputDecoration(
+
+                  hintText: 'Enter reason for cancellation...',
+
+                  border: OutlineInputBorder(
+
+                    borderRadius: BorderRadius.circular(8),
+
+                  ),
+
+                  filled: true,
+
+                  fillColor: Colors.grey[100],
+
+                ),
+
+                onChanged: (value) {
+
+                  justification = value;
+
+                },
+
+              ),
+
+            ],
+          ),
         ),
         actions: <Widget>[
           Row(
@@ -1459,7 +1527,29 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
               const SizedBox(width: 20), // Add space between buttons
               OutlinedButton(
                 onPressed: () {
-                  Navigator.pop(context, true); // Return true after confirming save
+                  // Validate if justification is provided
+
+                  if (justificationController.text.trim().isEmpty) {
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+
+                      const SnackBar(
+
+                        content: Text('Please provide a justification for cancellation.'),
+
+                        backgroundColor: Colors.red,
+
+                      ),
+
+                    );
+
+                  } else {
+
+                    // Store the justification and proceed
+
+                    Navigator.pop(context, true);
+
+                  }
                 },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
@@ -1482,7 +1572,135 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
         actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
       );
     },
-  ) ?? false; // If null, default to false
+  ).then((confirmed) {
+
+    if (confirmed == true && justificationController.text.trim().isNotEmpty) {
+
+      // Store the justification
+
+      _storeCancellationJustification(widget.projectId.toString(), justificationController.text.trim());
+
+      return true;
+
+    }
+
+    return false;
+
+  });
+
+}
+
+
+
+// Function to store cancellation justification and send notification to project creator
+
+Future<void> _storeCancellationJustification(String projectId, String justification) async {
+
+  try {
+
+    // Update Firestore with the cancellation justification
+
+    await FirebaseFirestore.instance
+
+        .collection('projects')
+
+        .doc(projectId)
+
+        .update({
+
+          'isCanceled': true,
+
+          'cancellationReason': justification,
+
+          'cancelledAt': FieldValue.serverTimestamp(),
+
+        });
+
+        
+
+    print("✅ Project cancellation with justification stored: $justification");
+
+    
+
+    // Send notification to project creator
+
+    await _sendCancellationNotification(projectId, justification);
+
+  } catch (e) {
+
+    print("❌ Error storing cancellation justification: $e");
+
+  }
+
+}
+
+
+
+// Function to send cancellation notification to project creator
+
+Future<void> _sendCancellationNotification(String projectId, String justification) async {
+
+  try {
+
+    // Get the project creator wallet address from the widget
+
+    final creatorAddress = widget.projectCreatorWallet;
+
+    
+
+    if (creatorAddress.isEmpty) {
+
+      print("❌ No project creator wallet address found");
+
+      return;
+
+    }
+
+    
+
+    // Create notification for project creator
+
+    final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    
+
+    await FirebaseFirestore.instance
+
+        .collection('charity_notifications')
+
+        .doc(notificationId)
+
+        .set({
+
+          'charityAddress': creatorAddress,
+
+          'projectId': projectId,
+
+          'projectName': widget.projectName,
+
+          'message': 'Your project "${widget.projectName}" has been cancelled by an admin. Reason: $justification',
+
+          'type': 'project_cancellation',
+
+          'status': 'canceled',
+
+          'timestamp': FieldValue.serverTimestamp(),
+
+          'isRead': false,
+
+          'cancellationReason': justification,
+
+        });
+
+        
+
+    print("✅ Cancellation notification sent to project creator: $creatorAddress");
+
+  } catch (e) {
+
+    print("❌ Error sending cancellation notification: $e");
+
+  }
 }
 
  Widget _buildDetailItem(String title, String value) {
