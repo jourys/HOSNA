@@ -46,9 +46,21 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
       final fetchedNotifications = snapshot.docs.map((doc) {
         return doc.data();
       }).toList();
+      
+      final snapshotJustifications = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .collection('justifications')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      final fetchedJustifications = snapshotJustifications.docs.map((doc) {
+        return doc.data();
+      }).toList();
 
       setState(() {
         notifications = fetchedNotifications;
+        notifications.addAll(fetchedJustifications);
         isLoading = false;
       });
     } catch (e) {

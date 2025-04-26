@@ -27,6 +27,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 
 // Define your Ethereum RPC and contract details
 const String rpcUrl =
@@ -163,6 +164,7 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
   List<Map<String, dynamic>> _complaints = [];
   bool isSidebarVisible = true;
   final BlockchainService _blockchainService = BlockchainService();
+  final notificationService = NotificationService();
 
   @override
   void initState() {
@@ -975,14 +977,21 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
       if (complaintData.containsKey('complainant')) {
         final complainantAddress = complaintData['complainant'];
         
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'userId': complainantAddress,
-          'title': 'Complaint Deleted',
-          'message': 'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification',
-          'timestamp': FieldValue.serverTimestamp(),
-          'read': false,
-          'type': 'complaint_deleted',
-          'complaintId': complaintDocId,
+        final title = "Complaint Deleted";
+        final body = 'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification';
+
+        // notificationService.showNotification(title: title, body: body);
+
+        // Store in Firestore (creator)
+        final userDocRef = FirebaseFirestore.instance.collection("users").doc( complainantAddress);
+        await userDocRef.set({}, SetOptions(merge: true));
+        await userDocRef.collection("justifications").add({
+          "title": title,
+          "body": body,
+          "timestamp": FieldValue.serverTimestamp(),
+          "projectId": complaintDocId,
+          "type": "complaint_deleted",
+          "state": "deleted",
         });
         
         print("✅ Notification sent to complainant $complainantAddress");
@@ -1202,6 +1211,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
   final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
+  final notificationService = NotificationService();
 
   late Web3Client _client;
   late DeployedContract _contract;
@@ -2006,20 +2016,22 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
       // Create a unique notification ID
       final notificationId = 'account_suspended_${DateTime.now().millisecondsSinceEpoch}';
       
-      // Create notification in Firestore
-      await FirebaseFirestore.instance
-          .collection('charity_notifications')
-          .doc(notificationId)
-          .set({
-            'charityAddress': charityAddress,
-            'orgName': orgName,
-            'message': 'Your charity account has been suspended by an admin. Reason: $justification',
-            'type': 'account_suspension',
-            'status': 'suspended',
-            'timestamp': FieldValue.serverTimestamp(),
-            'isRead': false,
-            'suspensionReason': justification,
-          });
+      final title = "Account Suspended";
+      final body = 'Your charity account has been suspended by an admin. Reason: $justification';
+
+      // notificationService.showNotification(title: title, body: body);
+
+      // Store in Firestore (creator)
+      final userDocRef = FirebaseFirestore.instance.collection("users").doc(charityAddress);
+      await userDocRef.set({}, SetOptions(merge: true));
+      await userDocRef.collection("justifications").add({
+        "title": title,
+        "body": body,
+        "timestamp": FieldValue.serverTimestamp(),
+        "projectId": charityAddress,
+        "type": "account_suspension",
+        "state": "suspended",
+      });
           
       print("✅ Suspension notification sent to charity: $charityAddress");
     } catch (e) {
@@ -2705,6 +2717,7 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
 
 class CancelAllProjectsHelper {
   final BlockchainService _blockchainService = BlockchainService();
+  final notificationService = NotificationService();
 
   /// Cancel all projects for a specific organization
   Future<void> cancelAllProjectsForOrganization(String orgAddress, String justification) async {
@@ -2825,34 +2838,22 @@ class CancelAllProjectsHelper {
       final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
 
       
+    final title = "Project Cancelled";
+      final body = 'Your project "$projectName" has been cancelled by an admin. Reason: $justification';
 
-      await FirebaseFirestore.instance
+      // notificationService.showNotification(title: title, body: body);
 
-          .collection('charity_notifications')
-
-          .doc(notificationId)
-
-          .set({
-
-            'charityAddress': creatorAddress,
-
-            'projectId': projectId,
-
-            'projectName': projectName,
-
-            'message': 'Your project "$projectName" has been cancelled by an admin. Reason: $justification',
-
-            'type': 'project_cancellation',
-
-            'status': 'canceled',
-
-            'timestamp': FieldValue.serverTimestamp(),
-
-            'isRead': false,
-
-            'cancellationReason': justification,
-
-          });
+      // Store in Firestore (creator)
+      final userDocRef = FirebaseFirestore.instance.collection("users").doc(creatorAddress);
+      await userDocRef.set({}, SetOptions(merge: true));
+      await userDocRef.collection("justifications").add({
+        "title": title,
+        "body": body,
+        "timestamp": FieldValue.serverTimestamp(),
+        "projectId": projectId,
+        "type": "project_cancellation",
+        "state": "canceled",
+      });
 
           
 

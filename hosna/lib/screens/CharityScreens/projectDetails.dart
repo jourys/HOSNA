@@ -17,6 +17,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 
 
 
@@ -52,6 +53,7 @@ class ProjectDetails extends StatefulWidget {
 
 class _ProjectDetailsState extends State<ProjectDetails> {
   final donorServices = DonorServices();
+  final notificationService = NotificationService();
   bool canVote = false; // To store the result of whether the user can vote
  bool hasRefunded = false;
    bool hasVoted = false;
@@ -1271,8 +1273,9 @@ if (canVote && votingInitiated && userType == 0 && (!isEnded))
                                 onPressed: () async {
                                   print("press cancel button");
                                   print("Project ID: ${widget.projectId}");
-                                  bool confirmCancel =
-                                      await _showcancelConfirmationDialog(context);
+                                   bool confirmCancel =userType == null
+                                      ? await _showcancelConfirmationDialogForAdmin(context)
+                                      : await _showcancelConfirmationDialog(context);
                                   if (confirmCancel) {
                                     setState(() {
                                       isCanceled = true;
@@ -1410,7 +1413,7 @@ void showCancelSuccessPopup(BuildContext context) {
 }
 
 // Function to show confirmation dialog before cancellation
-Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+Future<bool> _showcancelConfirmationDialogForAdmin(BuildContext context) async {
   // Create a TextEditingController for the justification field
   final justificationController = TextEditingController();
   String? justification;
@@ -1589,7 +1592,79 @@ Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
 
 }
 
-
+Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+  return await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set background to white
+        title: const Text(
+          'Confirm Cancelation',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // Make title bold
+            fontSize: 22, // Increase title font size
+          ),
+          textAlign: TextAlign.center, // Center the title text
+        ),
+        content: const Text(
+          'Are you sure you want to cancel this project ?',
+          style: TextStyle(
+            fontSize: 18, // Make content text bigger
+          ),
+          textAlign: TextAlign.center, // Center the content text
+        ),
+        actions: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
+            children: [
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context, false); // Return false on cancel
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1),// Border color for Cancel button
+                    width: 3,
+                  ),
+                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),// Background color
+                ),
+                child: const Text(
+                  '  No  ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size for buttons
+                    color: Colors.white, // White text color
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20), // Add space between buttons
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context, true); // Return true after confirming save
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color:const Color.fromARGB(255, 182, 12, 12), // Border color for Save button
+                    width: 3,
+                  ),
+                  backgroundColor:const Color.fromARGB(255, 182, 12, 12), // Background color
+                ),
+                child: const Text(
+                  '  Yes  ',
+                  style: TextStyle(
+                    fontSize: 20, // Increase font size
+                    color: Colors.white, // White text color
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        actionsPadding: const EdgeInsets.symmetric(vertical: 10), // Add padding for the actions
+      );
+    },
+  ) ?? false; // If null, default to false
+}
 
 // Function to store cancellation justification and send notification to project creator
 
@@ -1661,36 +1736,22 @@ Future<void> _sendCancellationNotification(String projectId, String justificatio
 
     final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
 
-    
+    final title = "Project Cancelled";
+    final body = 'Your project "${widget.projectName}" has been cancelled by an admin. Reason: $justification';
 
-    await FirebaseFirestore.instance
+    // notificationService.showNotification(title: title, body: body);
 
-        .collection('charity_notifications')
-
-        .doc(notificationId)
-
-        .set({
-
-          'charityAddress': creatorAddress,
-
-          'projectId': projectId,
-
-          'projectName': widget.projectName,
-
-          'message': 'Your project "${widget.projectName}" has been cancelled by an admin. Reason: $justification',
-
-          'type': 'project_cancellation',
-
-          'status': 'canceled',
-
-          'timestamp': FieldValue.serverTimestamp(),
-
-          'isRead': false,
-
-          'cancellationReason': justification,
-
-        });
-
+    // Store in Firestore (creator)
+    final userDocRef = FirebaseFirestore.instance.collection("users").doc(creatorAddress);
+    await userDocRef.set({}, SetOptions(merge: true));
+    await userDocRef.collection("justifications").add({
+      "title": title,
+      "body": body,
+      "timestamp": FieldValue.serverTimestamp(),
+      "projectId": projectId,
+      "type": "project_cancellation",
+      "state": "cancelled",
+    });
         
 
     print("✅ Cancellation notification sent to project creator: $creatorAddress");
