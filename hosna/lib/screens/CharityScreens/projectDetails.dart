@@ -18,6 +18,7 @@ import 'package:hosna/screens/DonorScreens/DonorVoting.dart';
 import 'package:hosna/screens/CharityScreens/PostUpdate.dart';
 import 'package:hosna/screens/DonorScreens/ViewUpdate.dart';
 import 'package:hosna/screens/NotificationManager.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 
 
@@ -1981,27 +1982,54 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     );
     // Send confirmation email
       try {
+        final user = FirebaseAuth.instance.currentUser;
+
+        if (user == null) {
+          print('No user is signed in.');
+          return;
+        }
+
+        // Get user's wallet address (assuming you saved it in SharedPreferences)
         final prefs = await SharedPreferences.getInstance();
-        String userEmail = prefs.getString('donorEmail') ?? '';
+        String? walletAddress = prefs.getString('walletAddress');
 
-        print(userEmail);
+        if (walletAddress == null || walletAddress.isEmpty) {
+          print('Wallet address not found.');
+          return;
+        }
 
-        if (userEmail != null) {
-          final response = await http.post(
-            Uri.parse(
-                'https://us-central1-hosna2.cloudfunctions.net/sendDonationEmail'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': userEmail}),
-          );
+        // Query Firestore based on walletAddress field
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('walletAddress', isEqualTo: walletAddress)
+            .limit(1)
+            .get();
 
-          if (response.statusCode == 200) {
-            print('Confirmation email sent to $userEmail');
-          } else {
-            print('Failed to send email. Status: ${response.statusCode}');
-            print('Response body: ${response.body}');
-          }
+        if (querySnapshot.docs.isEmpty) {
+          print('User document not found.');
+          return;
+        }
+
+        final userData = querySnapshot.docs.first.data();
+        final userEmail = userData['email'];
+
+        if (userEmail == null || userEmail.isEmpty) {
+          print('User email is missing in Firestore.');
+          return;
+        }
+
+        final response = await http.post(
+          Uri.parse(
+              'https://us-central1-hosna2.cloudfunctions.net/sendDonationEmail'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': userEmail}),
+        );
+
+        if (response.statusCode == 200) {
+          print('Confirmation email sent to $userEmail');
         } else {
-          print('User email is null. Cannot send confirmation email.');
+          print('Failed to send email. Status: ${response.statusCode}');
+          print('Response body: ${response.body}');
         }
       } catch (e) {
         print('Error sending confirmation email: $e');
