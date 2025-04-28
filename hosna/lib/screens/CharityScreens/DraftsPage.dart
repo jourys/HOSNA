@@ -88,9 +88,9 @@ class _DraftsPageState extends State<DraftsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Drafts'),
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        foregroundColor: Colors.white,
+        title: Text('Drafts' , style: TextStyle(color: const Color.fromRGBO(24, 71, 137, 1)),),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color.fromRGBO(24, 71, 137, 1),
       ),
       body: _drafts.isEmpty
           ? Center(child: Text('No drafts found.'))

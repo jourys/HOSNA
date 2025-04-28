@@ -25,6 +25,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
   String _organizationName = '';
   List<Map<String, dynamic>> _projects = [];
   String? walletAddress;
+      bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +62,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     setState(() {
       walletAddress = savedWallet;
+       _isLoading = true;
     });
 
     print('🧾 Logged-in Wallet Address: $walletAddress');
@@ -119,6 +122,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     setState(() {
       _projects = filtered;
+       _isLoading = false;
     });
 
     print("✅ Filtered Projects Count: ${_projects.length}");
@@ -389,86 +393,113 @@ if (votingId != null) {
                 padding: const EdgeInsets.all(16.0),
                 children: [
                   // Projects Awaiting section
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Header with arrow
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Projects Awaiting You To Start Voting',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                              ),
-                            ),
-                          ),
-                        ),
+                 Container(
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(10),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.grey.withOpacity(0.1),
+        spreadRadius: 1,
+        blurRadius: 4,
+        offset: const Offset(0, 1),
+      ),
+    ],
+  ),
+  child: Column(
+    children: [
+      // Header
+      Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Projects Awaiting You To Start Voting',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
+          ),
+        ),
+      ),
 
-                        // Projects list
-                        ..._projects.take(2).map((project) {
-                          final status = project['status'];
-                          final color = status == 'failed'
-                              ? Colors.red
-                              : (status == 'canceled'
-                                  ? Colors.orange
-                                  : Colors.blue);
+      // Content
+      if (_isLoading) 
+        Padding(
+  padding: const EdgeInsets.all(16.0),
+  child: Center(
+    child: CircularProgressIndicator(
+      valueColor: AlwaysStoppedAnimation<Color>(
+        Color.fromRGBO(24, 71, 137, 1),
+      ),
+    ),
+  ),
+)
 
-                          return _buildProjectCard(
-                            project['name'],
-                            status[0].toUpperCase() + status.substring(1),
-                            color,
-                            '${(project['progress'] * 100).toStringAsFixed(0)}%',
-                          );
-                        }).toList(),
-                        if (_projects.length > 2)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const CanceledFailedProjects(),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(
-                                Icons.arrow_forward_ios,
-                                size: 14,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                              ),
-                              label: const Text(
-                                'See All',
-                                style: TextStyle(
-                                  color: Color.fromRGBO(24, 71, 137, 1),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.only(right: 16),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+      else if (_projects.isEmpty)
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
+            child: Text(
+              'No projects found.',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        )
+      else
+        ..._projects.take(2).map((project) {
+          final status = project['status'];
+          final color = status == 'failed'
+              ? Colors.red
+              : (status == 'canceled'
+                  ? Colors.orange
+                  : Colors.blue);
+
+          return _buildProjectCard(
+            project['name'],
+            status[0].toUpperCase() + status.substring(1),
+            color,
+            '${(project['progress'] * 100).toStringAsFixed(0)}%',
+          );
+        }).toList(),
+
+      if (!_isLoading && _projects.length > 2)
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CanceledFailedProjects(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
+            label: const Text(
+              'See All',
+              style: TextStyle(
+                color: Color.fromRGBO(24, 71, 137, 1),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.only(right: 16),
+            ),
+          ),
+        ),
+    ],
+  ),
+),
+
                   const SizedBox(height: 24),
                   // Draft Projects section
                   Container(
