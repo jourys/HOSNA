@@ -296,7 +296,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             website.isEmpty ? " " : website,
             date,
           ],
-          gasPrice: web3.EtherAmount.inWei(BigInt.from(3000000000)),
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
           maxGas: 1000000,
         ),
         chainId: 11155111,
