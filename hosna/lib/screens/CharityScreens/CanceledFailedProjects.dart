@@ -216,7 +216,7 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Total Amount: ${project['totalAmount']} ETH',
+                'Total Amount: ${project['totalAmount']} SR',
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 14,
@@ -240,13 +240,13 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
     return Scaffold(
       //backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
         title: const Text(
           'Ended and failed Projects',
-          style: TextStyle(color:const Color.fromRGBO(24, 71, 137, 1)),
+          style: TextStyle(color: Colors.white),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color:const Color.fromRGBO(24, 71, 137, 1)),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
