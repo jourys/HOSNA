@@ -125,37 +125,90 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
     await _checkProjectStates();
   }
 
-  Future<String> _getProjectState(Map<String, dynamic> project) async {
-    DateTime now = DateTime.now();
+ 
 
-    // Handle startDate (could be DateTime, String, or null)
+Future<String> _getProjectState(Map<String, dynamic> project) async {
+  DateTime now = DateTime.now();
+  String projectId = project['id'].toString(); // Ensure it's a String
+
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .get();
+
+    if (!doc.exists) {
+      print("⚠️ Project not found. Creating default fields...");
+      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
+        'isCanceled': false,
+        'isCompleted': false,
+        'isEnded': false,
+        'votingInitiated': false,
+      });
+    }
+
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    bool isCanceled = data['isCanceled'] ?? false;
+    bool isCompleted = data['isCompleted'] ?? false;
+bool isEnded = false;
+final votingId = data['votingId'];
+
+if (votingId != null) {
+  final votingDocRef = FirebaseFirestore.instance
+      .collection("votings")
+      .doc(votingId.toString());
+
+  final votingDoc = await votingDocRef.get();
+  final votingData = votingDoc.data();
+
+  if (votingDoc.exists) {
+    isEnded = votingData?['IsEnded'] ?? false;
+  }
+}
+    bool votingInitiated = data['votingInitiated'] ?? false;
+
+    // Determine projectState based on Firestore flags
+    if (isEnded) {
+      return "ended";}
+    if (isCompleted) {
+      return "completed";
+    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+      return "voting";
+    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+      return "canceled";
+    }
+
+    // Fallback to logic based on time and funding progress
     DateTime startDate = project['startDate'] != null
         ? (project['startDate'] is DateTime
             ? project['startDate']
             : DateTime.parse(project['startDate']))
-        : now;
+        : DateTime.now();
 
-    // Handle endDate (could be DateTime, String, or null)
     DateTime endDate = project['endDate'] != null
         ? (project['endDate'] is DateTime
             ? project['endDate']
             : DateTime.parse(project['endDate']))
-        : now;
+        : DateTime.now();
 
-    // Get totalAmount and donatedAmount, handle null or invalid values
     double totalAmount = (project['totalAmount'] ?? 0).toDouble();
     double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
 
     if (now.isBefore(startDate)) {
       return "upcoming";
     } else if (donatedAmount >= totalAmount) {
-      return "completed";
+      return "in-progress";
     } else if (now.isAfter(endDate)) {
       return "failed";
     } else {
       return "active";
     }
+  } catch (e) {
+    print("❌ Error determining project state for ID $projectId: $e");
+    return "unknown";
   }
+}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -166,7 +219,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>?;
-        return data != null && data['isCanceled'] == true;
+        return data != null && (data['isCanceled'] == true && (data['votingInitiated'] == false || !data.containsKey('votingInitiated') ));
       }
     } catch (e) {
       print("❌ Error checking if project is canceled: $e");
