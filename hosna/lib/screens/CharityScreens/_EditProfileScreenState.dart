@@ -296,7 +296,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             website.isEmpty ? " " : website,
             date,
           ],
-          gasPrice: web3.EtherAmount.inWei(BigInt.from(3000000000)),
+          gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
           maxGas: 1000000,
         ),
         chainId: 11155111,
@@ -436,16 +436,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:  AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(color:const Color.fromRGBO(24, 71, 137, 1)),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color:const Color.fromRGBO(24, 71, 137, 1)),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: AppBar(
+        title: Text('Edit Profile'),
+        backgroundColor: Colors.blue[900],
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -530,18 +523,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
                 child: Text('Save Changes'),
                 style: ElevatedButton.styleFrom(
-  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-  foregroundColor: Colors.white,
-  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16), // Makes it bigger
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(20), // Rounded corners
-  ),
-  textStyle: TextStyle(
-    fontSize: 18, // Optional: Make the text inside bigger too
-    fontWeight: FontWeight.bold,
-  ),
-),
-
+                  backgroundColor: Colors.blue[900],
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
@@ -549,65 +533,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-Widget _buildTextField(
-  TextEditingController controller,
-  String label, {
-  int maxLines = 1,
-  bool isPhone = false,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: TextStyle(
-        color: Color.fromRGBO(24, 71, 137, 1), // Input text color
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1), // Label color
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1), // Border color when focused
-            width: 2,
-          ),
-          borderRadius: BorderRadius.circular(12), // Optional: rounded corners
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1), // Border color when not focused
-          ),
-          borderRadius: BorderRadius.circular(12), // Optional: rounded corners
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-      inputFormatters: isPhone
-          ? [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ]
-          : [],
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return '$label cannot be empty';
-        }
-        if (isPhone) {
-          if (value.length != 10) {
-            return 'Phone number must be exactly 10 digits';
-          }
-          if (!value.startsWith('05')) {
-            return 'Phone number must start with 05';
-          }
-        }
-        return null;
-      },
-    ),
-  );
-}
 
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    int maxLines = 1,
+    bool isPhone = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: isPhone
+            ? TextInputType.number
+            : TextInputType.text, // ✅ Numeric keyboard for phone
+        inputFormatters: isPhone
+            ? [
+                FilteringTextInputFormatter
+                    .digitsOnly, // ✅ Only numbers allowed
+                LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
+              ]
+            : [],
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return '$label cannot be empty';
+          }
+          if (isPhone) {
+            if (value.length != 10) {
+              return 'Phone number must be exactly 10 digits';
+            }
+            if (!value.startsWith('05')) {
+              return 'Phone number must start with 05';
+            }
+          }
+          return null;
+        },
+      ),
+    );
+  }
 }
