@@ -108,60 +108,70 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   Future<void> _fetchCharities() async {
-    try {
-      // Fetch approved wallet addresses from Firestore
-      List<String> approvedWallets = await fetchApprovedCharities();
+  try {
+    // Fetch approved wallet addresses from Firestore
+    List<String> approvedWallets = await fetchApprovedCharities();
 
-      // Fetch all organizations from the smart contract
-      final function = _contract.function("getAllCharities");
-      final result = await _client.call(
-        contract: _contract,
-        function: function,
-        params: [],
-      );
+    // Fetch all organizations from the smart contract
+    final function = _contract.function("getAllCharities");
+    final result = await _client.call(
+      contract: _contract,
+      function: function,
+      params: [],
+    );
 
-      List<dynamic> wallets = result[0];
-      List<dynamic> names = result[1];
-      List<dynamic> emails = result[2];
-      List<dynamic> phones = result[3];
-      List<dynamic> cities = result[4];
-      List<dynamic> websites = result[5];
-      List<dynamic> descriptions = result[6];
-      List<dynamic> licenseNumbers = result[7];
-      List<dynamic> establishmentDates = result[8];
+    List<dynamic> wallets = result[0];
+    List<dynamic> names = result[1];
+    List<dynamic> emails = result[2];
+    List<dynamic> phones = result[3];
+    List<dynamic> cities = result[4];
+    List<dynamic> websites = result[5];
+    List<dynamic> descriptions = result[6];
+    List<dynamic> licenseNumbers = result[7];
+    List<dynamic> establishmentDates = result[8];
 
-      List<Map<String, dynamic>> tempOrganizations = [];
+    Set<String> seenWallets = {}; // Set to track seen wallets
+    List<Map<String, dynamic>> tempOrganizations = [];
 
-      for (int i = 0; i < wallets.length; i++) {
-        String wallet = wallets[i].toString();
+    for (int i = 0; i < wallets.length; i++) {
+      String wallet = wallets[i].toString();
 
-        // Only include charities that are approved in Firestore
-        if (approvedWallets.contains(wallet)) {
-          tempOrganizations.add({
-            "wallet": wallet,
-            "name": names[i],
-            "email": emails[i],
-            "phone": phones[i],
-            "city": cities[i],
-            "website": websites[i],
-            "description": descriptions[i],
-            "licenseNumber": licenseNumbers[i],
-            "establishmentDate": establishmentDates[i],
-          });
-        }
+      // Skip wallet if it has already been added (duplicate wallet)
+      if (seenWallets.contains(wallet)) {
+        continue;
       }
 
-      setState(() {
-        organizations = tempOrganizations;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching charities: $e");
-      setState(() {
-        isLoading = false;
-      });
+      // Only include charities that are approved in Firestore
+      if (approvedWallets.contains(wallet)) {
+        tempOrganizations.add({
+          "wallet": wallet,
+          "name": names[i],
+          "email": emails[i],
+          "phone": phones[i],
+          "city": cities[i],
+          "website": websites[i],
+          "description": descriptions[i],
+          "licenseNumber": licenseNumbers[i],
+          "establishmentDate": establishmentDates[i],
+        });
+
+        // Add wallet to the set to track it
+        seenWallets.add(wallet);
+      }
     }
+
+    setState(() {
+      organizations = tempOrganizations;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Error fetching charities: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
+
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {

@@ -87,41 +87,49 @@ late GetCharityByWallet _charityService;
     print("All keys: ${prefs.getKeys()}");
   }
 
-  Future<void> _fetchProjects() async {
-    setState(() {
-      _isLoading = true;
+ Future<void> _fetchProjects() async { 
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final projectCount = await _blockchainService.getProjectCount();
+    print("Total Projects: $projectCount");
+
+    List<Map<String, dynamic>> projects = [];
+
+    for (int i = 0; i < projectCount; i++) {
+      try {
+        final project = await _blockchainService.getProjectDetails(i);
+        if (project.containsKey("error")) {
+          print("Skipping invalid project ID: $i");
+          continue; // Skip invalid projects
+        }
+        projects.add(project);
+      } catch (e) {
+        print("Error fetching project ID $i: $e");
+      }
+    }
+
+    // ✅ Sort projects by startDate in descending order (newest first)
+    projects.sort((a, b) {
+      DateTime aDate = a['startDate'];
+      DateTime bDate = b['startDate'];
+      return bDate.compareTo(aDate); // Newest first
     });
 
-    try {
-      final projectCount = await _blockchainService.getProjectCount();
-      print("Total Projects: $projectCount");
-
-      List<Map<String, dynamic>> projects = [];
-
-      for (int i = 0; i < projectCount; i++) {
-        try {
-          final project = await _blockchainService.getProjectDetails(i);
-          if (project.containsKey("error")) {
-            print("Skipping invalid project ID: $i");
-            continue; // Skip invalid projects
-          }
-          projects.add(project);
-        } catch (e) {
-          print("Error fetching project ID $i: $e");
-        }
-      }
-
-      setState(() {
-        _projects = projects;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching projects: $e");
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _projects = projects;
+      _isLoading = false;
+    });
+  } catch (e) {
+    print("Error fetching projects: $e");
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
+
 
   List<Map<String, dynamic>> _getFilteredProjects() {
     List<Map<String, dynamic>> filteredProjects = _projects;
