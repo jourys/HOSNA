@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:http/http.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +21,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+   final donorServices = DonorServices();
   final BlockchainService _blockchainService = BlockchainService();
   String? walletAddress;
   String _firstName = '';
@@ -28,7 +30,7 @@ class _HomePageState extends State<HomePage> {
   bool isLoading = true;
   bool hasError = false;
   String errorMessage = '';
-  String _walletAddress = '';
+ 
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
@@ -46,6 +48,56 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadWalletAndData();
     _loadUserName();
+    
+  }
+   // Fetch credentials using the private key from shared preferences
+  Future<String?> _loadPrivateKey() async {
+    print('Loading private key...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = await _loadWalletAddress();
+      if (walletAddress == null) {
+        print('Error: Wallet address not found.');
+        return null;
+      }
+
+      String privateKeyKey = 'privateKey_$walletAddress';
+      print('Retrieving private key for address: $walletAddress');
+
+      String? privateKey = prefs.getString(privateKeyKey);
+
+      if (privateKey != null) {
+        print('✅ Private key retrieved for wallet $walletAddress');
+        print('✅ Private key $privateKey');
+        return privateKey;
+      } else {
+        print('❌ Private key not found for wallet $walletAddress');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error retrieving private key: $e');
+      return null;
+    }
+  }
+
+  // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -86,7 +138,6 @@ class _HomePageState extends State<HomePage> {
         'donatedAmount': donatedAmount,
         'totalAmount': double.parse(projectDetails['totalAmount'].toString()),
         'projectType': projectDetails['projectType'],
-
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'projectCreatorWallet': projectDetails['projectCreatorWallet'],
         'donorWallet': address, // Store the donor's wallet address
@@ -110,172 +161,218 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _loadWalletAndData() async {
-    if (!mounted) return;
+ Future<void> _loadWalletAndData() async {
+  if (!mounted) return;
+  print("🔵 Starting _loadWalletAndData");
+
+  setState(() {
+    isLoading = true;
+    hasError = false;
+    errorMessage = '';
+  });
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final address = prefs.getString('walletAddress');
+
+    if (address == null || address.isEmpty) {
+      throw Exception('❌ Wallet address not found in SharedPreferences');
+    }
+    print("🔵 Loaded wallet address: $address");
 
     setState(() {
-      isLoading = true;
-      hasError = false;
-      errorMessage = '';
+      walletAddress = address;
     });
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final address = prefs.getString('walletAddress');
+    await _loadUserName();
 
-      if (address == null || address.isEmpty) {
-        throw Exception('Wallet address not found');
+    // Fetch all projects
+    final allProjects = await _blockchainService.fetchAllProjects();
+    print("🔵 Fetched ${allProjects.length} projects from blockchain");
+
+    List<Map<String, dynamic>> eligibleVotingProjects = [];
+
+    for (var project in allProjects) {
+      if (project == null) {
+        print("⚠️ Skipped null project");
+        continue;
+      }
+      final projectId = project['id'];
+      if (projectId == null) {
+        print("⚠️ Project without ID found, skipping");
+        continue;
       }
 
-      setState(() {
-        walletAddress = address;
-      });
+      final projectDoc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId.toString())
+          .get();
 
-      await _loadUserName();
-
-      // Get all projects
-      final allProjects = await _blockchainService.fetchAllProjects();
-      List<Map<String, dynamic>> eligibleVotingProjects = [];
-
-      for (var project in allProjects) {
-        // Check if project is failed or canceled
-        final projectDoc = await FirebaseFirestore.instance
-            .collection('projects')
-            .doc(project['id'].toString())
-            .get();
-
-        if (projectDoc.exists) {
-          final data = projectDoc.data() as Map<String, dynamic>;
-          final isCanceled = data['isCanceled'] ?? false;
-          final votingInitiated = data['votingInitiated'] ?? false;
-
-          // Check if project is failed or canceled and has voting initiated
-          if ((isCanceled || project['state'] == 4) && votingInitiated) {
-            // Check if donor has donated to this project
-            final hasDonated = await _blockchainService.hasDonatedToProject(
-                project['id'], address);
-
-            // Check if donor has already voted
-            final hasVoted =
-                await _blockchainService.hasDonorVoted(project['id'], address);
-
-            // Only add if donor has donated but hasn't voted yet
-            if (hasDonated && !hasVoted) {
-              // Add project details
-              project['votingId'] = project['id'];
-              project['votingDeadline'] =
-                  DateTime.fromMillisecondsSinceEpoch(project['endTime'] * 1000)
-                      .toString();
-              eligibleVotingProjects.add(project);
-            }
-          }
+      if (projectDoc.exists) {
+        final data = projectDoc.data();
+        if (data == null) {
+          print("⚠️ Project document data is null for ID: $projectId");
+          continue;
         }
-      }
 
-      setState(() {
-        votingProjects = eligibleVotingProjects;
-      });
-
-      // Get donation history from SharedPreferences
-      List<Map<String, dynamic>> historyList = [];
-      final donationsKey = 'donations_${address}';
-      final donationsJson = prefs.getString(donationsKey);
-
-      print("📌 Attempting to load donations for wallet: $address");
-      print("📌 Donations JSON: $donationsJson");
-
-      if (donationsJson != null) {
-        try {
-          final List<dynamic> donations = json.decode(donationsJson);
-          // Filter donations to only include those made by the current user
-          final filteredDonations = donations.where((donation) {
-            final donorWallet =
-                donation['donorWallet']?.toString().toLowerCase();
-            final isCurrentUserDonation = donorWallet == address.toLowerCase();
-            print(
-                "📌 Checking donation - Donor: $donorWallet, Current User: ${address.toLowerCase()}, Match: $isCurrentUserDonation");
-            return isCurrentUserDonation;
-          }).toList();
-
-          historyList = List<Map<String, dynamic>>.from(filteredDonations);
-          print(
-              "✅ Successfully loaded ${historyList.length} donations from storage for current user");
-
-          // Process each donation
-          for (var donation in historyList) {
-            try {
-              print("📌 Processing donation: ${donation['name']}");
-
-              // Handle endDate conversion
-              dynamic endDate = donation['endDate'];
-              int endDateMillis;
-
-              if (endDate is DateTime) {
-                endDateMillis = endDate.millisecondsSinceEpoch;
-              } else if (endDate is String) {
-                try {
-                  if (endDate.trim().isEmpty ||
-                      endDate.toLowerCase() == 'n/a') {
-                    throw FormatException(
-                        "Invalid date format string: $endDate");
-                  }
-                  endDateMillis =
-                      DateTime.parse(endDate).millisecondsSinceEpoch;
-                } catch (e) {
-                  print("⚠️ Error parsing endDate string '$endDate': $e");
-                  endDateMillis = DateTime.now().millisecondsSinceEpoch;
-                }
-              } else if (endDate is int) {
-                endDateMillis = endDate;
-              } else {
-                endDateMillis = DateTime.now().millisecondsSinceEpoch;
-              }
-
-              // Update the donation with proper date format
-              donation['endDate'] = endDateMillis;
-
-              // Get current project status from Firestore
-
-              // Use the stored donation amount
-              final storedAmount = donation['donatedAmount'] ?? 0.0;
-              donation['anonymousAmount'] = storedAmount;
-              donation['nonAnonymousAmount'] = storedAmount;
-
-              print("✅ Successfully processed donation: ${donation['name']}");
-            } catch (e) {
-              print("❌ Error processing donation: $e");
-              continue;
-            }
+        final votingInitiated = data['votingInitiated'] ?? false;
+        if (votingInitiated) {
+          BigInt bigIntProjectId;
+          try {
+            bigIntProjectId = BigInt.from(projectId);
+          } catch (e) {
+            print("❌ Error converting projectId to BigInt: $e");
+            continue;
           }
-        } catch (e) {
-          print("❌ Error parsing donations JSON: $e");
-          historyList = [];
+
+          final bool donorEligibility = await donorServices.checkIfDonorCanVote(
+            bigIntProjectId,
+            walletAddress!,
+          );
+          print("🔵 Donor eligibility for project $projectId: $donorEligibility");
+
+          final votingIdStr = data['votingId']?.toString() ?? '';
+          print("🔵 Extracted votingId as String: $votingIdStr");
+
+          if (votingIdStr.isEmpty) {
+            print("⚠️ votingId is empty for project $projectId, skipping");
+            continue;
+          }
+
+          final int votingId = int.tryParse(votingIdStr) ?? -1;
+          if (votingId == -1) {
+            print("❌ Failed to parse votingId: $votingIdStr");
+            continue;
+          }
+          print("🔵 Parsed votingId to int: $votingId");
+
+          final VoteListener voteListener = VoteListener(projectId: projectId);
+          voteListener.initializeClient();
+
+          final hasVoted = await voteListener.hasDonorAlreadyVoted(
+            votingId,
+            EthereumAddress.fromHex(walletAddress!),
+          );
+          print("🔵 Donor has voted for votingId $votingId: $hasVoted");
+
+          final privateKey = await _loadPrivateKey();
+          if (privateKey == null || privateKey.isEmpty) {
+            print("❌ Private key not found, skipping refund check");
+            continue;
+          }
+
+          final refundService = RefundService(
+            userAddress: EthereumAddress.fromHex(walletAddress!),
+            userCredentials: EthPrivateKey.fromHex(privateKey),
+          );
+
+          final hasRequestedRefund = await refundService.hasRequestedRefund(projectId);
+          print("🔵 Donor has requested refund for project $projectId: $hasRequestedRefund");
+
+          if (donorEligibility && (!hasVoted || !hasRequestedRefund)) {
+            project['votingId'] = projectId;
+            project['votingDeadline'] = DateTime.fromMillisecondsSinceEpoch(
+              (project['endTime'] ?? 0) * 1000,
+            ).toString();
+
+            eligibleVotingProjects.add(project);
+            print("✅ Added project $projectId to eligible voting projects");
+          }
         }
       } else {
-        print("⚠️ No donations found for wallet: $address");
+        print("⚠️ Project document does not exist for ID: $projectId");
       }
-
-      // Sort donations by timestamp in descending order (newest first)
-      historyList
-          .sort((a, b) => (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
-
-      print("📊 Final history list length: ${historyList.length}");
-
-      if (!mounted) return;
-      setState(() {
-        donationHistory = historyList;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("❌ Error loading data: $e");
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-        hasError = true;
-        errorMessage = 'Failed to load data. Please try again.';
-      });
     }
+
+    setState(() {
+      votingProjects = eligibleVotingProjects;
+      print("✅ Final eligible voting projects count: ${votingProjects.length}");
+    });
+
+    print("🗳️ Voting Projects Loaded:");
+for (var project in votingProjects) {
+  print("➡️ Project ID: ${project['id']}, Voting ID: ${project['votingId']}, Voting Deadline: ${project['votingDeadline']}");
+}
+
+
+    // Load donation history
+    List<Map<String, dynamic>> historyList = [];
+    final donationsKey = 'donations_${address}';
+    final donationsJson = prefs.getString(donationsKey);
+
+    print("📦 Loading donations using key: $donationsKey");
+    print("📦 Donations JSON: $donationsJson");
+
+    if (donationsJson != null) {
+      try {
+        final List<dynamic> donations = json.decode(donationsJson);
+        final filteredDonations = donations.where((donation) {
+          final donorWallet = donation['donorWallet']?.toString().toLowerCase();
+          return donorWallet == address.toLowerCase();
+        }).toList();
+
+        historyList = List<Map<String, dynamic>>.from(filteredDonations);
+        print("✅ Loaded ${historyList.length} donation(s) for this wallet");
+
+        for (var donation in historyList) {
+          try {
+            dynamic endDate = donation['endDate'];
+            int endDateMillis;
+
+            if (endDate is DateTime) {
+              endDateMillis = endDate.millisecondsSinceEpoch;
+            } else if (endDate is String) {
+              if (endDate.trim().isEmpty || endDate.toLowerCase() == 'n/a') {
+                endDateMillis = DateTime.now().millisecondsSinceEpoch;
+              } else {
+                endDateMillis = DateTime.parse(endDate).millisecondsSinceEpoch;
+              }
+            } else if (endDate is int) {
+              endDateMillis = endDate;
+            } else {
+              endDateMillis = DateTime.now().millisecondsSinceEpoch;
+            }
+
+            donation['endDate'] = endDateMillis;
+
+            final storedAmount = donation['donatedAmount'] ?? 0.0;
+            donation['anonymousAmount'] = storedAmount;
+            donation['nonAnonymousAmount'] = storedAmount;
+
+            print("✅ Processed donation: ${donation['name']}");
+          } catch (e) {
+            print("❌ Error processing donation: $e");
+          }
+        }
+      } catch (e) {
+        print("❌ Error parsing donations JSON: $e");
+        historyList = [];
+      }
+    } else {
+      print("⚠️ No donations found for wallet: $address");
+    }
+
+    historyList.sort((a, b) => (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
+    print("📊 Final sorted donation history count: ${historyList.length}");
+
+    if (!mounted) return;
+    setState(() {
+      donationHistory = historyList;
+      isLoading = false;
+    });
+    print("🔵 Completed _loadWalletAndData successfully");
+
+  } catch (e, stacktrace) {
+    print("❌ Error in _loadWalletAndData: $e");
+    print(stacktrace);
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+      hasError = true;
+      errorMessage = 'Failed to load data. Please try again.';
+    });
   }
+}
 
   Widget _buildVotingSection() {
     if (hasError) {
@@ -314,80 +411,57 @@ class _HomePageState extends State<HomePage> {
             padding: EdgeInsets.all(16.0),
             child: Text('No projects currently need your vote'),
           )
-        else
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: _getEligibleVotingProjects(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
+       else
+  ListView.builder(
+    shrinkWrap: true,
+    physics: NeverScrollableScrollPhysics(),
+    itemCount: votingProjects.length,
+    itemBuilder: (context, index) {
+      final project = votingProjects[index];
+      final progress = ((project['donatedAmount'] ?? 0.0) /
+              (project['totalAmount'] ?? 1.0) *
+              100)
+          .toStringAsFixed(1);
 
-              if (snapshot.hasError) {
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Error loading voting projects: ${snapshot.error}',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                );
-              }
+     return Card(
+  margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+  child: ListTile(
+    title: Text(project['name'] ?? 'Unnamed Project'),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Progress: $progress%'),
+        if (project['votingDeadline'] != null)
+          Text('Voting Deadline: ${project['votingDeadline']}'),
+      ],
+    ),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProjectDetails(
+            projectId: int.parse(project['id'].toString()),
+            projectName: project['name'] ?? 'Unnamed Project',
+            description: project['description'] ?? '',
+            totalAmount: project['totalAmount']?.toDouble() ?? 0.0,
+            projectType: project['projectType'] ?? 'Unknown',
+            projectCreatorWallet: project['projectCreatorWallet'] ?? '',
+            donatedAmount: project['donatedAmount']?.toDouble() ?? 0.0,
+            progress: (project['totalAmount'] ?? 0) > 0
+                ? (project['donatedAmount'] ?? 0) / (project['totalAmount'] ?? 1)
+                : 0.0,
+            deadline: project['endDate']?.toString() ?? '',
+            startDate: project['startDate']?.toString() ?? '',
+          ),
+        ),
+      );
+    },
+  ),
+);
 
-              final eligibleProjects = snapshot.data ?? [];
+    
+  
 
-              if (eligibleProjects.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No projects currently need your vote'),
-                );
-              }
-
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: eligibleProjects.length,
-                itemBuilder: (context, index) {
-                  final project = eligibleProjects[index];
-                  final progress = ((project['donatedAmount'] ?? 0.0) /
-                          (project['totalAmount'] ?? 1.0) *
-                          100)
-                      .toStringAsFixed(1);
-
-                  return Card(
-                    margin:
-                        EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: ListTile(
-                      title: Text(project['name'] ?? 'Unnamed Project'),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Progress: $progress%'),
-                          if (project['votingDeadline'] != null)
-                            Text(
-                                'Voting Deadline: ${project['votingDeadline']}'),
-                        ],
-                      ),
-                      trailing: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/donor_voting',
-                            arguments: {
-                              'projectId': project['id'],
-                              'projectName': project['name'],
-                            },
-                          );
-                        },
-                        child: Text('Vote'),
-                      ),
-                    ),
-                  );
-                },
-              );
             },
           ),
       ],
