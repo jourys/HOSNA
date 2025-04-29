@@ -84,11 +84,25 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     return fullHash.sublist(0, 32); // Ensure it's exactly bytes32
   }
 
+  Future<bool> isPhoneNumberTaken(String phone) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking phone duplication: $e');
+      return false;
+    }
+  }
+
   Future<void> _registerCharity() async {
     print("🛠 Registering charity...");
 
     final String ownerPrivateKey =
-        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
     final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
@@ -150,12 +164,23 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     } catch (e) {
       print("ℹ️ No existing charity found, proceeding with registration.");
     }
+// 🔵 Check if phone is already used
+    bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
+    if (phoneTaken) {
+      print("❌ Charity with this phone number already exists!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone number is already registered!')),
+      );
+      return;
+    }
 
     try {
       final result = await _web3Client.sendTransaction(
         ownerCredentials,
         web3.Transaction.callContract(
           contract: contract,
+          gasPrice: EtherAmount.inWei(BigInt.from(50000000000)), // 1 Gwei
+
           function: registerCharity,
           parameters: [
             _organizationNameController.text,
@@ -204,6 +229,41 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('⚠️ Registration failed: $e')),
       );
+    }
+  }
+
+  Future<void> cancelPendingTransaction() async {
+    try {
+      // Step 1: Ensure the wallet is connected
+      await connect();
+
+      // Step 2: Get your wallet address
+      final address = await _credentials.extractAddress();
+
+      // Step 3: Get the current pending nonce (should match the stuck transaction)
+      final nonce = await _web3Client.getTransactionCount(
+        address,
+        atBlock: const BlockNum.pending(),
+      );
+
+      // Step 4: Send a 0 ETH transaction to yourself with higher gas price
+      final txHash = await _web3Client.sendTransaction(
+        _credentials,
+        Transaction(
+          to: address, // Sending to self
+          value: EtherAmount.zero(), // 0 ETH
+          gasPrice: EtherAmount.inWei(
+              BigInt.from(2 * 1000000000)), // 2 Gwei (higher than old tx)
+          maxGas: 21000, // Minimum required gas for basic tx
+          nonce: nonce, // Use same nonce to replace the pending tx
+        ),
+        chainId: 11155111, // Sepolia
+      );
+
+      print("✅ Fake transaction sent to cancel pending tx. Hash: $txHash");
+    } catch (e) {
+      print("❌ Failed to cancel pending transaction: $e");
+      throw e;
     }
   }
 
@@ -287,6 +347,8 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           .set({
         'walletAddress': walletAddress,
         'email': email,
+        'phone': _phoneController.text, // ⬅️ add this
+
         'userType': 1, // 1 means charity
         'isSuspend': false,
         'accountStatus': 'pending', // Default status is 'pending'
@@ -471,6 +533,14 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Required';
+                    }
+                    try {
+                      DateTime selectedDate = DateTime.parse(value);
+                      if (selectedDate.isAfter(DateTime.now())) {
+                        return 'Establishment date cannot be in the future';
+                      }
+                    } catch (e) {
+                      return 'Invalid date format';
                     }
                     return null;
                   },

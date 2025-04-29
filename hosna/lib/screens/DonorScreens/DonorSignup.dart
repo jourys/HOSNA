@@ -76,7 +76,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   // Initialize Web3 client and set up the contract interaction
   void _initializeWeb3() {
     final String rpcUrl =
-        'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // E.g., Infura, Alchemy, or local node
+        'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac'; // E.g., Infura, Alchemy, or local node
     _web3Client = Web3Client(rpcUrl, Client());
 
     // Example contract address

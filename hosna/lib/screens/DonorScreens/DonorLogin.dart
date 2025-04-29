@@ -40,12 +40,12 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
 
   late Web3Client _web3Client;
   final String _rpcUrl =
-      "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
+      "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
   final String _contractAddress = "0xD46BB4e42CB4215c2E9DCeB16F99bD4940104E39";
   final String _lookupContractAddress =
       "0xCa74e468bB8f3b2BF030a1787872C0Cad3c57b8b";
   final creatorPrivateKey =
-        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+      "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
 
   @override
   void initState() {
@@ -129,25 +129,23 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           }
           SuspensionListener(walletAddress);
 
+          late ProjectNotificationListener projectNotificationListener;
 
- late ProjectNotificationListener projectNotificationListener;
+          projectNotificationListener = ProjectNotificationListener(
+            blockchainService: BlockchainService(),
+            notificationService: NotificationService(),
+          );
 
-  projectNotificationListener = ProjectNotificationListener(
-    blockchainService: BlockchainService(),
-    notificationService: NotificationService(),
-  );
-
- projectNotificationListener.checkProjectsForCreator();
+          projectNotificationListener.checkProjectsForCreator();
 
           // Navigate to MainScreen
-         Navigator.pushAndRemoveUntil(
-  context,
-  MaterialPageRoute(
-    builder: (context) => MainScreen(walletAddress: walletAddress),
-  ),
-  (route) => false, 
-);
-
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MainScreen(walletAddress: walletAddress),
+            ),
+            (route) => false,
+          );
         } else {
           print('❌ Wallet address not found or invalid address');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -190,18 +188,16 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
           password: password,
         );
         authSuccess = true;
-      } 
-      on FirebaseAuthException catch (e) {
+      } on FirebaseAuthException catch (e) {
         print("Firebase authentication error: ${e.code} - ${e.message}");
         authSuccess = false;
-      } 
+      }
     }
     return authSuccess;
   }
-  
-  Future<void> _blockchainPasswordChange(String email, String password) async {
 
-      // Get the owner's credentials to pay for the gas fees
+  Future<void> _blockchainPasswordChange(String email, String password) async {
+    // Get the owner's credentials to pay for the gas fees
     final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
         creatorPrivateKey); // Private key of contract owner
     final creatorWallet = await creatorCredentials.extractAddress();
@@ -237,7 +233,6 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
     final changePassword = contract.function('changePassword');
     print("Function reference obtained: $changePassword");
 
-
     try {
       // Send the transaction to register the donor using the creator's wallet for gas
       final result = await _web3Client.sendTransaction(
@@ -255,10 +250,8 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
         chainId: 11155111, // Replace with your network chain ID
       );
       print("Transaction result: $result");
-
     } catch (e) {
       print("Error changing password: $e");
-
     }
   }
 
@@ -294,37 +287,37 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
   }
 
   Future<bool> _tryFirebaseAuth(String email, String password) async {
-     try {
-       await FirebaseAuth.instance.signInWithEmailAndPassword(
-         email: email,
-         password: password,
-       );
-       print("✅ Firebase authentication successful");
-       return true;
-     } on FirebaseAuthException catch (e) {
-       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
-       String errorMessage;
-       switch (e.code) {
-         case 'user-not-found':
-           errorMessage = 'No user found with this email.';
-           break;
-         case 'wrong-password':
-           errorMessage = 'Wrong password provided.';
-           break;
-         case 'invalid-email':
-           errorMessage = 'The email address is not valid.';
-           break;
-         case 'user-disabled':
-           errorMessage = 'This user account has been disabled.';
-           break;
-         default:
-           errorMessage = e.message ?? 'Authentication failed';
-       }
-       return false;
-     }
-   }
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print("✅ Firebase authentication successful");
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print("❌ Firebase authentication error: ${e.code} - ${e.message}");
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user account has been disabled.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Authentication failed';
+      }
+      return false;
+    }
+  }
 
-   Future<bool> _tryBlockchainAuth(String email, String password) async {
+  Future<bool> _tryBlockchainAuth(String email, String password) async {
     try {
       // Contract for donor authentication
       final authContract = DeployedContract(
