@@ -108,70 +108,77 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   Future<void> _fetchCharities() async {
-  try {
-    // Fetch approved wallet addresses from Firestore
-    List<String> approvedWallets = await fetchApprovedCharities();
+    try {
+      List<String> approvedWallets = await fetchApprovedCharities();
+      final function = _contract.function("getAllCharities");
+      final result = await _client
+          .call(contract: _contract, function: function, params: []);
 
-    // Fetch all organizations from the smart contract
-    final function = _contract.function("getAllCharities");
-    final result = await _client.call(
-      contract: _contract,
-      function: function,
-      params: [],
-    );
+      List<dynamic> wallets = result[0];
+      List<dynamic> names = result[1];
+      List<dynamic> emails = result[2];
+      List<dynamic> phones = result[3];
+      List<dynamic> cities = result[4];
+      List<dynamic> websites = result[5];
+      List<dynamic> descriptions = result[6];
+      List<dynamic> licenseNumbers = result[7];
+      List<dynamic> establishmentDates = result[8];
 
-    List<dynamic> wallets = result[0];
-    List<dynamic> names = result[1];
-    List<dynamic> emails = result[2];
-    List<dynamic> phones = result[3];
-    List<dynamic> cities = result[4];
-    List<dynamic> websites = result[5];
-    List<dynamic> descriptions = result[6];
-    List<dynamic> licenseNumbers = result[7];
-    List<dynamic> establishmentDates = result[8];
+      Set<String> seenWallets = {};
+      List<Map<String, dynamic>> tempOrganizations = [];
 
-    Set<String> seenWallets = {}; // Set to track seen wallets
-    List<Map<String, dynamic>> tempOrganizations = [];
+      for (int i = 0; i < wallets.length; i++) {
+        String wallet = wallets[i].toString();
 
-    for (int i = 0; i < wallets.length; i++) {
-      String wallet = wallets[i].toString();
+        if (seenWallets.contains(wallet)) {
+          continue; // Skip duplicate wallets
+        }
 
-      // Skip wallet if it has already been added (duplicate wallet)
-      if (seenWallets.contains(wallet)) {
-        continue;
+        if (approvedWallets.contains(wallet)) {
+          String? profilePictureUrl;
+
+          try {
+            var doc = await FirebaseFirestore.instance
+                .collection('charities')
+                .doc(wallet)
+                .get();
+            if (doc.exists &&
+                doc.data() != null &&
+                doc.data()!.containsKey('profile_picture')) {
+              profilePictureUrl = doc.data()!['profile_picture'];
+            }
+          } catch (e) {
+            print('❌ Error fetching profile picture for $wallet: $e');
+          }
+
+          tempOrganizations.add({
+            "wallet": wallet,
+            "name": names[i],
+            "email": emails[i],
+            "phone": phones[i],
+            "city": cities[i],
+            "website": websites[i],
+            "description": descriptions[i],
+            "licenseNumber": licenseNumbers[i],
+            "establishmentDate": establishmentDates[i],
+            "profilePicture": profilePictureUrl,
+          });
+
+          seenWallets.add(wallet);
+        }
       }
 
-      // Only include charities that are approved in Firestore
-      if (approvedWallets.contains(wallet)) {
-        tempOrganizations.add({
-          "wallet": wallet,
-          "name": names[i],
-          "email": emails[i],
-          "phone": phones[i],
-          "city": cities[i],
-          "website": websites[i],
-          "description": descriptions[i],
-          "licenseNumber": licenseNumbers[i],
-          "establishmentDate": establishmentDates[i],
-        });
-
-        // Add wallet to the set to track it
-        seenWallets.add(wallet);
-      }
+      setState(() {
+        organizations = tempOrganizations;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching charities: $e");
+      setState(() {
+        isLoading = false;
+      });
     }
-
-    setState(() {
-      organizations = tempOrganizations;
-      isLoading = false;
-    });
-  } catch (e) {
-    print("Error fetching charities: $e");
-    setState(() {
-      isLoading = false;
-    });
   }
-}
-
 
   // Function to filter organizations based on search query
   List<Map<String, dynamic>> _getFilteredOrganizations() {
@@ -194,271 +201,274 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    resizeToAvoidBottomInset: false, // Prevent UI from resizing when keyboard appears
-    backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Background matches app bar
-    appBar: PreferredSize(
-      preferredSize: Size.fromHeight(55), // Increase app bar height
-      child: AppBar(
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
-        elevation: 0, // Remove shadow
-        automaticallyImplyLeading: false, // Remove back arrow
-        flexibleSpace: Padding(
-          padding: EdgeInsets.only(bottom: 14), // Move text down
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Text(
-              "Organizations",
-              style: TextStyle(
-                color: Colors.white, // Make text white
-                fontSize: 23, // Increase font size
-                fontWeight: FontWeight.bold,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // Prevent UI from resizing when keyboard appears
+      backgroundColor:
+          Color.fromRGBO(24, 71, 137, 1), // Background matches app bar
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(55), // Increase app bar height
+        child: AppBar(
+          backgroundColor: Color.fromRGBO(24, 71, 137, 1), // Top bar color
+          elevation: 0, // Remove shadow
+          automaticallyImplyLeading: false, // Remove back arrow
+          flexibleSpace: Padding(
+            padding: EdgeInsets.only(bottom: 14), // Move text down
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Text(
+                "Organizations",
+                style: TextStyle(
+                  color: Colors.white, // Make text white
+                  fontSize: 23, // Increase font size
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-    body: SingleChildScrollView( // Wrap the entire body with a SingleChildScrollView
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(
-                top: Radius.circular(20)), // Rounded top corners only
-            child: Container(
-              color: Colors.white, // Set the background to white
-              width: double.infinity, // Make it stretch across the full width
-              height: _getFilteredOrganizations().isEmpty || _getFilteredOrganizations().length <= 2
-                  ? MediaQuery.of(context).size.height // Stretch to fill the screen when empty or small result
-                  : null, // Default size when there are multiple results
-              child: Column(
-                children: [
-                  // Search bar at the top
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: TextField(
-                      controller: _searchController, // Bind the controller to the search bar
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: 'Search Organizations',
-                        hintStyle: TextStyle(color: Colors.black),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              width: 2),
+      body: SingleChildScrollView(
+        // Wrap the entire body with a SingleChildScrollView
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(20)), // Rounded top corners only
+              child: Container(
+                color: Colors.white, // Set the background to white
+                width: double.infinity, // Make it stretch across the full width
+                height: _getFilteredOrganizations().isEmpty ||
+                        _getFilteredOrganizations().length <= 2
+                    ? MediaQuery.of(context)
+                        .size
+                        .height // Stretch to fill the screen when empty or small result
+                    : null, // Default size when there are multiple results
+                child: Column(
+                  children: [
+                    // Search bar at the top
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        controller:
+                            _searchController, // Bind the controller to the search bar
+                        onChanged: _onSearchChanged,
+                        decoration: InputDecoration(
+                          hintText: 'Search Organizations',
+                          hintStyle: TextStyle(color: Colors.black),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide(
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                                width: 2),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide(
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                                width: 2),
+                          ),
+                          prefixIcon: Icon(Icons.search, color: Colors.black),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: Colors.black),
+                                  onPressed: () {
+                                    _searchController
+                                        .clear(); // Clears the text input
+                                    _onSearchChanged(''); // Reset search filter
+                                  },
+                                )
+                              : null,
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              width: 2),
-                        ),
-                        prefixIcon: Icon(Icons.search, color: Colors.black),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.clear, color: Colors.black),
-                                onPressed: () {
-                                  _searchController.clear(); // Clears the text input
-                                  _onSearchChanged(''); // Reset search filter
-                                },
-                              )
-                            : null,
+                        style: TextStyle(color: Colors.black),
                       ),
-                      style: TextStyle(color: Colors.black),
                     ),
-                  ),
-                  // Loading or organizations list
-                  isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(),
-                        )
-                      : _getFilteredOrganizations().isEmpty
-                          ? const Center(
-                              child: Text("No registered charities found."),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(), // Prevent double scroll
-                              itemCount: _getFilteredOrganizations().length,
-                              itemBuilder: (context, index) {
-                                var charity = _getFilteredOrganizations()[index];
-                                return Card(
-                                  margin: const EdgeInsets.symmetric(
-                                      vertical: 6, horizontal: 18),
-                                  elevation: 6,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  color: const Color.fromRGBO(240, 248, 255, 1),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 14),
-                                    leading: Container(
-                                      width: 70,
-                                      height: 70,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Color(0xFF8EC5FC),
-                                            Color(0xFFE0C3FC)
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.account_circle,
-                                        size: 55,
-                                        color: Colors.white,
-                                      ),
+                    // Loading or organizations list
+                    isLoading
+                        ? Center(
+                            child: CircularProgressIndicator(),
+                          )
+                        : _getFilteredOrganizations().isEmpty
+                            ? const Center(
+                                child: Text("No registered charities found."),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                physics:
+                                    NeverScrollableScrollPhysics(), // Prevent double scroll
+                                itemCount: _getFilteredOrganizations().length,
+                                itemBuilder: (context, index) {
+                                  var charity =
+                                      _getFilteredOrganizations()[index];
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 6, horizontal: 18),
+                                    elevation: 6,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
-                                    title: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        ShaderMask(
-                                          shaderCallback: (bounds) =>
-                                              const LinearGradient(
-                                            colors: [
-                                              Color(0xFF0B2447),
-                                              Color(0xFF19376D),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ).createShader(bounds),
-                                          child: Text(
-                                            charity["name"],
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                              letterSpacing: 1.2,
-                                              shadows: [
-                                                Shadow(
-                                                  offset: Offset(0.5, 1),
-                                                  blurRadius: 2,
-                                                  color: Colors.black26,
-                                                )
+                                    color:
+                                        const Color.fromRGBO(240, 248, 255, 1),
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 14),
+                                      leading: CircleAvatar(
+                                        radius: 35,
+                                        backgroundColor: Colors.grey[300],
+                                        backgroundImage:
+                                            charity['profilePicture'] != null
+                                                ? NetworkImage(
+                                                    charity['profilePicture'])
+                                                : null,
+                                        child: charity['profilePicture'] == null
+                                            ? Icon(Icons.account_circle,
+                                                size: 55, color: Colors.white)
+                                            : null,
+                                      ),
+                                      title: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          ShaderMask(
+                                            shaderCallback: (bounds) =>
+                                                const LinearGradient(
+                                              colors: [
+                                                Color(0xFF0B2447),
+                                                Color(0xFF19376D),
                                               ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ).createShader(bounds),
+                                            child: Text(
+                                              charity["name"],
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                                letterSpacing: 1.2,
+                                                shadows: [
+                                                  Shadow(
+                                                    offset: Offset(0.5, 1),
+                                                    blurRadius: 2,
+                                                    color: Colors.black26,
+                                                  )
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                      ],
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            ShaderMask(
-                                              shaderCallback: (bounds) =>
-                                                  const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF0A2647),
-                                                  Color(0xFF144272)
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ).createShader(bounds),
-                                              child: const Icon(
-                                                  Icons.location_on,
-                                                  size: 22,
-                                                  color: Colors.white),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            ShaderMask(
-                                              shaderCallback: (bounds) =>
-                                                  const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF102C57),
-                                                  Color(0xFF205295)
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ).createShader(bounds),
-                                              child: Text(
-                                                " ${charity["city"]}",
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w500,
+                                          const SizedBox(height: 6),
+                                        ],
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              ShaderMask(
+                                                shaderCallback: (bounds) =>
+                                                    const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF0A2647),
+                                                    Color(0xFF144272)
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ).createShader(bounds),
+                                                child: const Icon(
+                                                    Icons.location_on,
+                                                    size: 22,
+                                                    color: Colors.white),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              ShaderMask(
+                                                shaderCallback: (bounds) =>
+                                                    const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF102C57),
+                                                    Color(0xFF205295)
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ).createShader(bounds),
+                                                child: Text(
+                                                  " ${charity["city"]}",
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            ShaderMask(
-                                              shaderCallback: (bounds) =>
-                                                  const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF001F54),
-                                                  Color(0xFF00337C)
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ).createShader(bounds),
-                                              child: const Icon(
-                                                  Icons.email,
-                                                  size: 22,
-                                                  color: Colors.white),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            ShaderMask(
-                                              shaderCallback: (bounds) =>
-                                                  const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF0B2447),
-                                                  Color(0xFF19376D)
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ).createShader(bounds),
-                                              child: Text(
-                                                " ${charity["email"]}",
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w500,
+                                            ],
+                                          ),
+                                          Row(
+                                            children: [
+                                              ShaderMask(
+                                                shaderCallback: (bounds) =>
+                                                    const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF001F54),
+                                                    Color(0xFF00337C)
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ).createShader(bounds),
+                                                child: const Icon(Icons.email,
+                                                    size: 22,
+                                                    color: Colors.white),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              ShaderMask(
+                                                shaderCallback: (bounds) =>
+                                                    const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF0B2447),
+                                                    Color(0xFF19376D)
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ).createShader(bounds),
+                                                child: Text(
+                                                  " ${charity["email"]}",
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                OrganizationProfilePage(
+                                                    organization: charity),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              OrganizationProfilePage(
-                                                  organization: charity),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                ],
+                                  );
+                                },
+                              ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }
 
 class OrganizationProfilePage extends StatelessWidget {
@@ -568,88 +578,76 @@ class OrganizationProfilePage extends StatelessWidget {
               ),
             ),
             padding: const EdgeInsets.all(8.0),
-          child: SingleChildScrollView(
-  child: Column(
-    children: [
-
-       CircleAvatar(
-                radius: 38,
-                backgroundColor: Colors.transparent,
-                
-                child: Icon(Icons.account_circle, size: 100, color: Colors.grey)
-                  
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: organization['profilePicture'] != null
+                        ? NetworkImage(organization['profilePicture'])
+                        : null,
+                    child: organization['profilePicture'] == null
+                        ? Icon(Icons.account_circle,
+                            size: 100, color: Colors.grey)
+                        : null,
+                  ),
+                  SizedBox(height: 60),
+                  InfoRow(
+                    icon: Icons.phone,
+                    label: "Phone",
+                    value: organization["phone"],
+                  ),
+                  InfoRow(
+                    icon: Icons.email,
+                    label: "Email",
+                    value: organization["email"],
+                  ),
+                  InfoRow(
+                    icon: Icons.location_on,
+                    label: "City",
+                    value: organization["city"],
+                  ),
+                  InfoRow(
+                    icon: Icons.badge,
+                    label: "License Number",
+                    value: organization["licenseNumber"],
+                  ),
+                  InfoRow(
+                    icon: Icons.explore,
+                    label: "Website",
+                    value: organization["website"],
+                    isLink: true,
+                  ),
+                  InfoRow(
+                    icon: Icons.rocket_launch,
+                    label: "Established",
+                    value: organization["establishmentDate"],
+                  ),
+                  InfoRow(
+                    icon: Icons.description,
+                    label: "About Us",
+                    value: organization["description"],
+                  ),
+                  SizedBox(height: 80),
+                  AnimatedArrowButton(
+                    label: "${organization["name"]} Projects",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ViewProjectsPage(
+                            orgAddress: organization["wallet"],
+                            orgName: organization["name"] ?? "Organization",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 150),
+                ],
               ),
-  
-   
-              SizedBox(height: 60),
-
-
-      InfoRow(
-  icon: Icons.phone,
-  label: "Phone",
-  value: organization["phone"],
-),
-InfoRow(
-  icon: Icons.email,
-  label: "Email",
-  value: organization["email"],
-),
-InfoRow(
-  icon: Icons.location_on,
-  label: "City",
-  value: organization["city"],
-),
-
-
-
-      InfoRow(
-  icon: Icons.badge,
-  label: "License Number",
-  value: organization["licenseNumber"],
-),
-InfoRow(
-  icon: Icons.explore,
-  label: "Website",
-  value: organization["website"],
-  isLink: true,
-),
-InfoRow(
-  icon: Icons.rocket_launch,
-  label: "Established",
-  value: organization["establishmentDate"],
-),
-
-
-    InfoRow(
-  icon: Icons.description,
-  label: "About Us",
-  value: organization["description"],
-),
-
-              SizedBox(height: 80),
-
-   AnimatedArrowButton(
-  label: "${organization["name"]} Projects", 
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ViewProjectsPage(
-          orgAddress: organization["wallet"],
-          orgName: organization["name"] ?? "Organization",
-        ),
-      ),
-    );
-  },
-),
-
-
-
-      const SizedBox(height: 150),
-    ],
-  ),
-),
-
+            ),
           ),
           FutureBuilder<String?>(
             future: _loadPrivateKey(), // Call the asynchronous function
@@ -690,8 +688,8 @@ InfoRow(
       ),
     );
   }
-
 }
+
 class AnimatedArrowButton extends StatefulWidget {
   final VoidCallback onTap;
   final String label;
@@ -706,7 +704,8 @@ class AnimatedArrowButton extends StatefulWidget {
   _AnimatedArrowButtonState createState() => _AnimatedArrowButtonState();
 }
 
-class _AnimatedArrowButtonState extends State<AnimatedArrowButton> with SingleTickerProviderStateMixin {
+class _AnimatedArrowButtonState extends State<AnimatedArrowButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _offsetAnimation;
 
@@ -736,7 +735,8 @@ class _AnimatedArrowButtonState extends State<AnimatedArrowButton> with SingleTi
       animation: _offsetAnimation,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(_offsetAnimation.value, 0), // Animate the button to the right
+          offset: Offset(
+              _offsetAnimation.value, 0), // Animate the button to the right
           child: GestureDetector(
             onTap: widget.onTap,
             child: ClipPath(
@@ -782,6 +782,7 @@ class _AnimatedArrowButtonState extends State<AnimatedArrowButton> with SingleTi
     );
   }
 }
+
 class SharpArrowClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -791,17 +792,20 @@ class SharpArrowClipper extends CustomClipper<Path> {
     final path = Path();
     path.moveTo(borderRadius, 0); // Rounded left-top corner
     path.lineTo(size.width - arrowWidth, 0); // Start of the triangle (right)
-    
+
     // Draw the arrowhead at the right side
-    path.lineTo(size.width, size.height / 2); // Point at the tip of the triangle (right middle)
+    path.lineTo(size.width,
+        size.height / 2); // Point at the tip of the triangle (right middle)
     path.lineTo(size.width - arrowWidth, size.height); // Back down the triangle
-    
+
     // Return to the left side and apply rounded corners
     path.lineTo(borderRadius, size.height); // Rounded bottom-left corner
-    path.quadraticBezierTo(0, size.height, 0, size.height - borderRadius); // Bottom left curve
+    path.quadraticBezierTo(
+        0, size.height, 0, size.height - borderRadius); // Bottom left curve
     path.lineTo(0, borderRadius); // Rounded top-left corner
-    path.quadraticBezierTo(0, 0, borderRadius, 0); // Top-left curve closing the shape
-    
+    path.quadraticBezierTo(
+        0, 0, borderRadius, 0); // Top-left curve closing the shape
+
     path.close(); // Close the path to form a complete arrow shape
     return path;
   }
@@ -809,7 +813,6 @@ class SharpArrowClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
-
 
 class InfoRow extends StatefulWidget {
   final IconData icon;
@@ -874,7 +877,7 @@ class _InfoRowState extends State<InfoRow> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          fontFamily : 'Georgia',
+                          fontFamily: 'Georgia',
                           color: Color.fromRGBO(24, 71, 137, 1),
                         ),
                       ),
@@ -882,7 +885,7 @@ class _InfoRowState extends State<InfoRow> {
                         text: displayText,
                         style: TextStyle(
                           fontSize: 15,
-                           fontFamily : 'Georgia',
+                          fontFamily: 'Georgia',
                           color: widget.isLink ? Colors.blue : Colors.black87,
                           decoration: widget.isLink
                               ? TextDecoration.underline
@@ -923,7 +926,6 @@ class _InfoRowState extends State<InfoRow> {
     );
   }
 
-
   /// Adds a fun emoji next to each label based on common fields
   String _addEmoji(String label) {
     switch (label.toLowerCase()) {
@@ -949,10 +951,6 @@ class _InfoRowState extends State<InfoRow> {
   }
 }
 
-
-
-
-
 class ViewProjectsPage extends StatefulWidget {
   final String orgAddress;
   final String orgName;
@@ -973,91 +971,92 @@ class _ViewProjectsPageState extends State<ViewProjectsPage> {
     projects = BlockchainService().fetchOrganizationProjects(widget.orgAddress);
   }
 
+  Future<String> _getProjectState(Map<String, dynamic> project) async {
+    DateTime now = DateTime.now();
+    String projectId = project['id'].toString(); // Ensure it's a String
 
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
 
-  
-Future<String> _getProjectState(Map<String, dynamic> project) async {
-  DateTime now = DateTime.now();
-  String projectId = project['id'].toString(); // Ensure it's a String
+      if (!doc.exists) {
+        print("⚠️ Project not found. Creating default fields...");
+        await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .set({
+          'isCanceled': false,
+          'isCompleted': false,
+          'isEnded': false,
+          'votingInitiated': false,
+        });
+      }
 
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    if (!doc.exists) {
-      print("⚠️ Project not found. Creating default fields...");
-      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
-        'isCanceled': false,
-        'isCompleted': false,
-        'isEnded': false,
-        'votingInitiated': false,
-      });
+      bool isCanceled = data['isCanceled'] ?? false;
+      bool isCompleted = data['isCompleted'] ?? false;
+      bool isEnded = false;
+      final votingId = data['votingId'];
+
+      if (votingId != null) {
+        final votingDocRef = FirebaseFirestore.instance
+            .collection("votings")
+            .doc(votingId.toString());
+
+        final votingDoc = await votingDocRef.get();
+        final votingData = votingDoc.data();
+
+        if (votingDoc.exists) {
+          isEnded = votingData?['IsEnded'] ?? false;
+        }
+      }
+      bool votingInitiated = data['votingInitiated'] ?? false;
+
+      // Determine projectState based on Firestore flags
+      if (isEnded) {
+        return "ended";
+      }
+      if (isCompleted) {
+        return "completed";
+      } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+        return "voting";
+      } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+        return "canceled";
+      }
+
+      // Fallback to logic based on time and funding progress
+      DateTime startDate = project['startDate'] != null
+          ? (project['startDate'] is DateTime
+              ? project['startDate']
+              : DateTime.parse(project['startDate']))
+          : DateTime.now();
+
+      DateTime endDate = project['endDate'] != null
+          ? (project['endDate'] is DateTime
+              ? project['endDate']
+              : DateTime.parse(project['endDate']))
+          : DateTime.now();
+
+      double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+      double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
+
+      if (now.isBefore(startDate)) {
+        return "upcoming";
+      } else if (donatedAmount >= totalAmount) {
+        return "in-progress";
+      } else if (now.isAfter(endDate)) {
+        return "failed";
+      } else {
+        return "active";
+      }
+    } catch (e) {
+      print("❌ Error determining project state for ID $projectId: $e");
+      return "unknown";
     }
-
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    bool isCanceled = data['isCanceled'] ?? false;
-    bool isCompleted = data['isCompleted'] ?? false;
-bool isEnded = false;
-final votingId = data['votingId'];
-
-if (votingId != null) {
-  final votingDocRef = FirebaseFirestore.instance
-      .collection("votings")
-      .doc(votingId.toString());
-
-  final votingDoc = await votingDocRef.get();
-  final votingData = votingDoc.data();
-
-  if (votingDoc.exists) {
-    isEnded = votingData?['IsEnded'] ?? false;
   }
-}
-    bool votingInitiated = data['votingInitiated'] ?? false;
-
-    // Determine projectState based on Firestore flags
-    if (isEnded) {
-      return "ended";}
-    if (isCompleted) {
-      return "completed";
-    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
-      return "voting";
-    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
-      return "canceled";
-    }
-
-    // Fallback to logic based on time and funding progress
-    DateTime startDate = project['startDate'] != null
-        ? (project['startDate'] is DateTime
-            ? project['startDate']
-            : DateTime.parse(project['startDate']))
-        : DateTime.now();
-
-    DateTime endDate = project['endDate'] != null
-        ? (project['endDate'] is DateTime
-            ? project['endDate']
-            : DateTime.parse(project['endDate']))
-        : DateTime.now();
-
-    double totalAmount = (project['totalAmount'] ?? 0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
-
-    if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount) {
-      return "in-progress";
-    } else if (now.isAfter(endDate)) {
-      return "failed";
-    } else {
-      return "active";
-    }
-  } catch (e) {
-    print("❌ Error determining project state for ID $projectId: $e");
-    return "unknown";
-  }
-}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -1082,27 +1081,26 @@ if (votingId != null) {
     }
   }
 
-
- Color _getStateColor(String state) {
-  switch (state) {
-    case "active":
-      return Colors.green;
-    case "failed":
-      return Colors.red;
-    case "in-progress":
-      return Colors.purple;
-    case "voting":
-      return Colors.blue;
-    case "canceled":
-      return Colors.orange;
-    case "ended":
-      return Colors.grey;
-    case "completed":
-      return  Color.fromRGBO(24, 71, 137, 1);
-    default:
-      return Colors.grey;
+  Color _getStateColor(String state) {
+    switch (state) {
+      case "active":
+        return Colors.green;
+      case "failed":
+        return Colors.red;
+      case "in-progress":
+        return Colors.purple;
+      case "voting":
+        return Colors.blue;
+      case "canceled":
+        return Colors.orange;
+      case "ended":
+        return Colors.grey;
+      case "completed":
+        return Color.fromRGBO(24, 71, 137, 1);
+      default:
+        return Colors.grey;
+    }
   }
-}
 
   double weiToEth(BigInt wei) {
     return (wei / BigInt.from(10).pow(18)).toDouble();
@@ -1177,179 +1175,220 @@ if (votingId != null) {
 
                   final projectList = snapshot.data!;
 
-                  return 
-                  
+                  return ListView.builder(
+                    padding:
+                        const EdgeInsets.all(14), // Slightly increased padding
+                    itemCount: projectList.length,
+                    itemBuilder: (context, index) {
+                      final project = projectList[index];
 
-       ListView.builder(
-  padding: const EdgeInsets.all(14), // Slightly increased padding
-  itemCount: projectList.length,
-  itemBuilder: (context, index) {
-    final project = projectList[index];
+                      return FutureBuilder<String>(
+                        future: _getProjectState(project),
+                        builder: (context, stateSnapshot) {
+                          if (stateSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.white));
+                          } else if (stateSnapshot.hasError) {
+                            return Center(
+                                child: Text("Error: ${stateSnapshot.error}"));
+                          } else if (!stateSnapshot.hasData) {
+                            return SizedBox();
+                          }
 
-    return FutureBuilder<String>(
-      future: _getProjectState(project),
-      builder: (context, stateSnapshot) {
-        if (stateSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: Colors.white));
-        } else if (stateSnapshot.hasError) {
-          return Center(child: Text("Error: ${stateSnapshot.error}"));
-        } else if (!stateSnapshot.hasData) {
-          return SizedBox();
-        }
+                          final projectState = stateSnapshot.data!;
+                          final stateColor = _getStateColor(projectState);
 
-        final projectState = stateSnapshot.data!;
-        final stateColor = _getStateColor(projectState);
+                          final deadline = project['endDate'] != null
+                              ? DateFormat('yyyy-MM-dd').format(
+                                  DateTime.parse(project['endDate'].toString()))
+                              : 'No deadline';
+                          final double progress =
+                              project['donatedAmount'] / project['totalAmount'];
 
-        final deadline = project['endDate'] != null
-            ? DateFormat('yyyy-MM-dd').format(DateTime.parse(project['endDate'].toString()))
-            : 'No deadline';
-        final double progress = project['donatedAmount'] / project['totalAmount'];
+                          // Light grey color instead of gradient
+                          final bgColor = const Color.fromARGB(
+                              255, 230, 227, 227); // Very light grey background
 
-        // Light grey color instead of gradient
-        final bgColor = const Color.fromARGB(255, 230, 227, 227); // Very light grey background
+                          // Dark red ombré for deadline
+                          final deadlineColor = LinearGradient(
+                            colors: [
+                              Color(0xFF8B0000), // Dark Red
+                              Color(0xFFB22222), // Firebrick Red
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          );
 
-        // Dark red ombré for deadline
-        final deadlineColor = LinearGradient(
-          colors: [
-            Color(0xFF8B0000), // Dark Red
-            Color(0xFFB22222), // Firebrick Red
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
+                          // Navy blue ombré for name
+                          final nameColor = LinearGradient(
+                            colors: [
+                              Color(0xFF000080), // Navy Blue
+                              Color(0xFF4682B4), // Steel Blue
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          );
 
-        // Navy blue ombré for name
-        final nameColor = LinearGradient(
-          colors: [
-            Color(0xFF000080), // Navy Blue
-            Color(0xFF4682B4), // Steel Blue
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ProjectDetails(
-                  projectName: project['name'],
-                  description: project['description'],
-                  startDate: project['startDate'].toString(),
-                  deadline: project['endDate'].toString(),
-                  totalAmount: project['totalAmount'],
-                  projectType: project['projectType'],
-                  projectCreatorWallet: project['organization'] ?? '',
-                  donatedAmount: project['donatedAmount'],
-                  projectId: project['id'],
-                  progress: progress,
-                ),
-              ),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 6), // Reduced margin for smaller card size
-            padding: const EdgeInsets.all(12), // Reduced padding for smaller card size
-            decoration: BoxDecoration(
-              color: bgColor, // Light grey color background
-              borderRadius: BorderRadius.circular(12), // Slightly smaller border radius for smaller card
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 8, // Reduced blur radius for smaller shadow
-                  offset: Offset(0, 4), // Reduced shadow offset for smaller card
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) {
-                    return nameColor.createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height));
-                  },
-                  child: Text(
-                    project['name'] ?? 'Untitled Project',
-                    style: TextStyle(
-                      fontSize: 16, // Slightly smaller font size for title
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // The color here is overridden by the ShaderMask
-                    ),
-                  ),
-                ),
-                SizedBox(height: 10), // Reduced space between title and progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8), // Smaller border radius for progress bar
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    valueColor: AlwaysStoppedAnimation<Color>(stateColor),
-                    minHeight: 6, // Reduced height for progress bar
-                  ),
-                ),
-                SizedBox(height: 8), // Reduced space between progress bar and state text
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 14, // Smaller font size for progress percentage
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4), // Reduced padding
-                      decoration: BoxDecoration(
-                        color: stateColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16), // Slightly smaller border radius
-                      ),
-                      child: Text(
-                        projectState,
-                        style: TextStyle(
-                          color: stateColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13, // Smaller font size for state text
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10), // Reduced space for deadline section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) {
-                        return deadlineColor.createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height));
-                      },
-                      child: Icon(
-                        Icons.access_time, // Deadline icon
-                        size: 20,
-                      ),
-                    ),
-                    SizedBox(width: 6), // Reduced space between icon and text
-                    Text(
-                      'Deadline: $deadline',
-                      style: TextStyle(
-                        fontSize: 13, // Smaller font size for deadline text
-                        foreground: Paint()..shader = deadlineColor.createShader(Rect.fromLTWH(0, 0, 200, 70)), // Dark red ombré for deadline text
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  },
-);
-
-
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProjectDetails(
+                                    projectName: project['name'],
+                                    description: project['description'],
+                                    startDate: project['startDate'].toString(),
+                                    deadline: project['endDate'].toString(),
+                                    totalAmount: project['totalAmount'],
+                                    projectType: project['projectType'],
+                                    projectCreatorWallet:
+                                        project['organization'] ?? '',
+                                    donatedAmount: project['donatedAmount'],
+                                    projectId: project['id'],
+                                    progress: progress,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                  vertical:
+                                      6), // Reduced margin for smaller card size
+                              padding: const EdgeInsets.all(
+                                  12), // Reduced padding for smaller card size
+                              decoration: BoxDecoration(
+                                color: bgColor, // Light grey color background
+                                borderRadius: BorderRadius.circular(
+                                    12), // Slightly smaller border radius for smaller card
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius:
+                                        8, // Reduced blur radius for smaller shadow
+                                    offset: Offset(0,
+                                        4), // Reduced shadow offset for smaller card
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ShaderMask(
+                                    shaderCallback: (bounds) {
+                                      return nameColor.createShader(
+                                          Rect.fromLTWH(0, 0, bounds.width,
+                                              bounds.height));
+                                    },
+                                    child: Text(
+                                      project['name'] ?? 'Untitled Project',
+                                      style: TextStyle(
+                                        fontSize:
+                                            16, // Slightly smaller font size for title
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors
+                                            .white, // The color here is overridden by the ShaderMask
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                      height:
+                                          10), // Reduced space between title and progress bar
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                        8), // Smaller border radius for progress bar
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor:
+                                          Colors.white.withOpacity(0.3),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          stateColor),
+                                      minHeight:
+                                          6, // Reduced height for progress bar
+                                    ),
+                                  ),
+                                  SizedBox(
+                                      height:
+                                          8), // Reduced space between progress bar and state text
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${(progress * 100).toStringAsFixed(0)}%',
+                                        style: TextStyle(
+                                          fontSize:
+                                              14, // Smaller font size for progress percentage
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4), // Reduced padding
+                                        decoration: BoxDecoration(
+                                          color: stateColor.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(
+                                              16), // Slightly smaller border radius
+                                        ),
+                                        child: Text(
+                                          projectState,
+                                          style: TextStyle(
+                                            color: stateColor,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize:
+                                                13, // Smaller font size for state text
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(
+                                      height:
+                                          10), // Reduced space for deadline section
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      ShaderMask(
+                                        shaderCallback: (bounds) {
+                                          return deadlineColor.createShader(
+                                              Rect.fromLTWH(0, 0, bounds.width,
+                                                  bounds.height));
+                                        },
+                                        child: Icon(
+                                          Icons.access_time, // Deadline icon
+                                          size: 20,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                          width:
+                                              6), // Reduced space between icon and text
+                                      Text(
+                                        'Deadline: $deadline',
+                                        style: TextStyle(
+                                          fontSize:
+                                              13, // Smaller font size for deadline text
+                                          foreground: Paint()
+                                            ..shader = deadlineColor
+                                                .createShader(Rect.fromLTWH(
+                                                    0,
+                                                    0,
+                                                    200,
+                                                    70)), // Dark red ombré for deadline text
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
                 },
               ),
             ),

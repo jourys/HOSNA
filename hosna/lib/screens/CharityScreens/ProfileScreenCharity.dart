@@ -7,6 +7,8 @@ import 'package:hosna/screens/users.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
 import 'package:web3dart/web3dart.dart' as web3;
 
@@ -50,11 +52,10 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
     final prefs = await SharedPreferences.getInstance();
     _charityAddress = prefs.getString('walletAddress') ?? '';
-    print(
-        "🟢 Retrieved Wallet Address from SharedPreferences: $_charityAddress");
+    print("Retrieved Wallet Address from SharedPreferences: $_charityAddress");
 
     if (_charityAddress.isEmpty || _charityAddress == "none") {
-      print("❌ Wallet address is invalid or missing. Please log in again.");
+      print("Wallet address is invalid or missing. Please log in again.");
       return;
     }
 
@@ -104,7 +105,230 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
         });
       }
     } catch (e) {
-      print('❌ Error loading profile picture: $e');
+      print('Error loading profile picture: $e');
+    }
+  }
+
+  Future<void> deleteCharityAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress = prefs.getString('walletAddress');
+
+    if (walletAddress == null || walletAddress.isEmpty) {
+      print("Wallet address not found.");
+      return;
+    }
+
+    // Step 1: Fetch all projects for the charity
+    final blockchainService = BlockchainService();
+    List<Map<String, dynamic>> projects =
+        await blockchainService.fetchOrganizationProjects(walletAddress);
+
+    // 🔹 Step 2: Check for active projects
+    for (final project in projects) {
+      String state = await _getProjectState(project);
+      if (state == "active") {
+        print("Cannot delete account while having active projects.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  "You cannot delete your account while having active projects.")),
+        );
+        return; // Exit without deleting
+      }
+    }
+
+    // 🔹 Step 3: Proceed with deletion (same as before)
+    final contract = DeployedContract(
+      ContractAbi.fromJson(
+        '''[
+        {
+          "constant": false,
+          "inputs": [{"name": "_wallet", "type": "address"}],
+          "name": "deleteCharity",
+          "outputs": [],
+          "payable": false,
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ]''',
+        'CharityRegistry',
+      ),
+      EthereumAddress.fromHex(contractAddress),
+    );
+
+    final deleteFunction = contract.function('deleteCharity');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final walletAddress = prefs.getString('walletAddress');
+
+// Check for null or empty
+      if (walletAddress == null || walletAddress.isEmpty) {
+        print("❌ Wallet address not found.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text("❌ Wallet address not found. Please log in again.")),
+        );
+        return;
+      }
+
+// Now safe to use
+      final credentials = EthPrivateKey.fromHex(prefs.getString('privateKey') ??
+          prefs.getString('privateKey_$walletAddress') ??
+          '');
+
+      final contract = DeployedContract(
+        ContractAbi.fromJson(
+          '''[
+      {
+        "constant": false,
+        "inputs": [{"name": "_wallet", "type": "address"}],
+        "name": "deleteCharity",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ]''',
+          'CharityRegistry',
+        ),
+        EthereumAddress.fromHex(contractAddress),
+      );
+
+// ✅ No error here now
+      await _web3Client.sendTransaction(
+        credentials,
+        web3.Transaction.callContract(
+          contract: contract,
+          function: contract.function('deleteCharity'),
+          parameters: [
+            EthereumAddress.fromHex(walletAddress)
+          ], // walletAddress is now non-null
+          maxGas: 200000,
+        ),
+        chainId: 11155111,
+      );
+      await _web3Client.sendTransaction(
+        credentials,
+        web3.Transaction.callContract(
+          contract: contract,
+          function: deleteFunction,
+          parameters: [web3.EthereumAddress.fromHex(walletAddress)],
+          maxGas: 200000,
+        ),
+        chainId: 11155111,
+      );
+
+      print("✅ Deleted from blockchain");
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .delete();
+      try {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) await user.delete();
+      } catch (_) {}
+
+      await prefs.clear();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => UsersPage()),
+        (route) => false,
+      );
+    } catch (e) {
+      print("Error deleting account: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error deleting account: $e")),
+      );
+    }
+  }
+
+  Future<String> _getProjectState(Map<String, dynamic> project) async {
+    DateTime now = DateTime.now();
+    String projectId = project['id'].toString(); // Ensure it's a String
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
+
+      if (!doc.exists) {
+        print("⚠️ Project not found. Creating default fields...");
+        await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .set({
+          'isCanceled': false,
+          'isCompleted': false,
+          'isEnded': false,
+          'votingInitiated': false,
+        });
+      }
+
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+
+      bool isCanceled = data['isCanceled'] ?? false;
+      bool isCompleted = data['isCompleted'] ?? false;
+      bool isEnded = false;
+      final votingId = data['votingId'];
+
+      if (votingId != null) {
+        final votingDocRef = FirebaseFirestore.instance
+            .collection("votings")
+            .doc(votingId.toString());
+
+        final votingDoc = await votingDocRef.get();
+        final votingData = votingDoc.data();
+
+        if (votingDoc.exists) {
+          isEnded = votingData?['IsEnded'] ?? false;
+        }
+      }
+      bool votingInitiated = data['votingInitiated'] ?? false;
+
+      // Determine projectState based on Firestore flags
+      if (isEnded) {
+        return "ended";
+      }
+      if (isCompleted) {
+        return "completed";
+      } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+        return "voting";
+      } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+        return "canceled";
+      }
+
+      // Fallback to logic based on time and funding progress
+      DateTime startDate = project['startDate'] != null
+          ? (project['startDate'] is DateTime
+              ? project['startDate']
+              : DateTime.parse(project['startDate']))
+          : DateTime.now();
+
+      DateTime endDate = project['endDate'] != null
+          ? (project['endDate'] is DateTime
+              ? project['endDate']
+              : DateTime.parse(project['endDate']))
+          : DateTime.now();
+
+      double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+      double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
+
+      if (now.isBefore(startDate)) {
+        return "upcoming";
+      } else if (donatedAmount >= totalAmount) {
+        return "in-progress";
+      } else if (now.isAfter(endDate)) {
+        return "failed";
+      } else {
+        return "active";
+      }
+    } catch (e) {
+      print("Error determining project state for ID $projectId: $e");
+      return "unknown";
     }
   }
 
@@ -132,10 +356,10 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
           _establishmentDate = result[7].toString();
         });
       } else {
-        print("❌ No charity data found for wallet: $_charityAddress");
+        print("No charity data found for wallet: $_charityAddress");
       }
     } catch (e) {
-      print("❌ Error fetching charity data: $e");
+      print("Error fetching charity data: $e");
     }
   }
 
@@ -152,87 +376,6 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     } catch (e) {
       print("Error calling contract method: $e");
       return [];
-    }
-  }
-
-  Future<void> deleteCharityAccount() async {
-    final prefs = await SharedPreferences.getInstance();
-    final walletAddress = prefs.getString('walletAddress');
-
-    if (walletAddress == null || walletAddress.isEmpty) {
-      print("❌ Wallet address not found.");
-      return;
-    }
-
-    final contract = DeployedContract(
-      ContractAbi.fromJson(
-        '''[
-        {
-          "constant": false,
-          "inputs": [{"name": "_wallet", "type": "address"}],
-          "name": "deleteCharity",
-          "outputs": [],
-          "payable": false,
-          "stateMutability": "nonpayable",
-          "type": "function"
-        }
-      ]''',
-        'CharityRegistry',
-      ),
-      EthereumAddress.fromHex(contractAddress),
-    );
-
-    final deleteFunction = contract.function('deleteCharity');
-
-    try {
-      final credentials = EthPrivateKey.fromHex(
-          "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90"); //  Replace securely
-      await _web3Client.sendTransaction(
-        credentials,
-        web3.Transaction.callContract(
-          contract: contract,
-          function: deleteFunction,
-          parameters: [web3.EthereumAddress.fromHex(walletAddress)],
-          maxGas: 200000,
-        ),
-        chainId: 11155111,
-      );
-
-      print("✅ Deleted from blockchain");
-
-      // Delete from Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .delete();
-
-      print("✅ Deleted from Firestore");
-
-      // Delete from Firebase Auth (optional)
-      try {
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          await user.delete();
-          print("✅ Firebase Auth user deleted");
-        }
-      } catch (e) {
-        print("⚠️ Firebase Auth deletion skipped: $e");
-      }
-
-      await prefs.clear(); // Clear all storage
-      print("✅ SharedPreferences cleared");
-
-      // Navigate to Users page
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => UsersPage()),
-        (route) => false,
-      );
-    } catch (e) {
-      print("❌ Error deleting account: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error deleting account: $e")),
-      );
     }
   }
 
@@ -367,14 +510,15 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                   }
 
                                   print(
-                                      '✅ User logged out. Session cleared but private key and wallet address retained.');
+                                      'User logged out. Session cleared but private key and wallet address retained.');
 
                                   // Navigate to UsersPage
-                                 Navigator.pushAndRemoveUntil(
-                                      context,
-    MaterialPageRoute(builder: (context) => UsersPage()),
-    (route) => false,
-  );
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => UsersPage()),
+                                    (route) => false,
+                                  );
                                 },
                                 child: Text(
                                   'Log out',

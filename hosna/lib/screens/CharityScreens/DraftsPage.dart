@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/PostProject.dart';
 import 'dart:convert';
+import 'package:hosna/screens/CharityScreens/CharityHomePage.dart';
 
 class DraftsPage extends StatefulWidget {
   final String? walletAddress;
@@ -28,6 +29,7 @@ class _DraftsPageState extends State<DraftsPage> {
             builder: (context) => PostProject(
               draft: widget.initialDraft,
               walletAddress: widget.walletAddress,
+              showDeleteIcon: false, // Hide the trash icon
             ),
           ),
         );
@@ -88,7 +90,22 @@ class _DraftsPageState extends State<DraftsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Drafts' , style: TextStyle(color: const Color.fromRGBO(24, 71, 137, 1)),),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CharityEmployeeHomePage(),
+              ),
+              (Route<dynamic> route) => false, // Remove all previous routes
+            );
+          },
+        ),
+        title: Text(
+          'Drafts',
+          style: TextStyle(color: const Color.fromRGBO(24, 71, 137, 1)),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: const Color.fromRGBO(24, 71, 137, 1),
       ),
