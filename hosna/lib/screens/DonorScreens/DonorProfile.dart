@@ -35,15 +35,15 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
     _initializeWeb3();
     _fetchProfilePicture();
     _getDonorData();
-    _loadEmailFromPrefs();
+    // _loadEmailFromPrefs();
   }
 
-  Future<void> _loadEmailFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _email = prefs.getString('donorEmail') ?? '';
-    });
-  }
+  // Future<void> _loadEmailFromPrefs() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   setState(() {
+  //     _email = prefs.getString('donorEmail') ?? '';
+  //   });
+  // }
 
   Future<void> _fetchProfilePicture() async {
     print('🔄 Fetching profile picture for donor: $_donorAddress');
