@@ -16,6 +16,7 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
  String? walletAddress;
+
   bool isLoading = true;
   List<Map<String, dynamic>> notifications = [];
 

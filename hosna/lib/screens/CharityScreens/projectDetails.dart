@@ -118,6 +118,7 @@ _loadProjectState();
     checkIfDonorVoted();
 
   }
+
   Future<void> checkIfDonorVoted() async {
   try {
     print("🔍 Starting checkIfDonorVoted...");
@@ -1936,7 +1937,7 @@ Future<void> _processDonation(String amount, bool isAnonymous) async {
     // Load contract
     final donationContract = DeployedContract(
       ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-      EthereumAddress.fromHex('0x6753413d428794F8CE9a9359E1739450A8cfED45'),
+      EthereumAddress.fromHex('0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d'),
     );
 
     final function = donationContract.function('donate');
@@ -2183,7 +2184,7 @@ class DonorServices {
 
   // Contract address and RPC URL as constants
   static const String _rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
-  static const String _contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45'; // Contract address on Sepolia
+  static const String _contractAddress = '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d'; // Contract address on Sepolia
   
   // Constructor for initializing Web3 client and contract
   DonorServices()
@@ -2257,6 +2258,47 @@ class DonorServices {
 
     return result[0]; // Assuming the state is a string like "VotingStarted"
   }
+
+// Check if the user has donated to the project and if voting has started
+Future<bool> checkIsDonor(BigInt projectId, String userAddress) async {
+ 
+    print("📌 Starting donor check for project ID: $projectId");
+    print("👤 Checking for user address: $userAddress");
+
+    if (userAddress == "null" || userAddress.isEmpty) {
+      print("❌ Invalid user address provided.");
+      return false;
+    }
+
+    final normalizedUserAddress = userAddress.toLowerCase();
+
+    // Fetch Firestore project data (to check if project is canceled)
+    final firestoreData = await fetchProjectFirestoreData(projectId);
+    print("📄 Firestore data: $firestoreData");
+
+ final donorsResult = await fetchProjectDonors(projectId);
+    print("📦 Donors fetched from blockchain: $donorsResult");
+
+    List<EthereumAddress> donorAddresses = List<EthereumAddress>.from(donorsResult[0]);
+    print("📜 List of donor addresses:");
+    donorAddresses.forEach((addr) => print("   ➤ ${addr.hex}"));
+
+    bool isDonor = donorAddresses.any(
+      (address) => address.hex.toLowerCase() == normalizedUserAddress,
+    );
+
+  if (isDonor) return true;
+
+
+    else return false;
+
+  
+
+
+  }
+
+   
+
 
 
 // Check if the user has donated to the project and if voting has started

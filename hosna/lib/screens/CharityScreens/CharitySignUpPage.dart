@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
@@ -286,6 +287,50 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     }
   }
 
+  void _showTermsConditionsDialog(BuildContext context) async {
+  try {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('terms_conditions')
+        .get();
+
+    final termsList = querySnapshot.docs
+        .map((doc) => doc.data()['text']?.toString() ?? '')
+        .where((content) => content.isNotEmpty)
+        .toList();
+
+    final allTerms = termsList
+        .asMap()
+        .entries
+        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .join('\n\n');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Terms and Conditions'),
+          content: SingleChildScrollView(
+            child: Text(
+              allTerms.isNotEmpty ? allTerms : 'No terms and conditions found.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  } catch (e) {
+    print('❌ Error fetching terms: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to load terms and conditions.')),
+    );
+  }
+}
+
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -512,25 +557,44 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                     return null;
                   },
                 ),
-                CheckboxListTile(
-                  title: Text(
-                    'By creating an account, you agree to our Terms and Conditions',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _isAgreedToTerms
-                          ? const Color.fromRGBO(24, 71, 137, 1)
-                          : const Color.fromARGB(255, 102, 100, 100),
-                    ),
-                  ),
-                  value: _isAgreedToTerms,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _isAgreedToTerms = value ?? false;
-                    });
-                  },
-                  controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: const Color.fromRGBO(24, 71, 137, 1),
-                ),
+               
+CheckboxListTile(
+  title: RichText(
+    text: TextSpan(
+      style: TextStyle(
+        fontSize: 14,
+        color: _isAgreedToTerms
+            ? const Color.fromRGBO(24, 71, 137, 1)
+            : const Color.fromARGB(255, 102, 100, 100),
+      ),
+      children: [
+        const TextSpan(text: 'By creating an account, you agree to our '),
+       TextSpan(
+  text: 'Terms & Conditions',
+  style: const TextStyle(
+    color: Color.fromRGBO(24, 71, 137, 1),
+    fontWeight: FontWeight.bold,
+    decoration: TextDecoration.none, // أزلنا التسطير كما طلبت
+  ),
+  recognizer: TapGestureRecognizer()
+    ..onTap = () {
+      _showTermsConditionsDialog(context);
+    },
+),
+
+      ],
+    ),
+  ),
+  value: _isAgreedToTerms,
+  onChanged: (bool? value) {
+    setState(() {
+      _isAgreedToTerms = value ?? false;
+    });
+  },
+  controlAffinity: ListTileControlAffinity.leading,
+  activeColor: const Color.fromRGBO(24, 71, 137, 1),
+),
+
                 Center(
                   child: ElevatedButton(
                     onPressed: () {

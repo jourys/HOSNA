@@ -20,6 +20,7 @@ class BrowseProjects extends StatefulWidget {
 }
 
 class _BrowseProjectsState extends State<BrowseProjects> {
+
   final BlockchainService _blockchainService = BlockchainService();
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = true;
@@ -79,6 +80,25 @@ late GetCharityByWallet _charityService;
 //   }
 // }
 
+ // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -87,43 +107,54 @@ late GetCharityByWallet _charityService;
     print("All keys: ${prefs.getKeys()}");
   }
 
- Future<void> _fetchProjects() async { 
+Future<void> _fetchProjects() async {
   setState(() {
     _isLoading = true;
   });
 
   try {
     final projectCount = await _blockchainService.getProjectCount();
-    print("Total Projects: $projectCount");
+    print("🧮 Total Projects: $projectCount");
 
     List<Map<String, dynamic>> projects = [];
 
     for (int i = 0; i < projectCount; i++) {
+      print("🔍 Fetching project ID: $i");
       try {
         final project = await _blockchainService.getProjectDetails(i);
         if (project.containsKey("error")) {
-          print("Skipping invalid project ID: $i");
-          continue; // Skip invalid projects
+          print("⚠️ Skipping invalid project ID: $i");
+          continue;
         }
+
+        // ✅ Add the projectId manually for sorting
+        project['projectId'] = i;
+
+        print("✅ Project fetched: ID ${project['projectId']} - ${project['name']}");
         projects.add(project);
       } catch (e) {
-        print("Error fetching project ID $i: $e");
+        print("❌ Error fetching project ID $i: $e");
       }
     }
 
-    // ✅ Sort projects by startDate in descending order (newest first)
+    // 🔽 Sort by projectId descending
     projects.sort((a, b) {
-      DateTime aDate = a['startDate'];
-      DateTime bDate = b['startDate'];
-      return bDate.compareTo(aDate); // Newest first
+      final int aId = a['projectId'] as int;
+      final int bId = b['projectId'] as int;
+      return bId.compareTo(aId); // Descending
     });
+
+    print("📋 Sorted Projects:");
+    for (var project in projects) {
+      print("➡️ Project ID: ${project['projectId']} | Name: ${project['name']}");
+    }
 
     setState(() {
       _projects = projects;
       _isLoading = false;
     });
   } catch (e) {
-    print("Error fetching projects: $e");
+    print("🚨 Error in _fetchProjects: $e");
     setState(() {
       _isLoading = false;
     });

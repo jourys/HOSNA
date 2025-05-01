@@ -7,6 +7,7 @@ import 'package:lottie/lottie.dart';
 
 
 class DonorVotePage extends StatefulWidget {
+  
    final String projectId; 
   final String walletAddress;
   final String votingId;
@@ -23,6 +24,7 @@ class DonorVotePage extends StatefulWidget {
 }
 
 class _DonorVotePageState extends State<DonorVotePage> {
+
   late Web3Client _web3Client;
   late EthereumAddress _contractAddressEth;
   late DeployedContract _contract;
@@ -87,7 +89,7 @@ RefundService? refundService;
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8");
+        EthereumAddress.fromHex("0x421679ff91d6443B13b40082a56D7cD38D94e6dc");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
@@ -638,7 +640,7 @@ class VotingGlassEffectContainer extends StatelessWidget {
 
 class RefundService {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45';
+  final String contractAddress = '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d';
 
   late Web3Client web3client;
   late DeployedContract donationContract;

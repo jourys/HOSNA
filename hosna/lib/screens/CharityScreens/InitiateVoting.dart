@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:web3dart/web3dart.dart';
@@ -42,6 +41,8 @@ class _InitiateVotingState extends State<InitiateVoting> {
   late ContractFunction _startVotingFunction; // Function to call in the contract
   late Credentials _credentials; // Credentials for interacting with blockchain
   bool _isBlockchainReady = false; // NEW: Flag to indicate blockchain is ready
+  bool _isLoading = false; // Add this to your widget's state
+
   bool votingInitiated = false;final String contractABI = '''[
     {
         "inputs": [],
@@ -152,6 +153,26 @@ class _InitiateVotingState extends State<InitiateVoting> {
     }
   }
 
+Future<void> cancelTransaction(int nonce) async {
+  final credentials = await _web3Client.credentialsFromPrivateKey(_privateKey!);
+  final ownAddress = await credentials.extractAddress();
+
+  await _web3Client.sendTransaction(
+    credentials,
+    web3.Transaction(
+      from: ownAddress,
+      to: ownAddress, // Send to self
+      gasPrice: EtherAmount.inWei(BigInt.from(30 * 1e9)), // Higher gas price (30 gwei)
+      maxGas: 21000,
+      value: EtherAmount.zero(),
+      nonce: nonce, // Same nonce as the pending tx
+    ),
+    chainId: 11155111,
+  );
+
+  print('✅ Sent cancel tx with nonce $nonce');
+}
+
 
 Future<void> _initializeBlockchain() async {
   try {
@@ -162,7 +183,7 @@ Future<void> _initializeBlockchain() async {
     print('Web3 client initialized.');
 
     // Set the contract address
-    _contractAddress = EthereumAddress.fromHex('0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8');
+    _contractAddress = EthereumAddress.fromHex('0x421679ff91d6443B13b40082a56D7cD38D94e6dc');
     print('Contract address set to $_contractAddress');
 
     // Load the contract
@@ -182,154 +203,155 @@ Future<void> _initializeBlockchain() async {
 }
 
 
-Future<void> _initiateVotingOnBlockchain() async {
-  print('🚀 Initiating voting process...');
-  print('🧮 Selected projects count: ${_selectedProjects.length}');
-  print('📆 Start date: $_startDate | End date: $_endDate');
-  print('✅ Blockchain ready? $_isBlockchainReady');
+// Future<void> _initiateVotingOnBlockchain() async {
+//   print('🚀 Initiating voting process...');
+//   print('🧮 Selected projects count: ${_selectedProjects.length}');
+//   print('📆 Start date: $_startDate | End date: $_endDate');
+//   print('✅ Blockchain ready? $_isBlockchainReady');
 
-  // Quick inline function to show snackbars
-  void showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+//   // Quick inline function to show snackbars
+//   void showWarning(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+//   }
 
-  // Validation checks
-  if (_selectedProjects.isEmpty || _startDate == null || _endDate == null) {
-    print('❗ Validation failed: Need exactly 3 projects and valid start/end dates.');
-    showWarning('⚠️ Please select 3 projects and valid start and end dates.');
-    return;
-  }
+//   // Validation checks
+//   if (_selectedProjects.isEmpty || _startDate == null || _endDate == null) {
+//     print('❗ Validation failed: Need exactly 3 projects and valid start/end dates.');
+//     showWarning('⚠️ Please select 3 projects and valid start and end dates.');
+//     setState(() => _isLoading = false);
+//     return;
+//   }
 
-  if (!_isBlockchainReady) {
-    print('🛑 Blockchain not ready yet. Aborting...');
-    showWarning('⏳ Blockchain is not ready yet. Please wait...');
-    return;
-  }
+//   if (!_isBlockchainReady) {
+//     print('🛑 Blockchain not ready yet. Aborting...');
+//     showWarning('⏳ Blockchain is not ready yet. Please wait...');
+//     setState(() => _isLoading = false);
+//     return;
+//   }
 
-  try {
-    print('🔐 Fetching credentials...');
-    _credentials = await _web3Client.credentialsFromPrivateKey(_privateKey!);
-    print('🔑 Credentials obtained.');
+//   try {
+//     print('🔐 Fetching credentials...');
+//     _credentials = await _web3Client.credentialsFromPrivateKey(_privateKey!);
+//     print('🔑 Credentials obtained.');
 
-    final startTimestamp = _startDate!.millisecondsSinceEpoch;
-    final endTimestamp = _endDate!.millisecondsSinceEpoch;
-    final votingDurationSeconds = ((endTimestamp - startTimestamp) ~/ 1000);
+//     final startTimestamp = _startDate!.millisecondsSinceEpoch;
+//     final endTimestamp = _endDate!.millisecondsSinceEpoch;
+//     final votingDurationSeconds = ((endTimestamp - startTimestamp) ~/ 1000);
 
-    if (votingDurationSeconds <= 0) {
-      print('❗ Invalid voting duration: $votingDurationSeconds seconds');
-      showWarning('⚠️ End date must be after the start date.');
-      return;
-    }
+//     if (votingDurationSeconds <= 0) {
+//       print('❗ Invalid voting duration: $votingDurationSeconds seconds');
+//       showWarning('⚠️ End date must be after the start date.');
+//       setState(() => _isLoading = false);
+//       return;
+//     }
 
-    final votingDuration = BigInt.from(votingDurationSeconds);
-    print('📅 Voting Duration (s): $votingDuration');
+//     final votingDuration = BigInt.from(votingDurationSeconds);
+//     print('📅 Voting Duration (s): $votingDuration');
 
-    final projectIds = <BigInt>[];
-    final projectNames = <String>[];
+//     final projectIds = <BigInt>[];
+//     final projectNames = <String>[];
 
-    // Collect project IDs and names, ensuring data validity
-    for (final proj in _selectedProjects) {
-      final id = proj['id'];
-      final name = proj['name'];
+//     for (final proj in _selectedProjects) {
+//       final id = proj['id'];
+//       final name = proj['name'];
 
-      // Ensure data is valid before adding to lists
-      if (id is int && name is String) {
-        projectIds.add(BigInt.from(id));
-        projectNames.add(name);
-      } else {
-        print('❗ Invalid project data: id=$id, name=$name');
-        showWarning('⚠️ Invalid project data. Please try again.');
-        return;
-      }
-    }
+//       if (id is int && name is String) {
+//         projectIds.add(BigInt.from(id));
+//         projectNames.add(name);
+//       } else {
+//         print('❗ Invalid project data: id=$id, name=$name');
+//         showWarning('⚠️ Invalid project data. Please try again.');
+//         setState(() => _isLoading = false);
+//         return;
+//       }
+//     }
 
-    if (projectIds.isEmpty || projectNames.isEmpty) {
-      print('❗ No valid projects selected');
-      showWarning('⚠️ No valid projects selected. Please try again.');
-      return;
-    }
+//     if (projectIds.isEmpty || projectNames.isEmpty) {
+//       print('❗ No valid projects selected');
+//       showWarning('⚠️ No valid projects selected. Please try again.');
+//       setState(() => _isLoading = false);
+//       return;
+//     }
 
-    print('🔍 Project IDs: $projectIds');
-    print('🔍 Project Names: $projectNames');
+//     print('🔍 Project IDs: $projectIds');
+//     print('🔍 Project Names: $projectNames');
+//     print('🧾 Creating transaction...');
 
-    print('🧾 Creating transaction...');
-    try {
-  final txHash = await _web3Client.sendTransaction(
-  _credentials,
-  web3.Transaction(
-    to: _contract.address,
-    gasPrice: EtherAmount.fromUnitAndValue(EtherUnit.gwei, 20),
-    data: _contract.function('initiateVoting').encodeCall([
-      votingDuration,
-      projectIds,
-      projectNames,
-    ]),
-  ),
-  chainId: 11155111,
-);
+//     try {
+//       final txHash = await _web3Client.sendTransaction(
+//         _credentials,
+//         web3.Transaction(
+//           to: _contract.address,
+//           gasPrice: EtherAmount.fromUnitAndValue(EtherUnit.gwei, 20),
+//           data: _contract.function('initiateVoting').encodeCall([
+//             votingDuration,
+//             projectIds,
+//             projectNames,
+//           ]),
+//         ),
+//         chainId: 11155111,
+//       );
+//       print("✅ Transaction sent! Hash: $txHash");
+//     } catch (e) {
+//       print("❌ Transaction failed: $e");
+//       showWarning('❗ Blockchain transaction failed.');
+//       setState(() => _isLoading = false);
+//       return;
+//     }
 
-  print("✅ Transaction sent! Hash: $txHash");
-} catch (e) {
-  print("❌ Transaction failed: $e");
-}
+//     final function = _contract.function('initiateVoting');
+//     final result = await _web3Client.call(
+//       contract: _contract,
+//       function: function,
+//       params: [votingDuration, projectIds, projectNames],
+//     );
 
+//     if (result.isEmpty) {
+//       print('❗ Error: Voting counter not found in contract.');
+//       showWarning('⚠️ Voting counter not found.');
+//       setState(() => _isLoading = false);
+//       return;
+//     }
 
+//     final votingCounter = result[0].toString();
+//     print('🎉 Voting Counter (ID): $votingCounter');
 
-  
+//     await FirebaseFirestore.instance
+//         .collection('projects')
+//         .doc(widget.projectId.toString())
+//         .set({
+//           'votingId': votingCounter,
+//           'votingInitiated': true,
+//         }, SetOptions(merge: true));
 
-    // Retrieve the contract function to get the voting counter directly from the transaction return value
-    final function = _contract.function('initiateVoting');
-    final result = await _web3Client.call(
-      contract: _contract,
-      function: function,
-      params: [votingDuration, projectIds, projectNames],
-    );
+//     await FirebaseFirestore.instance
+//         .collection('votings')
+//         .doc(votingCounter)
+//         .set({
+//           'projectIds': projectIds.map((id) => id.toInt()).toList(),
+//           'projectNames': projectNames,
+//         });
 
-    if (result.isEmpty) {
-      print('❗ Error: Voting counter not found in contract.');
-      showWarning('⚠️ Voting counter not found.');
-      return;
-    }
-    
-    final votingCounter = result[0].toString();  // The votingCounter is returned by the function
-print('🎉 Voting Counter (ID): $votingCounter');
+//     print("✅ Voting ID and details successfully saved to Firestore: $votingCounter");
 
-// ✅ Step 1: Save voting ID and initiation status to the initiating project's Firestore document
-await FirebaseFirestore.instance
-    .collection('projects')
-    .doc(widget.projectId.toString()) // Use the projectId as the document ID
-    .set({
-      'votingId': votingCounter,       // Save the voting counter
-      'votingInitiated': true,         // Mark the voting as initiated
-    }, SetOptions(merge: true));        // Merge to preserve existing project data
+//     await VoteListener.listenForVotingStatus(int.parse(votingCounter), widget.projectId);
+//     print("✅ listener started");
 
-// ✅ Step 2: Create a new document in the 'votings' collection
-await FirebaseFirestore.instance
-    .collection('votings')
-    .doc(votingCounter) // Use the voting ID as the document ID
-    .set({
-      'projectIds': projectIds.map((id) => id.toInt()).toList(), // Convert BigInt list to List<int>
-      'projectNames': projectNames,                              // Save project names
-    });
+//     // Hide loading before navigating away
+//     setState(() => _isLoading = false);
 
-print("✅ Voting ID and details successfully saved to Firestore: $votingCounter");
+//     // Navigate and show success popup
+//     Navigator.pop(context, true);
+//     showVotingSuccessPopup(context);
+//     print('✅ Voting initiation process complete.');
 
-await VoteListener.listenForVotingStatus(int.parse(votingCounter) , widget.projectId);
-    print("✅ listener staarttttt");
+//   } catch (e) {
+//     print('❌ Error initiating voting: $e');
+//     showWarning('❗ Failed to initiate voting. Please try again.');
+//     setState(() => _isLoading = false);
+//   }
+// }
 
-    print("✅ Voting ID saved to Firestore: $votingCounter");
-               
-
-    // Navigate back after successful voting initiation
-    Navigator.pop(context, true);
-       showVotingSuccessPopup(context);
-    print('✅ Voting initiation process complete.');
-
-  } catch (e) {
-    print('❌ Error initiating voting: $e');
-    showWarning('❗ Failed to initiate voting. Please try again.');
-  }
-}
 
   Future<String?> _loadWalletAddress() async {
     print('Loading wallet address...');
@@ -349,21 +371,176 @@ await VoteListener.listenForVotingStatus(int.parse(votingCounter) , widget.proje
       return null;
     }
   }
+Future<void> _initiateVotingOnBlockchain() async {
+  print('🚀 Initiating voting process...');
+  print('🧮 Selected projects count: ${_selectedProjects.length}');
+  print('📆 Start date: $_startDate | End date: $_endDate');
+  print('✅ Blockchain ready? $_isBlockchainReady');
 
-  void _initiateVoting() {
-    if (_selectedProjects.length != 3 || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select 3 projects and an end date.')),
-      );
+  // Quick inline function to show snackbars
+  void showWarning(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // Validation checks
+  if (_selectedProjects.isEmpty || _startDate == null || _endDate == null) {
+    print('❗ Validation failed: Need exactly 3 projects and valid start/end dates.');
+    showWarning('⚠️ Please select 3 projects and valid start and end dates.');
+    setState(() => _isLoading = false); // Ensure _isLoading is set to false if validation fails
+    return;
+  }
+
+  if (!_isBlockchainReady) {
+    print('🛑 Blockchain not ready yet. Aborting...');
+    showWarning('⏳ Blockchain is not ready yet. Please wait...');
+    setState(() => _isLoading = false); // Ensure _isLoading is set to false if blockchain is not ready
+    return;
+  }
+
+  try {
+    print('🔐 Fetching credentials...');
+    _credentials = await _web3Client.credentialsFromPrivateKey(_privateKey!);
+    print('🔑 Credentials obtained.');
+
+    final startTimestamp = _startDate!.millisecondsSinceEpoch;
+    final endTimestamp = _endDate!.millisecondsSinceEpoch;
+    final votingDurationSeconds = ((endTimestamp - startTimestamp) ~/ 1000);
+
+    if (votingDurationSeconds <= 0) {
+      print('❗ Invalid voting duration: $votingDurationSeconds seconds');
+      showWarning('⚠️ End date must be after the start date.');
+      setState(() => _isLoading = false); // Ensure _isLoading is set to false if duration is invalid
       return;
     }
 
-    print("Voting started on ${DateFormat('yyyy-MM-dd').format(_startDate)}");
-    print("Ends at $_endDate");
-    _selectedProjects.forEach((p) => print(p['name']));
+    final votingDuration = BigInt.from(votingDurationSeconds);
+    print('📅 Voting Duration (s): $votingDuration');
 
-    _initiateVotingOnBlockchain();
+    final projectIds = <BigInt>[];
+    final projectNames = <String>[];
+
+    for (final proj in _selectedProjects) {
+      final id = proj['id'];
+      final name = proj['name'];
+
+      if (id is int && name is String) {
+        projectIds.add(BigInt.from(id));
+        projectNames.add(name);
+      } else {
+        print('❗ Invalid project data: id=$id, name=$name');
+        showWarning('⚠️ Invalid project data. Please try again.');
+        setState(() => _isLoading = false); // Ensure _isLoading is set to false on error
+        return;
+      }
+    }
+
+    if (projectIds.isEmpty || projectNames.isEmpty) {
+      print('❗ No valid projects selected');
+      showWarning('⚠️ No valid projects selected. Please try again.');
+      setState(() => _isLoading = false); // Ensure _isLoading is set to false if no valid projects
+      return;
+    }
+
+    print('🔍 Project IDs: $projectIds');
+    print('🔍 Project Names: $projectNames');
+    print('🧾 Creating transaction...');
+
+    String? txHash;
+    try {
+      txHash = await _web3Client.sendTransaction(
+        _credentials,
+        web3.Transaction(
+          to: _contract.address,
+          gasPrice: EtherAmount.fromUnitAndValue(EtherUnit.gwei, 50),
+          data: _contract.function('initiateVoting').encodeCall([
+            votingDuration,
+            projectIds,
+            projectNames,
+          ]),
+        ),
+        chainId: 11155111,
+      );
+      print("✅ Transaction sent! Hash: $txHash");
+    } catch (e) {
+      print("❌ Transaction failed: $e");
+      showWarning('❗ Blockchain transaction failed.');
+      setState(() => _isLoading = false); // Ensure _isLoading is set to false on failure
+      return;
+    }
+
+    final function = _contract.function('initiateVoting');
+    final result = await _web3Client.call(
+      contract: _contract,
+      function: function,
+      params: [votingDuration, projectIds, projectNames],
+    );
+
+    if (result.isEmpty) {
+      print('❗ Error: Voting counter not found in contract.');
+      showWarning('⚠️ Voting counter not found.');
+      setState(() => _isLoading = false); // Ensure _isLoading is set to false on error
+      return;
+    }
+
+    final votingCounter = result[0].toString();
+    print('🎉 Voting Counter (ID): $votingCounter');
+
+    // Save voting information in Firestore
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(widget.projectId.toString())
+        .set({
+          'votingId': votingCounter,
+          'votingInitiated': true,
+        }, SetOptions(merge: true));
+
+    await FirebaseFirestore.instance
+        .collection('votings')
+        .doc(votingCounter)
+        .set({
+          'projectIds': projectIds.map((id) => id.toInt()).toList(),
+          'projectNames': projectNames,
+        });
+
+    print("✅ Voting ID and details successfully saved to Firestore: $votingCounter");
+
+    // Start the listener for the voting status
+    await VoteListener.listenForVotingStatus(int.parse(votingCounter), widget.projectId);
+    print("✅ listener started");
+
+    // Hide loading before navigating away
+    setState(() => _isLoading = false);
+
+    // Navigate and show success popup
+    Navigator.pop(context, true);
+    showVotingSuccessPopup(context);
+    print('✅ Voting initiation process complete.');
+
+  } catch (e) {
+    print('❌ Error initiating voting: $e');
+    showWarning('❗ Failed to initiate voting. Please try again.');
+    setState(() => _isLoading = false); // Ensure _isLoading is set to false on failure
   }
+}
+
+void _initiateVoting() async {
+  if (_selectedProjects.length != 3 || _endDate == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please select 3 projects and an end date.')),
+    );
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  await _initiateVotingOnBlockchain();
+
+  setState(() {
+    _isLoading = false;
+  });
+}
 
   void _openProjectSelection() async {
     final result = await Navigator.push(
@@ -543,11 +720,13 @@ void showVotingSuccessPopup(BuildContext context) {
 
   @override
   Widget build(BuildContext context) {
+    
 final startDateFormatted = DateFormat('yyyy-MM-dd – HH:mm').format(_startDate);
     final endDateFormatted = _endDate != null
         ? DateFormat('yyyy-MM-dd – HH:mm').format(_endDate!)
         : 'Select End Date';
 return Scaffold(
+  
   appBar: AppBar(
   title: Align(
     alignment: Alignment.center, // Align the text to the right
@@ -680,36 +859,39 @@ return Scaffold(
 
         // 🚀 CTA Button
         Center(
-          child: ElevatedButton.icon(
-             onPressed: () async {
-                if (_selectedProjects.length != 3 || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select 3 projects and an end date.')),
-      );
-      return;
-    }
-    bool confirm = await _showInitiateVotingConfirmationDialog(context);
-    
-
-             },
-            icon: Icon(Icons.how_to_vote),
-            label: Text(
-              'Initiate Voting',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-              padding: EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 3,
-            ),
+          child : 
+ElevatedButton.icon(
+  onPressed: _isLoading ? null : _initiateVoting,
+  icon: _isLoading
+      ? SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
           ),
+        )
+      : Icon(Icons.how_to_vote),
+  label: Text(
+    'Initiate Voting',
+    style: TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+    ),
+  ),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 3,
+  ),
+),
+
+
+
         ),
       ],
     ),
@@ -1060,7 +1242,7 @@ class VoteListener {
   VoteListener({required this.projectId}); // <-- Add constructor
 
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8';
+  final String contractAddress = '0x421679ff91d6443B13b40082a56D7cD38D94e6dc';
 
   late Web3Client _client;
   late Credentials _credentials;
@@ -1577,7 +1759,7 @@ Future<bool> hasDonorAlreadyVoted(int votingId, EthereumAddress donorAddress) as
 
 class DonationService {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x6753413d428794F8CE9a9359E1739450A8cfED45'; // Replace with your actual contract address
+  final String contractAddress = '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d'; 
 
   final String senderAddress;
   final String receiverAddress;

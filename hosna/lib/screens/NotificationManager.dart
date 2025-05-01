@@ -48,13 +48,13 @@ Future<void> showNotification({
   String? body,
   String? payLoad,
 }) async {
-  _id++; // 👈 زيدي ID هنا داخل الدالة
+  _id++; 
   return notificationsPlugin.show(
-    _id, // 🆔 استخدمي ID متغير
+    _id, 
     title,
     body,
     await notificationDetails(),
-    payload: payLoad, // لو تبين تضيفي بيانات مرافقة
+    payload: payLoad,   
   );
 }
 
