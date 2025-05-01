@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:http/http.dart'; // Import Client from the http package
-import 'dart:convert'; // Import for utf8 and hex encoding
-import 'dart:typed_data'; // Required to use Uint8List
+import 'dart:convert';  // Import for utf8 and hex encoding
+import 'dart:typed_data';  // Required to use Uint8List
 import 'dart:convert'; // Optional if you need other encoding
 
 class VotingDetailsPage extends StatefulWidget {
@@ -45,7 +45,7 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
 
   bool _isLoadingRefundService = true;
   RefundService? refundService;
-  BigInt? totalRefunded;
+BigInt? totalRefunded;
 
   final String _abi = '''[
     {
@@ -71,36 +71,36 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     super.initState();
     _initializeWeb3Client();
     initRefundService();
-    fetchRefundedTotal();
+     fetchRefundedTotal();
   }
 
-  void fetchRefundedTotal() async {
-    try {
-      String? privateKey = await _loadPrivateKey();
-      String? walletAddress = await _loadWalletAddress();
+  
+void fetchRefundedTotal() async {
+  try {
+    String? privateKey = await _loadPrivateKey();
+    String? walletAddress = await _loadWalletAddress();
 
-      if (privateKey == null || walletAddress == null) {
-        print("❌ Wallet info missing");
-        return;
-      }
-
-      final creds = EthPrivateKey.fromHex(privateKey);
-      final userAddr = EthereumAddress.fromHex(walletAddress);
-
-      final tempRefundService = RefundService(
-        userAddress: userAddr,
-        userCredentials: creds,
-      );
-
-      final result = await tempRefundService
-          .getRefundRequestCount(int.parse(widget.projectId));
-      setState(() {
-        totalRefunded = result;
-      });
-    } catch (e) {
-      print("❌ Error fetching total refunded: $e");
+    if (privateKey == null || walletAddress == null) {
+      print("❌ Wallet info missing");
+      return;
     }
+
+    final creds = EthPrivateKey.fromHex(privateKey);
+    final userAddr = EthereumAddress.fromHex(walletAddress);
+
+    final tempRefundService = RefundService(
+      userAddress: userAddr,
+      userCredentials: creds,
+    );
+
+    final result = await tempRefundService.getRefundRequestCount(int.parse(widget.projectId));
+    setState(() {
+      totalRefunded = result;
+    });
+  } catch (e) {
+    print("❌ Error fetching total refunded: $e");
   }
+}
 
   void _initializeWeb3Client() async {
     _web3Client = Web3Client(
@@ -206,194 +206,202 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+ @override
+Widget build(BuildContext context) {
+
 // Convert wallet address string to EthereumAddress
-    final EthereumAddress ethAddress =
-        EthereumAddress.fromHex(widget.walletAddress);
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Voting Details'),
-        backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color.fromRGBO(24, 71, 137, 1),
-              Color.fromRGBO(24, 71, 137, 1)
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: VotingGlassEffectContainer(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: isFetching
-                ? const Center(child: CircularProgressIndicator())
-                : votingDetails.isEmpty
-                    ? const Center(child: Text("No voting details available"))
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          const Text(
-                            "Choose one project to vote:",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: votingDetails.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index < votingDetails.length) {
-                                  return Card(
-                                    color: Colors.blue[50],
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: ListTile(
-                                      title: Text(
-                                        '${votingDetails[index]} (${votingPercentages[index]}%)',
-                                        style: const TextStyle(fontSize: 16),
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  return Card(
-                                    color: Colors.red[50],
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: ListTile(
-                                      title: const Text(
-                                        'Request a refund',
-                                        style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.people,
-                                              color: const Color.fromARGB(
-                                                  255, 53, 52, 52)),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            ' $totalRefunded',
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color.fromARGB(
-                                                  255, 50, 50, 50),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 20),
-                              decoration: BoxDecoration(
-                                color: const Color.fromARGB(255, 251, 216, 219),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildTimeCard(
-                                      remainingDays.toString(), 'Days'),
-                                  _buildColon(),
-                                  _buildTimeCard(
-                                      remainingHours.toString(), 'Hours'),
-                                  _buildColon(),
-                                  _buildTimeCard(
-                                      remainingMinutes.toString(), 'Minutes'),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Column(
-                            children: [
-                              Center(
-                                child: SizedBox(
-                                  height: 200,
-                                  width: 500,
-                                  child: Lottie.asset('assets/hourglass.json'),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ],
-                      ),
-          ),
+final EthereumAddress ethAddress = EthereumAddress.fromHex(widget.walletAddress);
+  return Scaffold(
+    appBar: AppBar(
+      centerTitle: true,
+      title: const Text('Voting Details' ),
+      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+foregroundColor: Colors.white,
+    ),
+    body: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color.fromRGBO(24, 71, 137, 1),
+      Color.fromRGBO(24, 71, 137, 1)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
       ),
-    );
-  }
+      child: VotingGlassEffectContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: isFetching
+              ? const Center(child: CircularProgressIndicator())
+              : votingDetails.isEmpty
+                  ? const Center(child: Text("No voting details available"))
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                       
+
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Choose one project to vote:",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: ListView.builder(
+  itemCount: votingDetails.length + 1,
+  itemBuilder: (context, index) {
+    if (index < votingDetails.length) {
+      return Card(
+        color: Colors.blue[50],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          title: Text(
+            '${votingDetails[index]} (${votingPercentages[index]}%)',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+      );
+    } else {
+      return Card(
+  color: Colors.red[50],
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: ListTile(
+  title: const Text(
+    'Request a refund',
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  ),
+  trailing: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.people, color: const Color.fromARGB(255, 53, 52, 52)),
+      const SizedBox(width: 5),
+      Text(
+        ' $totalRefunded',
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Color.fromARGB(255, 50, 50, 50),
+        ),
+      ),
+    ],
+  ),
+),
+
+);
+
+    }
+  },
+),
+
+
+                        ),
+                        Center(
+  child: Container(
+  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+  decoration: BoxDecoration(
+    color: const Color.fromARGB(255, 251, 216, 219),
+    borderRadius: BorderRadius.circular(20),
+  ),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _buildTimeCard(remainingDays.toString(), 'Days'),
+      _buildColon(),
+      _buildTimeCard(remainingHours.toString(), 'Hours'),
+      _buildColon(),
+      _buildTimeCard(remainingMinutes.toString(), 'Minutes'),
+    ],
+  ),
+),
+
+),
+
+
+
+                        Column(
+  children: [
+
+      Center(
+      child: SizedBox(
+        height: 200,
+        width: 500,
+        child: Lottie.asset('assets/hourglass.json'),
+      ),
+    ),
+
+ 
+ const SizedBox(height: 20),
+
+
+  
+  ],
+),
+
+                      ],
+                    ),
+        ),
+      ),
+    ),
+  );
+}
+
 
 // Widget for time unit card
-  Widget _buildTimeCard(String value, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              color: Color(0xFFB71C1C),
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Georgia',
-            ),
-          ),
+Widget _buildTimeCard(String value, String label) {
+  return Column(
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
         ),
-        const SizedBox(height: 8),
-        Text(
-          label,
+        child: Text(
+          value,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 24,
             color: Color(0xFFB71C1C),
+            fontWeight: FontWeight.bold,
             fontFamily: 'Georgia',
           ),
         ),
-      ],
-    );
-  }
-
-// Widget for colon separator
-  Widget _buildColon() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8),
-      child: Text(
-        ":",
-        style: TextStyle(
-          fontSize: 24,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 16,
           color: Color(0xFFB71C1C),
-          fontWeight: FontWeight.bold,
           fontFamily: 'Georgia',
         ),
       ),
-    );
-  }
+    ],
+  );
+}
+
+// Widget for colon separator
+Widget _buildColon() {
+  return const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 8),
+    child: Text(
+      ":",
+      style: TextStyle(
+        fontSize: 24,
+        color: Color(0xFFB71C1C),
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Georgia',
+      ),
+    ),
+  );
+}
+
 }
 
 class VotingGlassEffectContainer extends StatelessWidget {
@@ -414,9 +422,11 @@ class VotingGlassEffectContainer extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10),
               child: child,
             ),
+           
           ],
         ),
       ),
     );
   }
 }
+

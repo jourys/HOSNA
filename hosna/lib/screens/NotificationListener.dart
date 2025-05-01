@@ -36,11 +36,11 @@ class ProjectNotificationListener {
         final creatorAddress = project["organization"]?.toString().toLowerCase();
         final projectId = project["id"].toString();
 
-        
+        if (creatorAddress == walletAddress.toLowerCase()) {
           // Firestore listeners
           _listenToProjectChanges(project, projectId);
-          // _listenToVotingChanges(project, projectId);
-        
+          _listenToVotingChanges(project, projectId);
+        }
       }
     } catch (e) {
       print("❌ Error during project checking: $e");
@@ -53,125 +53,69 @@ void _listenToProjectChanges(Map<String, dynamic> project, String projectId) {
       .snapshots()
       .listen((snapshot) async {
     print("📡 Listening to changes for project $projectId...");
+    
+    if (snapshot.exists) {
+      print("📄 Project document exists for $projectId. Checking state...");
+      String newState = await _getProjectState(project);
+      print("📌 Calculated new state: $newState, Last notified state: $lastNotifiedState");
 
-    if (!snapshot.exists) {
-      print("⚠️ Project document for $projectId no longer exists. Skipping...");
-      return;
-    }
+      if (newState != lastNotifiedState && _shouldNotify(newState)) {
+        print("🔔 State has changed and is eligible for notification.");
 
-    // Extract Firestore project state
-    final data = snapshot.data() ?? {};
-    String currentState = data['current'] ?? "active";
-    print("🗂️ Firestore current state for project $projectId: $currentState");
+        lastNotifiedState = newState;
+        final projectName = project["name"] ?? "Your Project";
 
-    // Calculate new state
-    String newState = await _getProjectState(project);
-    print("🔍 Recalculated project state: $newState");
+        final title = "$projectName Status Update";
+        final body = "Project is '$newState'.";
 
-    // Compare current and new state
-    if (newState != currentState && _shouldNotify(newState)) {
-      print("🚨 State change detected! Updating Firestore and notifying users...");
-      print("➡️ From: $currentState ➡️ To: $newState");
+        final creatorWallet = await _loadWalletAddress();
+        if (creatorWallet != null) {
+          // Send local notification to project creator
+          notificationService.showNotification(title: title, body: body);
 
-      try {
-        await FirebaseFirestore.instance
-            .collection('projects')
-            .doc(projectId)
-            .update({
-          'previous': currentState,
-          'current': newState,
-          'lastUpdated': Timestamp.now(),
-        });
-        print("✅ Firestore state updated for project $projectId.");
-      } catch (e) {
-        print("❌ Failed to update Firestore state for project $projectId: $e");
-        return;
-      }
+          // Store in Firestore (creator)
+          final userDocRef = FirebaseFirestore.instance.collection("users").doc(creatorWallet);
+          await userDocRef.set({}, SetOptions(merge: true));
+          await userDocRef.collection("notifications").add({
+            "title": title,
+            "body": body,
+            "timestamp": FieldValue.serverTimestamp(),
+            "projectId": projectId,
+            "type": "project_state",
+            "state": newState,
+          });
 
-      // Prepare notification content
-      final projectName = project["name"] ?? "Your Project";
-      final title = "$projectName Status Update";
-      final body = "Project is '$newState'.";
-      print("🔔 Notification prepared: $title - $body");
+          print("✅ Creator notification stored and sent.");
+        }
 
-      // Load current user's wallet
-      final loadedWallet = await _loadWalletAddress();
-      print("👤 Loaded wallet address: ${loadedWallet ?? 'null'}");
-
-      final creatorWallet = (project["organization"] ?? "").toString().toLowerCase();
-      print("🏢 Project creator wallet: $creatorWallet");
-
-      // Notify creator
-      if (creatorWallet == loadedWallet?.toLowerCase()) {
-        print("📬 Sending notification to creator...");
-        notificationService.showNotification(title: title, body: body);
-
-        final userDocRef = FirebaseFirestore.instance.collection("users").doc(creatorWallet);
-        await userDocRef.set({}, SetOptions(merge: true));
-        await userDocRef.collection("notifications").add({
-          "title": title,
-          "body": body,
-          "timestamp": FieldValue.serverTimestamp(),
-          "projectId": projectId,
-          "type": "project_state",
-          "state": newState,
-        });
-        print("✅ Creator notification stored and sent.");
-      } else {
-        print("⛔ Current user is not the creator. Skipping creator notification.");
-      }
-
-      // Notify donors
-      try {
-        final donorServices = DonorServices();
+        // 🔁 Loop through donors
+  final donorServices = DonorServices();
         final donorsResult = await donorServices.fetchProjectDonors(BigInt.parse(projectId));
         List<EthereumAddress> donorAddresses = List<EthereumAddress>.from(donorsResult[0]);
 
-        print("🧾 Found ${donorAddresses.length} donor(s) for project $projectId.");
+        for (var donor in donorAddresses) {
+          final userAddress = donor.hex;
+          bool canVote = await donorServices.checkIfDonorCanVote(BigInt.parse(projectId), userAddress);
+          if (canVote) {
+            final donorDoc = FirebaseFirestore.instance.collection("users").doc(userAddress.toLowerCase());
+            await donorDoc.set({}, SetOptions(merge: true));
+            await donorDoc.collection("notifications").add({
+              "title": title,
+              "body": body,
+              "timestamp": FieldValue.serverTimestamp(),
+              "projectId": projectId,
+              "type": "donor_update",
+              "state": newState,
+            });
 
-       final projectBigInt = BigInt.parse(projectId);
-
-// Process donors in parallel using Future.wait
-await Future.wait(donorAddresses.map((donor) async {
-  final userAddress = donor.hex.toLowerCase();
-
-  try {
-    bool canVote = await donorServices.checkIfDonorCanVote(projectBigInt, userAddress);
-    print("✅ Donor $userAddress voting eligibility: $canVote");
-
-   if (canVote) {
-  final donorDoc = FirebaseFirestore.instance.collection("users").doc(userAddress);
-  await donorDoc.set({}, SetOptions(merge: true));
-  await donorDoc.collection("notifications").add({
-    "title": title,
-    "body": body,
-    "timestamp": FieldValue.serverTimestamp(),
-    "projectId": projectId,
-    "type": "donor_update",
-    "state": newState,
-  });
-
-  // ✅ Only show local notification if the current device belongs to this donor
-  if (loadedWallet?.toLowerCase() == userAddress) {
-    notificationService.showNotification(title: title, body: body);
-    print("✅ Donor notification shown locally for $userAddress.");
-  } else {
-    print("ℹ️ Notification stored for donor $userAddress but not shown (different device).");
-  }
-}
-
-
-  } catch (e) {
-    print("❌ Error checking donor $userAddress: $e");
-  }
-}));
-
-      } catch (e) {
-        print("❌ Error notifying donors: $e");
+            print("✅ Notified donor $userAddress for project $projectId");
+          }
+        }
+      } else {
+        print("⏭️ No need to notify. Either state didn't change or not eligible.");
       }
     } else {
-      print("⏭️ No state change or notification not required. Skipping update.");
-      print("📌 currentState: $currentState, newState: $newState, shouldNotify: ${_shouldNotify(newState)}");
+      print("⚠️ Project document for $projectId no longer exists.");
     }
   });
 }
