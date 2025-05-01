@@ -180,8 +180,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         ownerCredentials,
         web3.Transaction.callContract(
           contract: contract,
-          gasPrice: EtherAmount.inWei(BigInt.from(50000000000)), // 1 Gwei
-
           function: registerCharity,
           parameters: [
             _organizationNameController.text,
@@ -195,6 +193,8 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
             charityWallet,
             _passwordController.text.trim()
           ],
+          gasPrice: EtherAmount.inWei(BigInt.from(10000000000)), // ✅ 10 Gwei
+
           maxGas: 4000000,
         ),
         chainId: 11155111,
@@ -232,8 +232,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       );
     }
   }
-
-
 
   Future<void> _checkAccountStatusAndNavigate(
       BuildContext context, String walletAddress) async {

@@ -9,7 +9,16 @@ import 'dart:convert';
 class PostProject extends StatefulWidget {
   final String? walletAddress;
   final Map<String, dynamic>? draft;
-  const PostProject({super.key, this.walletAddress, this.draft});
+  final bool showDeleteIcon; // New parameter
+
+  const PostProject({
+    super.key,
+    this.walletAddress,
+    this.draft,
+    this.showDeleteIcon = true, // Default to true
+  });
+
+  // const PostProject({super.key, this.walletAddress, this.draft});
   @override
   _PostProjectScreenState createState() => _PostProjectScreenState();
 }
@@ -137,15 +146,18 @@ class _PostProjectScreenState extends State<PostProject> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red, size: 40),
-                      onPressed: () {
-                        _showDeleteConfirmationDialog(context);
-                      },
-                    ),
-                  ),
+                  // widget.showDeleteIcon
+                  //     ? Align(
+                  //         alignment: Alignment.topRight,
+                  //         child: IconButton(
+                  //           icon:
+                  //               Icon(Icons.delete, color: Colors.red, size: 40),
+                  //           onPressed: () {
+                  //             _showDeleteConfirmationDialog(context);
+                  //           },
+                  //         ),
+                  //       )
+                  //     : SizedBox.shrink(),
                   FocusableTextField(
                     label: 'Project Name:',
                     controller: _projectNameController,
@@ -673,45 +685,45 @@ class _PostProjectScreenState extends State<PostProject> {
     );
   }
 
- Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-  DateTime today = DateTime.now();
-  DateTime firstSelectableDate = today.add(Duration(days: 1)); // Disable today
+  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    DateTime today = DateTime.now();
+    DateTime firstSelectableDate =
+        today.add(Duration(days: 1)); // Disable today
 
-  DateTime? picked = await showDatePicker(
-    context: context,
-    initialDate: firstSelectableDate,
-    firstDate: firstSelectableDate, // Prevent selecting today and past dates
-    lastDate: DateTime(2101),
-    builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: Color.fromRGBO(24, 71, 137, 1),
-            onPrimary: Colors.white,
-            onSurface: Color.fromRGBO(24, 71, 137, 1),
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              foregroundColor: Color.fromRGBO(24, 71, 137, 1),
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: firstSelectableDate,
+      firstDate: firstSelectableDate, // Prevent selecting today and past dates
+      lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Color.fromRGBO(24, 71, 137, 1),
+              onPrimary: Colors.white,
+              onSurface: Color.fromRGBO(24, 71, 137, 1),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Color.fromRGBO(24, 71, 137, 1),
+              ),
             ),
           ),
-        ),
-        child: child!,
-      );
-    },
-  );
+          child: child!,
+        );
+      },
+    );
 
-  if (picked != null) {
-    setState(() {
-      if (isStartDate) {
-        _startDateController.text = picked.toString().split(' ')[0];
-      } else {
-        _deadlineController.text = picked.toString().split(' ')[0];
-      }
-    });
+    if (picked != null) {
+      setState(() {
+        if (isStartDate) {
+          _startDateController.text = picked.toString().split(' ')[0];
+        } else {
+          _deadlineController.text = picked.toString().split(' ')[0];
+        }
+      });
+    }
   }
-}
-
 
   Future<void> _saveProject() async {
     if (_projectNameController.text.isEmpty) {
@@ -811,10 +823,10 @@ class _PostProjectScreenState extends State<PostProject> {
         _selectedProjectType ?? 'Other',
       );
 
-       // Send notifications to donors
-      
+      // Send notifications to donors
+
       print("✅ Project successfully posted!");
- Navigator.pop(context);
+      Navigator.pop(context);
       // Navigate to project details page only after successful posting
       // Navigator.pushReplacement(
       //   context,
