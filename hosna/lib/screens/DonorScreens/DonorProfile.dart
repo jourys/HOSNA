@@ -263,7 +263,6 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('donorEmail', _email);
-      await prefs.setString('firstName', _firstName);
 
       print("✅ Donor data retrieved successfully!");
     } catch (e) {

@@ -5,7 +5,6 @@ import 'package:http/http.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ViewDonorsPage extends StatefulWidget {
   final int projectId;
 
@@ -16,9 +15,12 @@ class ViewDonorsPage extends StatefulWidget {
 }
 
 class _ViewDonorsPageState extends State<ViewDonorsPage> {
-  final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String donationContractAddress = '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d';
-  final String donorContractAddress = '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
+  final String rpcUrl =
+      'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
+  final String donationContractAddress =
+      '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d';
+  final String donorContractAddress =
+      '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
 
   late Web3Client _web3Client;
   late DeployedContract _donationContract;
@@ -80,7 +82,8 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
       ContractAbi.fromJson(donationAbi, 'DonationContract'),
       EthereumAddress.fromHex(donationContractAddress),
     );
-    _getProjectDonorsWithAmounts = _donationContract.function('getProjectDonorsWithAmounts');
+    _getProjectDonorsWithAmounts =
+        _donationContract.function('getProjectDonorsWithAmounts');
 
     _donorContract = DeployedContract(
       ContractAbi.fromJson(donorAbi, 'DonorContract'),
@@ -107,65 +110,66 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
     return null;
   }
 
- Future<void> _fetchDonorsWithProfiles() async {
-  try {
-    final result = await _web3Client.call(
-      contract: _donationContract,
-      function: _getProjectDonorsWithAmounts,
-      params: [BigInt.from(widget.projectId)],
-    );
+  Future<void> _fetchDonorsWithProfiles() async {
+    try {
+      final result = await _web3Client.call(
+        contract: _donationContract,
+        function: _getProjectDonorsWithAmounts,
+        params: [BigInt.from(widget.projectId)],
+      );
 
-    final addresses = result[0] as List;
-    final anonymousAmounts = result[1] as List;
-    final nonAnonymousAmounts = result[2] as List;
+      final addresses = result[0] as List;
+      final anonymousAmounts = result[1] as List;
+      final nonAnonymousAmounts = result[2] as List;
 
-    List<Map<String, dynamic>> donors = [];
+      List<Map<String, dynamic>> donors = [];
 
-    for (int i = 0; i < addresses.length; i++) {
-      final EthereumAddress addr = addresses[i];
-      final BigInt anonAmount = anonymousAmounts[i];
-      final BigInt nonAnonAmount = nonAnonymousAmounts[i];
+      for (int i = 0; i < addresses.length; i++) {
+        final EthereumAddress addr = addresses[i];
+        final BigInt anonAmount = anonymousAmounts[i];
+        final BigInt nonAnonAmount = nonAnonymousAmounts[i];
 
-      try {
-        final profile = await _web3Client.call(
-          contract: _donorContract,
-          function: _getDonor,
-          params: [addr],
-        );
+        try {
+          final profile = await _web3Client.call(
+            contract: _donorContract,
+            function: _getDonor,
+            params: [addr],
+          );
 
-        final walletAddress = profile[4].toString();
-        final profilePic = await _fetchProfilePicture(walletAddress);
+          final walletAddress = profile[4].toString();
+          final profilePic = await _fetchProfilePicture(walletAddress);
 
-        donors.add({
-          'firstName': profile[0],
-          'lastName': profile[1],
-          'email': profile[2],
-          'phone': profile[3],
-          'wallet': walletAddress,
-          'anonymousAmount': anonAmount,
-          'nonAnonymousAmount': nonAnonAmount,
-          'totalAmount': anonAmount + nonAnonAmount, // Add total
-          'profile_picture': profilePic,
-        });
-      } catch (e) {
-        print("Error fetching profile: $e");
+          donors.add({
+            'firstName': profile[0],
+            'lastName': profile[1],
+            'email': profile[2],
+            'phone': profile[3],
+            'wallet': walletAddress,
+            'anonymousAmount': anonAmount,
+            'nonAnonymousAmount': nonAnonAmount,
+            'totalAmount': anonAmount + nonAnonAmount, // Add total
+            'profile_picture': profilePic,
+          });
+        } catch (e) {
+          print("Error fetching profile: $e");
+        }
       }
+
+      // Sort donors by total amount in descending order
+      donors.sort((a, b) =>
+          (b['totalAmount'] as BigInt).compareTo(a['totalAmount'] as BigInt));
+
+      setState(() {
+        donorProfiles = donors;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error: $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    // Sort donors by total amount in descending order
-    donors.sort((a, b) => (b['totalAmount'] as BigInt).compareTo(a['totalAmount'] as BigInt));
-
-    setState(() {
-      donorProfiles = donors;
-      _isLoading = false;
-    });
-  } catch (e) {
-    print("Error: $e");
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
 
   void _navigateToDetails(Map<String, dynamic> donor) {
     Navigator.push(
@@ -186,151 +190,160 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
       return Icon(Icons.account_circle, size: 60, color: Colors.grey);
     }
   }
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text(
-        "Donors",
-        style: TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1),
-          fontWeight: FontWeight.bold,
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Donors",
+          style: TextStyle(
+            color: Color.fromRGBO(24, 71, 137, 1),
+            fontWeight: FontWeight.bold,
+          ),
         ),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: Color.fromRGBO(24, 71, 137, 1)),
       ),
-      backgroundColor: Colors.white,
-      elevation: 2,
-      centerTitle: true,
-      iconTheme: IconThemeData(color: Color.fromRGBO(24, 71, 137, 1)),
-    ),
-    body: _isLoading
-        ? Center(child: CircularProgressIndicator())
-        : donorProfiles.isEmpty
-            ? Center(
-                child: Text(
-                  "No donors found.",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : donorProfiles.isEmpty
+              ? Center(
+                  child: Text(
+                    "No donors found.",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: donorProfiles.length,
+                  padding: const EdgeInsets.all(16),
+                  itemBuilder: (context, index) {
+                    final donor = donorProfiles[index];
+                    final double anon =
+                        donor['anonymousAmount'].toDouble() / 1e18;
+                    final double nonAnon =
+                        donor['nonAnonymousAmount'].toDouble() / 1e18;
+
+                    List<Widget> tiles = [];
+
+                    if (nonAnon > 0) {
+                      tiles.add(
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 3,
+                          color:
+                              Colors.white, // Set the background color to white
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading:
+                                _buildProfileImage(donor['profile_picture']),
+                            title: Text(
+                              donor['firstName'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6.0),
+                              child: Text(
+                                "Donated amount: ${nonAnon.toStringAsFixed(8)} ETH",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[700]),
+                              ),
+                            ),
+                            onTap: () => _navigateToDetails(donor),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    bool? result = await showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return ReportDonorPopup(donor: donor);
+                                      },
+                                    );
+                                    if (result == true) {
+                                      // Handle the successful report sending here
+                                    }
+                                  },
+                                  child: Icon(Icons.flag,
+                                      size: 32, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (anon > 0) {
+                      tiles.add(
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          color:
+                              Colors.white, // Set the background color to white
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: Icon(Icons.account_circle,
+                                size: 50, color: Colors.grey[400]),
+                            title: Text(
+                              "Anonymous",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6.0),
+                              child: Text(
+                                "Donated amount: ${anon.toStringAsFixed(8)} ETH",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[700]),
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    bool? result = await showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return ReportDonorPopup(donor: donor);
+                                      },
+                                    );
+                                    if (result == true) {
+                                      // Handle the successful report sending here
+                                    }
+                                  },
+                                  child: Icon(Icons.flag,
+                                      size: 32, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(children: tiles);
+                  },
                 ),
-              )
-            : ListView.builder(
-                itemCount: donorProfiles.length,
-                padding: const EdgeInsets.all(16),
-                itemBuilder: (context, index) {
-                  final donor = donorProfiles[index];
-                  final double anon = donor['anonymousAmount'].toDouble() / 1e18;
-                  final double nonAnon = donor['nonAnonymousAmount'].toDouble() / 1e18;
-
-                  List<Widget> tiles = [];
-
-                  if (nonAnon > 0) {
-                    tiles.add(
-                      Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 3,
-                        color: Colors.white, // Set the background color to white
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: _buildProfileImage(donor['profile_picture']),
-                          title: Text(
-                            donor['firstName'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6.0),
-                            child: Text(
-                              "Donated amount: ${nonAnon.toStringAsFixed(8)} ETH",
-                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                            ),
-                          ),
-                          onTap: () => _navigateToDetails(donor),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                          children: [
-  GestureDetector(
-    onTap: () async {
-      bool? result = await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return ReportDonorPopup(donor: donor);
-        },
-      );
-      if (result == true) {
-        // Handle the successful report sending here
-      }
-    },
-    child: Icon(Icons.flag, size: 32, color: Colors.grey),
-  ),
-],
-
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (anon > 0) {
-                    tiles.add(
-                      Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        color: Colors.white, // Set the background color to white
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: Icon(Icons.account_circle, size: 50, color: Colors.grey[400]),
-                          title: Text(
-                            "Anonymous",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6.0),
-                            child: Text(
-                              "Donated amount: ${anon.toStringAsFixed(8)} ETH",
-                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                           children: [
-  GestureDetector(
-    onTap: () async {
-      bool? result = await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return ReportDonorPopup(donor: donor);
-        },
-      );
-      if (result == true) {
-        // Handle the successful report sending here
-      }
-    },
-    child: Icon(Icons.flag, size: 32, color: Colors.grey),
-  ),
-],
-
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(children: tiles);
-                },
-              ),
-  );
-}
+    );
+  }
 }
 
 class ReportDonorPopup extends StatefulWidget {
@@ -407,14 +420,16 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
               floatingLabelBehavior: FloatingLabelBehavior.auto,
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+                borderSide:
+                    const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: Colors.grey),
               ),
               counterText: "$titleLength/$titleMax",
-              counterStyle: TextStyle(color: titleLength >= titleMax ? Colors.red : Colors.grey),
+              counterStyle: TextStyle(
+                  color: titleLength >= titleMax ? Colors.red : Colors.grey),
             ),
           ),
           if (isTitleEmpty)
@@ -422,7 +437,10 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
               padding: const EdgeInsets.only(right: 130),
               child: Text(
                 "Title is required.",
-                style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           const SizedBox(height: 10),
@@ -433,17 +451,22 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
             decoration: InputDecoration(
               labelText: "Description*",
               alignLabelWithHint: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
+                borderSide:
+                    const BorderSide(color: Color.fromRGBO(24, 71, 137, 1)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: Colors.grey),
               ),
               counterText: "$descriptionLength/$descriptionMax",
-              counterStyle: TextStyle(color: descriptionLength >= descriptionMax ? Colors.red : Colors.grey),
+              counterStyle: TextStyle(
+                  color: descriptionLength >= descriptionMax
+                      ? Colors.red
+                      : Colors.grey),
             ),
           ),
           if (isDescriptionEmpty)
@@ -451,7 +474,10 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
               padding: const EdgeInsets.only(right: 100),
               child: Text(
                 "Description is required.",
-                style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
         ],
@@ -466,19 +492,26 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                 if (leave) Navigator.pop(context);
               },
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2.5),
+                side: const BorderSide(
+                    color: Color.fromRGBO(24, 71, 137, 1), width: 2.5),
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child: const Text(
                 " Cancel ",
-                style: TextStyle(color: Color.fromRGBO(24, 71, 137, 1), fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                    color: Color.fromRGBO(24, 71, 137, 1),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
               ),
             ),
             ElevatedButton(
               onPressed: () async {
-                if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+                if (titleController.text.isEmpty ||
+                    descriptionController.text.isEmpty) {
                   setState(() {
                     isTitleEmpty = titleController.text.isEmpty;
                     isDescriptionEmpty = descriptionController.text.isEmpty;
@@ -491,12 +524,17 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 "  Send  ",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
               ),
             ),
           ],
@@ -528,19 +566,23 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 3),
+                      side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1), width: 3),
                       backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                     ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 20, color: Colors.white)),
+                    child: const Text('Cancel',
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
                   ),
                   const SizedBox(width: 20),
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color.fromRGBO(212, 63, 63, 1), width: 3),
+                      side: const BorderSide(
+                          color: Color.fromRGBO(212, 63, 63, 1), width: 3),
                       backgroundColor: Color.fromRGBO(212, 63, 63, 1),
                     ),
-                    child: const Text('   Yes   ', style: TextStyle(fontSize: 20, color: Colors.white)),
+                    child: const Text('   Yes   ',
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
                   ),
                 ],
               ),
@@ -572,100 +614,112 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 3.5),
+                      side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1), width: 3.5),
                       backgroundColor: Colors.white,
                     ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 20, color: Color.fromRGBO(24, 71, 137, 1))),
+                    child: const Text('Cancel',
+                        style: TextStyle(
+                            fontSize: 20,
+                            color: Color.fromRGBO(24, 71, 137, 1))),
                   ),
                   const SizedBox(width: 20),
                   OutlinedButton(
-onPressed: () async {
-  if (targetDonorAddress.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error: Donor wallet address is missing!')),
-    );
-    return;
-  }
+                    onPressed: () async {
+                      if (targetDonorAddress.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Error: Donor wallet address is missing!')),
+                        );
+                        return;
+                      }
 
-  try {
-    final walletAddress = await _loadWalletAddress();
+                      try {
+                        final walletAddress = await _loadWalletAddress();
 
-    if (walletAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Wallet address not found. Please log in again.')),
-      );
-      return;
-    }
+                        if (walletAddress == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Error: Wallet address not found. Please log in again.')),
+                          );
+                          return;
+                        }
 
-    final title = titleController.text.trim();
-    final description = descriptionController.text.trim();
+                        final title = titleController.text.trim();
+                        final description = descriptionController.text.trim();
 
-    if (title.isEmpty || description.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both title and description.')),
-      );
-      return;
-    }
+                        if (title.isEmpty || description.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Please enter both title and description.')),
+                          );
+                          return;
+                        }
 
-    await FirebaseFirestore.instance.collection('reports').add({
-      'title': title,
-      'description': description,
-      'targetCharityAddress': targetDonorAddress,
-      'complainant': walletAddress,
-      'timestamp': FieldValue.serverTimestamp(),
-      'resolved': false,
-    });
+                        await FirebaseFirestore.instance
+                            .collection('reports')
+                            .add({
+                          'title': title,
+                          'description': description,
+                          'targetCharityAddress': targetDonorAddress,
+                          'complainant': walletAddress,
+                          'timestamp': FieldValue.serverTimestamp(),
+                          'resolved': false,
+                        });
 
-    Navigator.pop(context, true);
-    showSuccessPopup(context);
-  } catch (e) {
-    print("❌ Error submitting complaint: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to submit complaint: $e')),
-    );
-  }
-},
+                        Navigator.pop(context, true);
+                        showSuccessPopup(context);
+                      } catch (e) {
+                        print("❌ Error submitting complaint: $e");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('Failed to submit complaint: $e')),
+                        );
+                      }
+                    },
 
+                    //                 onPressed: () async {
+                    //                   if (targetDonorAddress.isEmpty) {
+                    //                     ScaffoldMessenger.of(context).showSnackBar(
+                    //                       const SnackBar(content: Text('Error: Donor wallet address is missing!')),
+                    //                     );
+                    //                     return;
+                    //                   }
 
+                    //                   try {
+                    //                     final complaintService = ComplaintService(
+                    //                     rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
+                    //   contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
+                    // );
 
+                    //                     String result = await complaintService.sendComplaint(
+                    //                       title: titleController.text.trim(),
+                    //                       description: descriptionController.text.trim(),
+                    //                       targetCharityAddress: targetDonorAddress, // It's the donor this time
+                    //                     );
 
-    //                 onPressed: () async {
-    //                   if (targetDonorAddress.isEmpty) {
-    //                     ScaffoldMessenger.of(context).showSnackBar(
-    //                       const SnackBar(content: Text('Error: Donor wallet address is missing!')),
-    //                     );
-    //                     return;
-    //                   }
-
-    //                   try {
-    //                     final complaintService = ComplaintService(
-    //                     rpcUrl: 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1' , // Replace securely
-    //   contractAddress: '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1', // Replace securely
-    // );
-
-    //                     String result = await complaintService.sendComplaint(
-    //                       title: titleController.text.trim(),
-    //                       description: descriptionController.text.trim(),
-    //                       targetCharityAddress: targetDonorAddress, // It's the donor this time
-    //                     );
-
-    //                     if (result.startsWith('Error')) {
-    //                       ScaffoldMessenger.of(context).showSnackBar(
-    //                         SnackBar(content: Text('Failed to send complaint: $result')),
-    //                       );
-    //                     } else {
-    //                       Navigator.pop(context, true);
-    //                       showSuccessPopup(context);
-    //                     }
-    //                   } catch (e) {
-    //                     print("Exception: $e");
-    //                   }
-    //                 },
+                    //                     if (result.startsWith('Error')) {
+                    //                       ScaffoldMessenger.of(context).showSnackBar(
+                    //                         SnackBar(content: Text('Failed to send complaint: $result')),
+                    //                       );
+                    //                     } else {
+                    //                       Navigator.pop(context, true);
+                    //                       showSuccessPopup(context);
+                    //                     }
+                    //                   } catch (e) {
+                    //                     print("Exception: $e");
+                    //                   }
+                    //                 },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 3.5),
+                      side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1), width: 3.5),
                       backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                     ),
-                    child: const Text(' Send ', style: TextStyle(fontSize: 20, color: Colors.white)),
+                    child: const Text(' Send ',
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
                   ),
                 ],
               ),
@@ -675,7 +729,7 @@ onPressed: () async {
         false;
   }
 
- // Method to load the wallet address from SharedPreferences
+  // Method to load the wallet address from SharedPreferences
   Future<String?> _loadWalletAddress() async {
     print('Loading wallet address...');
     try {
@@ -694,62 +748,57 @@ onPressed: () async {
       return null;
     }
   }
+
   void showSuccessPopup(BuildContext context) {
-
-  // Show dialog
-  showDialog(
-    context: context,
-    barrierDismissible: true, // Allow closing the dialog by tapping outside
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.white,
-        contentPadding: EdgeInsets.all(20), // Add padding around the dialog content
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15), // Rounded corners for a better look
-        ),
-        content: SizedBox(
-          width: 250, // Set a custom width for the dialog
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Ensure the column only takes the required space
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.check_circle, 
-                color: Color.fromARGB(255, 54, 142, 57), 
-                size: 50, // Bigger icon
-              ),
-              SizedBox(height: 20), // Add spacing between the icon and text
-              Text(
-                'Complaint send successfully!',
-                style: TextStyle(
-                  color: const Color.fromARGB(255, 54, 142, 57), 
-                  fontWeight: FontWeight.bold, 
-                  fontSize: 16, // Bigger text
-                ),
-                textAlign: TextAlign.center, // Center-align the text
-              ),
-            ],
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
           ),
-        ),
-      );
-    },
-  );
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'Complaint send successfully!',
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
 
-  // Automatically dismiss the dialog after 3 seconds
-  Future.delayed(const Duration(seconds: 3), () {
-    Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
-  Navigator.of(context, rootNavigator: true).pop(); 
-   });
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+      Navigator.of(context, rootNavigator: true).pop();
+    });
+  }
 }
-
-}
-
-
-
-
-
-
-
 
 class DonorDetailsPage extends StatelessWidget {
   final Map<String, dynamic> donor;
@@ -788,19 +837,22 @@ class DonorDetailsPage extends StatelessWidget {
                 children: [
                   donor['profile_picture'] != null
                       ? CircleAvatar(
-                          backgroundImage: NetworkImage(donor['profile_picture']),
+                          backgroundImage:
+                              NetworkImage(donor['profile_picture']),
                           radius: 60,
                         )
                       : CircleAvatar(
                           radius: 60,
                           backgroundColor: Colors.grey[300],
-                          child: Icon(Icons.person, size: 60, color: Colors.white),
+                          child:
+                              Icon(Icons.person, size: 60, color: Colors.white),
                         ),
-
                 ],
               ),
               SizedBox(height: 65),
-              ProfileItem(title: "Name", value: "${donor['firstName']} ${donor['lastName']}"),
+              ProfileItem(
+                  title: "Name",
+                  value: "${donor['firstName']} ${donor['lastName']}"),
               Divider(),
               ProfileItem(title: "Email", value: donor['email']),
               Divider(),
@@ -812,7 +864,6 @@ class DonorDetailsPage extends StatelessWidget {
     );
   }
 }
-
 
 class ProfileItem extends StatelessWidget {
   final String title;
@@ -873,4 +924,3 @@ class ProfileItem extends StatelessWidget {
     }
   }
 }
-

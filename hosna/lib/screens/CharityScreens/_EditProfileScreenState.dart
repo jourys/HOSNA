@@ -342,7 +342,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (walletAddress.isNotEmpty) {
       try {
         final doc = await FirebaseFirestore.instance
-            .collection('users')
+            .collection('charities')
             .doc(walletAddress)
             .get();
 
@@ -413,7 +413,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           print('✅ Download URL: $downloadUrl');
 
           await FirebaseFirestore.instance
-              .collection('users')
+              .collection('charities')
               .doc(_charityAddress)
               .set({'profilepicture': downloadUrl}, SetOptions(merge: true));
 
