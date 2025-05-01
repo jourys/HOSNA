@@ -139,12 +139,13 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 
           try {
             var doc = await FirebaseFirestore.instance
-                .collection('users')
+                .collection('charities')
                 .doc(wallet)
                 .get();
-
-            if (doc.exists && doc.data()!.containsKey('profilepicture')) {
-              profilePictureUrl = doc.data()!['profilepicture'];
+            if (doc.exists &&
+                doc.data() != null &&
+                doc.data()!.containsKey('profile_picture')) {
+              profilePictureUrl = doc.data()!['profile_picture'];
             }
           } catch (e) {
             print('❌ Error fetching profile picture for $wallet: $e');
