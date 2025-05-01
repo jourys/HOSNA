@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hosna/AdminScreens/AdminSidebar.dart';
 
-
 class BrowseProjects extends StatefulWidget {
   final String walletAddress;
   const BrowseProjects({super.key, required this.walletAddress});
@@ -30,7 +29,7 @@ class _BrowseProjectsState extends State<BrowseProjects> {
   bool isCanceled = false; // Default value
   String projectState = "";
   bool isSidebarVisible = false; // To toggle the sidebar visibility
-late GetCharityByWallet _charityService;
+  late GetCharityByWallet _charityService;
 
   final List<String> _projectTypes = [
     'All',
@@ -48,15 +47,15 @@ late GetCharityByWallet _charityService;
   void initState() {
     super.initState();
     _getUserType();
-   
+
     // Simulate loading delay
     Future.delayed(Duration(seconds: 2), () {
       setState(() {
         Loading = false;
       });
     });
-     _fetchProjects();
-     _charityService = GetCharityByWallet();
+    _fetchProjects();
+    _charityService = GetCharityByWallet();
   }
 
 // Future<void> _loadProjectState(String projectId) async {
@@ -79,6 +78,26 @@ late GetCharityByWallet _charityService;
 //   }
 // }
 
+  // Method to load the wallet address from SharedPreferences
+  Future<String?> _loadWalletAddress() async {
+    print('Loading wallet address...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? walletAddress = prefs.getString('walletAddress');
+
+      if (walletAddress == null) {
+        print("Error: Wallet address not found. Please log in again.");
+        return null;
+      }
+
+      print('Wallet address loaded successfully: $walletAddress');
+      return walletAddress;
+    } catch (e) {
+      print("Error loading wallet address: $e");
+      return null;
+    }
+  }
+
   Future<void> _getUserType() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -87,49 +106,61 @@ late GetCharityByWallet _charityService;
     print("All keys: ${prefs.getKeys()}");
   }
 
- Future<void> _fetchProjects() async { 
-  setState(() {
-    _isLoading = true;
-  });
+  Future<void> _fetchProjects() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  try {
-    final projectCount = await _blockchainService.getProjectCount();
-    print("Total Projects: $projectCount");
+    try {
+      final projectCount = await _blockchainService.getProjectCount();
+      print("🧮 Total Projects: $projectCount");
 
-    List<Map<String, dynamic>> projects = [];
+      List<Map<String, dynamic>> projects = [];
 
-    for (int i = 0; i < projectCount; i++) {
-      try {
-        final project = await _blockchainService.getProjectDetails(i);
-        if (project.containsKey("error")) {
-          print("Skipping invalid project ID: $i");
-          continue; // Skip invalid projects
+      for (int i = 0; i < projectCount; i++) {
+        print("🔍 Fetching project ID: $i");
+        try {
+          final project = await _blockchainService.getProjectDetails(i);
+          if (project.containsKey("error")) {
+            print("⚠️ Skipping invalid project ID: $i");
+            continue;
+          }
+
+          // ✅ Add the projectId manually for sorting
+          project['projectId'] = i;
+
+          print(
+              "✅ Project fetched: ID ${project['projectId']} - ${project['name']}");
+          projects.add(project);
+        } catch (e) {
+          print("❌ Error fetching project ID $i: $e");
         }
-        projects.add(project);
-      } catch (e) {
-        print("Error fetching project ID $i: $e");
       }
+
+      // 🔽 Sort by projectId descending
+      projects.sort((a, b) {
+        final int aId = a['projectId'] as int;
+        final int bId = b['projectId'] as int;
+        return bId.compareTo(aId); // Descending
+      });
+
+      print("📋 Sorted Projects:");
+      for (var project in projects) {
+        print(
+            "➡️ Project ID: ${project['projectId']} | Name: ${project['name']}");
+      }
+
+      setState(() {
+        _projects = projects;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("🚨 Error in _fetchProjects: $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    // ✅ Sort projects by startDate in descending order (newest first)
-    projects.sort((a, b) {
-      DateTime aDate = a['startDate'];
-      DateTime bDate = b['startDate'];
-      return bDate.compareTo(aDate); // Newest first
-    });
-
-    setState(() {
-      _projects = projects;
-      _isLoading = false;
-    });
-  } catch (e) {
-    print("Error fetching projects: $e");
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
-
 
   List<Map<String, dynamic>> _getFilteredProjects() {
     List<Map<String, dynamic>> filteredProjects = _projects;
@@ -169,89 +200,92 @@ late GetCharityByWallet _charityService;
     });
   }
 
+  Future<String> _getProjectState(Map<String, dynamic> project) async {
+    DateTime now = DateTime.now();
+    String projectId = project['id'].toString(); // Ensure it's a String
 
-Future<String> _getProjectState(Map<String, dynamic> project) async {
-  DateTime now = DateTime.now();
-  String projectId = project['id'].toString(); // Ensure it's a String
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
 
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .get();
+      if (!doc.exists) {
+        print("⚠️ Project not found. Creating default fields...");
+        await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .set({
+          'isCanceled': false,
+          'isCompleted': false,
+          'isEnded': false,
+          'votingInitiated': false,
+        });
+      }
 
-    if (!doc.exists) {
-      print("⚠️ Project not found. Creating default fields...");
-      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
-        'isCanceled': false,
-        'isCompleted': false,
-        'isEnded': false,
-        'votingInitiated': false,
-      });
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+
+      bool isCanceled = data['isCanceled'] ?? false;
+      bool isCompleted = data['isCompleted'] ?? false;
+      bool isEnded = false;
+      final votingId = data['votingId'];
+
+      if (votingId != null) {
+        final votingDocRef = FirebaseFirestore.instance
+            .collection("votings")
+            .doc(votingId.toString());
+
+        final votingDoc = await votingDocRef.get();
+        final votingData = votingDoc.data();
+
+        if (votingDoc.exists) {
+          isEnded = votingData?['IsEnded'] ?? false;
+        }
+      }
+      bool votingInitiated = data['votingInitiated'] ?? false;
+
+      // Determine projectState based on Firestore flags
+      if (isEnded) {
+        return "ended";
+      }
+      if (isCompleted) {
+        return "completed";
+      } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+        return "voting";
+      } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+        return "canceled";
+      }
+
+      // Fallback to logic based on time and funding progress
+      DateTime startDate = project['startDate'] != null
+          ? (project['startDate'] is DateTime
+              ? project['startDate']
+              : DateTime.parse(project['startDate']))
+          : DateTime.now();
+
+      DateTime endDate = project['endDate'] != null
+          ? (project['endDate'] is DateTime
+              ? project['endDate']
+              : DateTime.parse(project['endDate']))
+          : DateTime.now();
+
+      double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+      double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
+
+      if (now.isBefore(startDate)) {
+        return "upcoming";
+      } else if (donatedAmount >= totalAmount) {
+        return "in-progress";
+      } else if (now.isAfter(endDate)) {
+        return "failed";
+      } else {
+        return "active";
+      }
+    } catch (e) {
+      print("❌ Error determining project state for ID $projectId: $e");
+      return "unknown";
     }
-
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    bool isCanceled = data['isCanceled'] ?? false;
-    bool isCompleted = data['isCompleted'] ?? false;
-bool isEnded = false;
-final votingId = data['votingId'];
-
-if (votingId != null) {
-  final votingDocRef = FirebaseFirestore.instance
-      .collection("votings")
-      .doc(votingId.toString());
-
-  final votingDoc = await votingDocRef.get();
-  final votingData = votingDoc.data();
-
-  if (votingDoc.exists) {
-    isEnded = votingData?['IsEnded'] ?? false;
   }
-}
-    bool votingInitiated = data['votingInitiated'] ?? false;
-
-    // Determine projectState based on Firestore flags
-    if (isEnded) {
-      return "ended";}
-    if (isCompleted) {
-      return "completed";
-    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
-      return "voting";
-    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
-      return "canceled";
-    }
-
-    // Fallback to logic based on time and funding progress
-    DateTime startDate = project['startDate'] != null
-        ? (project['startDate'] is DateTime
-            ? project['startDate']
-            : DateTime.parse(project['startDate']))
-        : DateTime.now();
-
-    DateTime endDate = project['endDate'] != null
-        ? (project['endDate'] is DateTime
-            ? project['endDate']
-            : DateTime.parse(project['endDate']))
-        : DateTime.now();
-
-    double totalAmount = (project['totalAmount'] ?? 0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
-
-    if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount) {
-      return "in-progress";
-    } else if (now.isAfter(endDate)) {
-      return "failed";
-    } else {
-      return "active";
-    }
-  } catch (e) {
-    print("❌ Error determining project state for ID $projectId: $e");
-    return "unknown";
-  }
-}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -282,70 +316,71 @@ if (votingId != null) {
     }
   }
 
- Color _getStateColor(String state) {
-  switch (state) {
-    case "active":
-      return Colors.green;
-    case "failed":
-      return Colors.red;
-    case "in-progress":
-      return Colors.purple;
-    case "voting":
-      return Colors.blue;
-    case "canceled":
-      return Colors.orange;
-    case "ended":
-      return Colors.grey;
-    case "completed":
-      return  Color.fromRGBO(24, 71, 137, 1);
-    default:
-      return Colors.grey;
+  Color _getStateColor(String state) {
+    switch (state) {
+      case "active":
+        return Colors.green;
+      case "failed":
+        return Colors.red;
+      case "in-progress":
+        return Colors.purple;
+      case "voting":
+        return Colors.blue;
+      case "canceled":
+        return Colors.orange;
+      case "ended":
+        return Colors.grey;
+      case "completed":
+        return Color.fromRGBO(24, 71, 137, 1);
+      default:
+        return Colors.grey;
+    }
   }
-}
+
   double weiToEth(BigInt wei) {
     return (wei / BigInt.from(10).pow(18));
   }
 
+  @override
+  Widget build(BuildContext context) {
+    Color appBarBackgroundColor = Color.fromRGBO(24, 71, 137, 1);
+    Color appBarTitleColor = Colors.white;
 
- @override
-Widget build(BuildContext context) {
-  Color appBarBackgroundColor = Color.fromRGBO(24, 71, 137, 1);
-  Color appBarTitleColor = Colors.white;
+    if (userType != 0 && userType != 1) {
+      appBarBackgroundColor = Colors.white;
+      appBarTitleColor = Color.fromRGBO(24, 71, 137, 1);
+    }
 
-  if (userType != 0 && userType != 1) {
-    appBarBackgroundColor = Colors.white;
-    appBarTitleColor = Color.fromRGBO(24, 71, 137, 1);
-  }
+    bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-  bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
-  return Scaffold(
-    backgroundColor: isKeyboardVisible
-        ? Colors.white  // Use a different color when the keyboard is visible
-        : (userType == 0 || userType == 1)
-            ? const Color.fromRGBO(24, 71, 137, 1)
-            : null,
-    appBar: userType != 0 && userType != 1
-        ? null
-        : AppBar(
-            automaticallyImplyLeading: false, // Removes the default back arrow
-            centerTitle: true, // Centers the title
-            title: const Text(
-              'Browse Projects',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 23,
+    return Scaffold(
+      backgroundColor: isKeyboardVisible
+          ? Colors.white // Use a different color when the keyboard is visible
+          : (userType == 0 || userType == 1)
+              ? const Color.fromRGBO(24, 71, 137, 1)
+              : null,
+      appBar: userType != 0 && userType != 1
+          ? null
+          : AppBar(
+              automaticallyImplyLeading:
+                  false, // Removes the default back arrow
+              centerTitle: true, // Centers the title
+              title: const Text(
+                'Browse Projects',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 23,
+                ),
               ),
+              backgroundColor: appBarBackgroundColor,
+              foregroundColor: appBarTitleColor,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _fetchProjects,
+                ),
+              ],
             ),
-            backgroundColor: appBarBackgroundColor,
-            foregroundColor: appBarTitleColor,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _fetchProjects,
-              ),
-            ],
-          ),
 //admin
       body: userType != 0 && userType != 1
           ? Container(
@@ -454,10 +489,6 @@ Widget build(BuildContext context) {
                                   ),
                                 ],
                               ),
-
-
-
-                              
                               if (_selectedProjectType != null ||
                                   _showMyProjects)
                                 Padding(
@@ -592,30 +623,48 @@ Widget build(BuildContext context) {
                                                                     .grey[600]),
                                                           ),
                                                           SizedBox(height: 8),
-                                                         FutureBuilder<String>(
-  future: _charityService.getCharityName(
-    EthereumAddress.fromHex(project['organization']),
-  ),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return Text(
-        'Posted by: loading...',
-        style: TextStyle(color: Colors.grey[600]),
-      );
-    } else if (snapshot.hasError || snapshot.data == null) {
-      return Text(
-        'Posted by: Unknown',
-        style: TextStyle(color: Colors.grey[600]),
-      );
-    } else {
-      return Text(
-        'Posted by: ${snapshot.data}',
-        style: TextStyle(color: Colors.grey[600]),
-      );
-    }
-  },
-),
-
+                                                          FutureBuilder<String>(
+                                                            future: _charityService
+                                                                .getCharityName(
+                                                              EthereumAddress
+                                                                  .fromHex(project[
+                                                                      'organization']),
+                                                            ),
+                                                            builder: (context,
+                                                                snapshot) {
+                                                              if (snapshot
+                                                                      .connectionState ==
+                                                                  ConnectionState
+                                                                      .waiting) {
+                                                                return Text(
+                                                                  'Posted by: loading...',
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600]),
+                                                                );
+                                                              } else if (snapshot
+                                                                      .hasError ||
+                                                                  snapshot.data ==
+                                                                      null) {
+                                                                return Text(
+                                                                  'Posted by: Unknown',
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600]),
+                                                                );
+                                                              } else {
+                                                                return Text(
+                                                                  'Posted by: ${snapshot.data}',
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600]),
+                                                                );
+                                                              }
+                                                            },
+                                                          ),
                                                           SizedBox(height: 16),
                                                           LinearProgressIndicator(
                                                             value: progress,
@@ -690,271 +739,358 @@ Widget build(BuildContext context) {
                 ],
               ),
             )
-            //donors and charities
+          //donors and charities
           : Container(
-      margin: EdgeInsets.only(top: 10, bottom: 0), // Ensure margins are non-negative
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Search and Filter for non-admin users
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search for a project name',
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    IconButton(
-                      icon: Icon(Icons.filter_list),
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (context) {
-                            return Container(
-                              padding: EdgeInsets.all(16),
-                              constraints: BoxConstraints(
-                                maxHeight: MediaQuery.of(context).size.height * 0.5,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Filter by Project Type',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    if (userType == 1)
-                                      ListTile(
-                                        title: Text('My Projects'),
-                                        onTap: () {
-                                          setState(() {
-                                            _showMyProjects = true;
-                                            _selectedProjectType = null;
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                    for (String type in _projectTypes)
-                                      ListTile(
-                                        title: Text(type),
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedProjectType = type == 'All' ? null : type;
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
+              margin: EdgeInsets.only(
+                  top: 10, bottom: 0), // Ensure margins are non-negative
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
                 ),
-                if (_selectedProjectType != null || _showMyProjects)
+              ),
+              child: Column(
+                children: [
+                  // Search and Filter for non-admin users
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Chip(
-                          label: Text(_showMyProjects
-                              ? 'Filter: My Projects'
-                              : 'Filter: $_selectedProjectType'),
-                          onDeleted: () {
-                            setState(() {
-                              _selectedProjectType = null;
-                              _showMyProjects = false;
-                            });
-                          },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  hintText: 'Search for a project name',
+                                  prefixIcon: Icon(Icons.search),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _searchQuery = value;
+                                  });
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            IconButton(
+                              icon: Icon(Icons.filter_list),
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (context) {
+                                    return Container(
+                                      padding: EdgeInsets.all(16),
+                                      constraints: BoxConstraints(
+                                        maxHeight:
+                                            MediaQuery.of(context).size.height *
+                                                0.5,
+                                      ),
+                                      child: SingleChildScrollView(
+                                        child: Column(
+                                          children: [
+                                            Text(
+                                              'Filter by Project Type',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 10),
+                                            if (userType == 1)
+                                              ListTile(
+                                                title: Text('My Projects'),
+                                                onTap: () {
+                                                  setState(() {
+                                                    _showMyProjects = true;
+                                                    _selectedProjectType = null;
+                                                  });
+                                                  Navigator.pop(context);
+                                                },
+                                              ),
+                                            for (String type in _projectTypes)
+                                              ListTile(
+                                                title: Text(type),
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedProjectType =
+                                                        type == 'All'
+                                                            ? null
+                                                            : type;
+                                                  });
+                                                  Navigator.pop(context);
+                                                },
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 10),
-                        TextButton(
-                          onPressed: _resetFilters,
-                          child: Text('Reset Filters'),
-                        ),
+                        if (_selectedProjectType != null || _showMyProjects)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                Chip(
+                                  label: Text(_showMyProjects
+                                      ? 'Filter: My Projects'
+                                      : 'Filter: $_selectedProjectType'),
+                                  onDeleted: () {
+                                    setState(() {
+                                      _selectedProjectType = null;
+                                      _showMyProjects = false;
+                                    });
+                                  },
+                                ),
+                                SizedBox(width: 10),
+                                TextButton(
+                                  onPressed: _resetFilters,
+                                  child: Text('Reset Filters'),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ),
-              ],
-            ),
-          ),
-          // List of Projects
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _getFilteredProjects().isEmpty
-                    ? Center(child: Text('No projects found.'))
-                    : SingleChildScrollView(
-                        child: GestureDetector(
-                          onTap: () {
-                            // Dismiss the keyboard when tapping outside
-                            FocusScope.of(context).unfocus();
-                          },
-                          child: Container(
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).viewInsets.bottom, // Adjust for keyboard
-                            ),
-                            child: Column(
-                              children: _getFilteredProjects().map((project) {
-                                return FutureBuilder<String>(
-                                  future: _getProjectState(project),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      );
-                                    } else if (snapshot.hasError) {
-                                      return Text('Error: ${snapshot.error}');
-                                    } else if (snapshot.hasData) {
-                                      String projectState = snapshot.data!;
-                                      Color stateColor = _getStateColor(projectState);
-
-                                      double totalAmount = project['totalAmount'] ?? 0.0;
-                                      double donatedAmount = project['donatedAmount'] ?? 0.0;
-
-                                      double progress = (donatedAmount / (totalAmount == 0 ? 1 : totalAmount));
-
-                                      return Card(
-                                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                        child: InkWell(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => ProjectDetails(
-                                                  projectName: project['name'],
-                                                  description: project['description'],
-                                                  startDate: project['startDate'].toString(),
-                                                  deadline: project['endDate'].toString(),
-                                                  totalAmount: project['totalAmount'],
-                                                  projectType: project['projectType'],
-                                                  projectCreatorWallet: project['organization'] ?? '',
-                                                  donatedAmount: project['donatedAmount'],
-                                                  projectId: project['id'],
-                                                  progress: progress,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  project['name'],
-                                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                                ),
-                                                SizedBox(height: 8),
-                                                Text(
-                                                  project['description'],
-                                                  style: TextStyle(color: Colors.grey[600]),
-                                                ),
-                                                SizedBox(height: 8),
-                                                FutureBuilder<String>(
-                                                  future: _charityService.getCharityName(
-                                                    EthereumAddress.fromHex(project['organization']),
-                                                  ),
-                                                  builder: (context, snapshot) {
-                                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                                      return Text(
-                                                        'Posted by: loading...',
-                                                        style: TextStyle(color: Colors.grey[600]),
-                                                      );
-                                                    } else if (snapshot.hasError || snapshot.data == null) {
-                                                      return Text(
-                                                        'Posted by: Unknown',
-                                                        style: TextStyle(color: Colors.grey[600]),
-                                                      );
-                                                    } else {
-                                                      return Text(
-                                                        'Posted by: ${snapshot.data}',
-                                                        style: TextStyle(color: Colors.grey[600]),
-                                                      );
-                                                    }
-                                                  },
-                                                ),
-                                                SizedBox(height: 16),
-                                                LinearProgressIndicator(
-                                                  value: progress,
-                                                  backgroundColor: Colors.grey[200],
-                                                  valueColor: AlwaysStoppedAnimation<Color>(stateColor),
-                                                ),
-                                                SizedBox(height: 8),
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      '${(progress * 100).toStringAsFixed(0)}%',
-                                                      style: TextStyle(color: Colors.grey[600]),
-                                                    ),
-                                                    Container(
-                                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: stateColor.withOpacity(0.2),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                      child: Text(
-                                                        projectState,
-                                                        style: TextStyle(color: stateColor, fontWeight: FontWeight.bold),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      return Text('No data available');
-                                    }
+                  // List of Projects
+                  Expanded(
+                    child: _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : _getFilteredProjects().isEmpty
+                            ? Center(child: Text('No projects found.'))
+                            : SingleChildScrollView(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Dismiss the keyboard when tapping outside
+                                    FocusScope.of(context).unfocus();
                                   },
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                      ),
-          ),
-        ],
-      ),
-    ),
+                                  child: Container(
+                                    padding: EdgeInsets.only(
+                                      bottom: MediaQuery.of(context)
+                                          .viewInsets
+                                          .bottom, // Adjust for keyboard
+                                    ),
+                                    child: Column(
+                                      children:
+                                          _getFilteredProjects().map((project) {
+                                        return FutureBuilder<String>(
+                                          future: _getProjectState(project),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.connectionState ==
+                                                ConnectionState.waiting) {
+                                              return CircularProgressIndicator(
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              );
+                                            } else if (snapshot.hasError) {
+                                              return Text(
+                                                  'Error: ${snapshot.error}');
+                                            } else if (snapshot.hasData) {
+                                              String projectState =
+                                                  snapshot.data!;
+                                              Color stateColor =
+                                                  _getStateColor(projectState);
 
+                                              double totalAmount =
+                                                  project['totalAmount'] ?? 0.0;
+                                              double donatedAmount =
+                                                  project['donatedAmount'] ??
+                                                      0.0;
 
+                                              double progress = (donatedAmount /
+                                                  (totalAmount == 0
+                                                      ? 1
+                                                      : totalAmount));
 
+                                              return Card(
+                                                margin: EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                    horizontal: 16),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            ProjectDetails(
+                                                          projectName:
+                                                              project['name'],
+                                                          description: project[
+                                                              'description'],
+                                                          startDate: project[
+                                                                  'startDate']
+                                                              .toString(),
+                                                          deadline:
+                                                              project['endDate']
+                                                                  .toString(),
+                                                          totalAmount: project[
+                                                              'totalAmount'],
+                                                          projectType: project[
+                                                              'projectType'],
+                                                          projectCreatorWallet:
+                                                              project['organization'] ??
+                                                                  '',
+                                                          donatedAmount: project[
+                                                              'donatedAmount'],
+                                                          projectId:
+                                                              project['id'],
+                                                          progress: progress,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            16.0),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          project['name'],
+                                                          style: TextStyle(
+                                                              fontSize: 18,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Text(
+                                                          project[
+                                                              'description'],
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .grey[600]),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        FutureBuilder<String>(
+                                                          future: _charityService
+                                                              .getCharityName(
+                                                            EthereumAddress
+                                                                .fromHex(project[
+                                                                    'organization']),
+                                                          ),
+                                                          builder: (context,
+                                                              snapshot) {
+                                                            if (snapshot
+                                                                    .connectionState ==
+                                                                ConnectionState
+                                                                    .waiting) {
+                                                              return Text(
+                                                                'Posted by: loading...',
+                                                                style: TextStyle(
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600]),
+                                                              );
+                                                            } else if (snapshot
+                                                                    .hasError ||
+                                                                snapshot.data ==
+                                                                    null) {
+                                                              return Text(
+                                                                'Posted by: Unknown',
+                                                                style: TextStyle(
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600]),
+                                                              );
+                                                            } else {
+                                                              return Text(
+                                                                'Posted by: ${snapshot.data}',
+                                                                style: TextStyle(
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600]),
+                                                              );
+                                                            }
+                                                          },
+                                                        ),
+                                                        SizedBox(height: 16),
+                                                        LinearProgressIndicator(
+                                                          value: progress,
+                                                          backgroundColor:
+                                                              Colors.grey[200],
+                                                          valueColor:
+                                                              AlwaysStoppedAnimation<
+                                                                      Color>(
+                                                                  stateColor),
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              '${(progress * 100).toStringAsFixed(0)}%',
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                          .grey[
+                                                                      600]),
+                                                            ),
+                                                            Container(
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                      horizontal:
+                                                                          8,
+                                                                      vertical:
+                                                                          4),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: stateColor
+                                                                    .withOpacity(
+                                                                        0.2),
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8),
+                                                              ),
+                                                              child: Text(
+                                                                projectState,
+                                                                style: TextStyle(
+                                                                    color:
+                                                                        stateColor,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            } else {
+                                              return Text('No data available');
+                                            }
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
-
 
 class GetCharityByWallet {
   final String rpcUrl =

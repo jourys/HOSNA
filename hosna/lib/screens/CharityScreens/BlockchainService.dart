@@ -5,7 +5,7 @@ import 'package:web3dart/web3dart.dart';
 class BlockchainService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xB149FF5f41242E9F4bAE264bDc34A441425a7b89';
+  final String contractAddress = '0x1e2140d77C1109f68bFfD126a75f3aa92Ad3bDBA';
   final String votingContractAddress =
       '0x10cB71B23561853CB19fEB587f31B1962b4fc802';
   late Web3Client _web3Client;
@@ -921,6 +921,41 @@ class BlockchainService {
     }
   }
 
+  Future<void> cancelPendingTransaction() async {
+  try {
+    // Step 1: Ensure the wallet is connected
+    await connect();
+
+    // Step 2: Get your wallet address
+    final address = await _credentials.extractAddress();
+
+    // Step 3: Get the current pending nonce (should match the stuck transaction)
+    final nonce = await _web3Client.getTransactionCount(
+      address,
+      atBlock: const BlockNum.pending(),
+    );
+
+    // Step 4: Send a 0 ETH transaction to yourself with higher gas price
+    final txHash = await _web3Client.sendTransaction(
+      _credentials,
+      Transaction(
+        to: address, // Sending to self
+        value: EtherAmount.zero(), // 0 ETH
+        gasPrice: EtherAmount.inWei(BigInt.from(2 * 1000000000)), // 2 Gwei (higher than old tx)
+        maxGas: 21000, // Minimum required gas for basic tx
+        nonce: nonce, // Use same nonce to replace the pending tx
+      ),
+      chainId: 11155111, // Sepolia
+    );
+
+    print("✅ Fake transaction sent to cancel pending tx. Hash: $txHash");
+  } catch (e) {
+    print("❌ Failed to cancel pending transaction: $e");
+    throw e;
+  }
+}
+
+
   Future<void> addProject(
     String name,
     String description,
@@ -937,7 +972,7 @@ class BlockchainService {
 
       final contract = await _getContract();
       final function = contract.function('addProject');
-
+ checkBalance() ;
       final transactionHash = await _web3Client.sendTransaction(
         _credentials,
         Transaction.callContract(
@@ -951,8 +986,8 @@ class BlockchainService {
             totalAmountInWei, // Send Wei value
             projectType,
           ],
-          gasPrice: EtherAmount.inWei(BigInt.from(10 * 1000000000)),
-          maxGas: 5000000,
+         gasPrice: await _web3Client.getGasPrice(), // 1 Gwei,
+          maxGas: 300000,
         ),
         chainId: 11155111, // Sepolia Testnet Chain ID
       );

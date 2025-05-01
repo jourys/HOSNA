@@ -1,9 +1,8 @@
 buildscript {
-    repositories {  // ✅ أضف هذا الجزء هنا
-        google()    // ✅ يتيح لـ Gradle الوصول إلى مكتبات Google
-        mavenCentral() // ✅ يتيح الوصول إلى مكتبات Java الأخرى
+    repositories {
+        google()
+        mavenCentral()
     }
-
     dependencies {
 classpath 'com.android.tools.build:gradle:8.2.1'
         classpath 'com.google.gms:google-services:4.4.0' // ✅ تحديث Google Services
