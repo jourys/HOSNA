@@ -71,7 +71,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
   final String rpcUrl =
       "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final EthereumAddress contractAddress =
-      EthereumAddress.fromHex("0x9fc0457DcF815009ea8D064108C66432f2F11549");
+      EthereumAddress.fromHex("0x95a20778c2713a11ff61695e57cd562f78f75754");
   bool isLoading = true;
 
   final BlockchainService _blockchainService = BlockchainService();
@@ -1932,7 +1932,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       // Load contract
       final donationContract = DeployedContract(
         ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0x6753413d428794F8CE9a9359E1739450A8cfED45'),
+        EthereumAddress.fromHex('0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d'),
       );
 
       final function = donationContract.function('donate');
@@ -2180,7 +2180,7 @@ class DonorServices {
   static const String _rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
   static const String _contractAddress =
-      '0x6753413d428794F8CE9a9359E1739450A8cfED45'; // Contract address on Sepolia
+      '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d'; // Contract address on Sepolia
 
   // Constructor for initializing Web3 client and contract
   DonorServices()
@@ -2256,6 +2256,40 @@ class DonorServices {
   }
 
 // Check if the user has donated to the project and if voting has started
+  Future<bool> checkIsDonor(BigInt projectId, String userAddress) async {
+    print("📌 Starting donor check for project ID: $projectId");
+    print("👤 Checking for user address: $userAddress");
+
+    if (userAddress == "null" || userAddress.isEmpty) {
+      print("❌ Invalid user address provided.");
+      return false;
+    }
+
+    final normalizedUserAddress = userAddress.toLowerCase();
+
+    // Fetch Firestore project data (to check if project is canceled)
+    final firestoreData = await fetchProjectFirestoreData(projectId);
+    print("📄 Firestore data: $firestoreData");
+
+    final donorsResult = await fetchProjectDonors(projectId);
+    print("📦 Donors fetched from blockchain: $donorsResult");
+
+    List<EthereumAddress> donorAddresses =
+        List<EthereumAddress>.from(donorsResult[0]);
+    print("📜 List of donor addresses:");
+    donorAddresses.forEach((addr) => print("   ➤ ${addr.hex}"));
+
+    bool isDonor = donorAddresses.any(
+      (address) => address.hex.toLowerCase() == normalizedUserAddress,
+    );
+
+    if (isDonor)
+      return true;
+    else
+      return false;
+  }
+
+// Check if the user has donated to the project and if voting has started
   Future<bool> checkIfDonorCanVote(BigInt projectId, String userAddress) async {
     try {
       print("📌 Starting donor check for project ID: $projectId");
@@ -2318,6 +2352,8 @@ class DonorServices {
     }
   }
 
+// Fetch Firestore data for project status (e.g., canceled or voting initiated)
+
   Future<List<Map<String, dynamic>>> getEligibleVotingProjects(
       String walletAddress) async {
     final blockchainService = BlockchainService();
@@ -2372,8 +2408,6 @@ class DonorServices {
 
     return eligibleVotingProjects;
   }
-
-// Fetch Firestore data for project status (e.g., canceled or voting initiated)
 
   Future<Map<String, dynamic>> fetchProjectFirestoreData(
       BigInt projectId) async {

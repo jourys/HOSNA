@@ -109,7 +109,7 @@ void fetchRefundedTotal() async {
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x6006A3B81DA08368C5C288F9117bEc8BDFd580e8");
+        EthereumAddress.fromHex("0x421679ff91d6443B13b40082a56D7cD38D94e6dc");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
