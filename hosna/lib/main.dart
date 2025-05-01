@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart'; 
+import 'package:firebase_core/firebase_core.dart'; // هنا تعديلي: استيراد Firebase Core
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/NotificationListener.dart';
 import 'package:hosna/screens/NotificationManager.dart';
-import 'firebase_options.dart';
+import 'firebase_options.dart'; // هنا تعديلي: استيراد إعدادات Firebase
 
 import 'screens/CharityScreens/CharitySignUpPage.dart'; // Import the missing CharityHome screen
 import 'screens/CharityScreens/charityHome.dart'; // Import the Charity Sign-Up screen
@@ -14,7 +14,7 @@ import 'screens/splash.dart';
 
 void main() async {
   WidgetsFlutterBinding
-      .ensureInitialized(); 
+      .ensureInitialized(); // ✅ التأكد من تهيئة الـ Widgets قبل Firebase
        NotificationService().initNotification();
 
 
@@ -22,6 +22,7 @@ void main() async {
 
   try {
     await Firebase.initializeApp(
+      // 🚀 تهيئة Firebase عند بدء التطبيق
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print("✅ Firebase initialized successfully 🎉");
