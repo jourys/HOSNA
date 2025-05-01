@@ -262,7 +262,8 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
       });
 
       final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('donorEmail', _email);
+      await prefs.setString('donorEmail', _email);
+      await prefs.setString('firstName', _firstName);
 
       print("✅ Donor data retrieved successfully!");
     } catch (e) {
@@ -324,7 +325,6 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
         // Setting the height of the AppBar using preferredSize
         toolbarHeight: 60, // Adjust the height here
       ),
-    
       body: Container(
         color: Colors.blue[900],
         child: Container(
@@ -336,7 +336,6 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
           padding: EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            
             children: [
               SizedBox(height: 40),
               CircleAvatar(
@@ -361,9 +360,8 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                     InfoRow(title: 'Phone : ', value: _phone),
-InfoRow(title: 'Email : ', value: _email),
-
+                      InfoRow(title: 'Phone : ', value: _phone),
+                      InfoRow(title: 'Email : ', value: _email),
                       SizedBox(height: 200),
                       Center(
                         child: SizedBox(
@@ -398,11 +396,12 @@ InfoRow(title: 'Email : ', value: _email),
                                     '✅ User logged out. Session cleared but private key and wallet address retained.');
 
                                 // Navigate to UsersPage
-                              Navigator.pushAndRemoveUntil(
-                                      context,
-    MaterialPageRoute(builder: (context) => UsersPage()),
-    (route) => false,
-  );
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => UsersPage()),
+                                  (route) => false,
+                                );
                               },
                               child: const Text(
                                 'Log out',
@@ -481,7 +480,6 @@ InfoRow(title: 'Email : ', value: _email),
     );
   }
 }
-
 
 class InfoRow extends StatefulWidget {
   final String title;
