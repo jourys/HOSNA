@@ -6,8 +6,6 @@ import 'package:hosna/AdminScreens/Terms&cond.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/ViewComplaintsPage.dart';
-import 'package:hosna/AdminScreens/CancelledProjectsPage.dart';
-import 'package:hosna/AdminScreens/SuspendedAccountsPage.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:http/http.dart';
@@ -48,12 +46,7 @@ class AdminSidebar extends StatelessWidget {
           _buildSidebarItem(context, "Projects",
               () => _navigateTo(context, BrowseProjects(walletAddress: ''))),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-          _buildSidebarItem(context, "Cancelled Projects",
-              () => _navigateTo(context, CancelledProjectsPage())),
-          Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-          _buildSidebarItem(context, "Suspended Accounts",
-              () => _navigateTo(context, SuspendedAccountsPage())),
-          Divider(color: Color.fromRGBO(24, 71, 137, 1)),
+  
           _buildSidebarItem(context, "Complaints",
               () => _navigateTo(context, ViewComplaintsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),

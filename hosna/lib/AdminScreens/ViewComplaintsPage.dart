@@ -963,7 +963,7 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
       final deletedComplaintData = {
         ...complaintData,
         'deletedAt': FieldValue.serverTimestamp(),
-        'deletedBy': FirebaseAuth.instance.currentUser?.email ?? 'Admin',
+        
         'deletionJustification': justification,
       };
       

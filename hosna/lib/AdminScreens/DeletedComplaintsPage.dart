@@ -245,25 +245,7 @@ class _DeletedComplaintsPageState extends State<DeletedComplaintsPage> {
                             SizedBox(height: 30),
                             Divider(color: Colors.grey),
                             SizedBox(height: 20),
-                            Text(
-                                'Deletion Information',
-                                style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red)),
-                            SizedBox(height: 10),
-                            Text(
-                                'Deleted At: ${DateFormat('MMM d, yyyy HH:mm').format(complaint['deletedAt'])}',
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.red[700])),
-                            SizedBox(height: 10),
-                            Text(
-                                'Deleted By: ${complaint['deletedBy']}',
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.red[700])),
-                            SizedBox(height: 10),
+                        
                             Text(
                                 'Justification:',
                                 style: TextStyle(
