@@ -112,6 +112,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return contract;
   }
 
+  Future<bool> isPhoneNumberTaken(String phone) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .get();
+
+      final prefs = await SharedPreferences.getInstance();
+      String? myWallet = prefs.getString('walletAddress');
+
+      // If the phone is used by someone else (not this user), return true
+      return querySnapshot.docs.any((doc) => doc.id != myWallet);
+    } catch (e) {
+      print('❌ Error checking phone duplication: $e');
+      return false;
+    }
+  }
+
   Future<void> estimateGasCost() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -273,6 +291,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       showError("Description must be at most 250 characters.");
       return;
     }
+    bool taken = await isPhoneNumberTaken(phone);
+    if (taken) {
+      showError(
+          "This phone number is already registered with another account.");
+      return;
+    }
 
     print("🔹 Preparing transaction...");
     await estimateGasCost();
@@ -306,7 +330,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⏳ Waiting for updating your profile...'),
+          content: Text('Waiting for updating your profile...'),
           duration: Duration(seconds: 10),
         ),
       );
@@ -520,10 +544,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _buildTextField(nameController, 'Organization Name'),
               _buildTextField(emailController, 'Email'),
               _buildTextField(phoneController, 'Phone', isPhone: true),
-              _buildTextField(licenseController, 'License Number'),
+              // _buildTextField(licenseController, 'License Number'),
               _buildTextField(cityController, 'City'),
               _buildTextField(websiteController, 'Website'),
-              _buildTextField(dateController, 'Establishment Date'),
+              // _buildTextField(dateController, 'Establishment Date'),
+              _buildTextField(licenseController, 'License Number',
+                  readOnly: true),
+              _buildTextField(
+                dateController,
+                'Establishment Date',
+                readOnly: true,
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.tryParse(dateController.text) ??
+                        DateTime.now(),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      dateController.text =
+                          pickedDate.toIso8601String().split('T')[0];
+                    });
+                  }
+                },
+              ),
+
               _buildTextField(descriptionController, 'Description',
                   maxLines: 3),
               SizedBox(height: 20),
@@ -559,36 +606,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     String label, {
     int maxLines = 1,
     bool isPhone = false,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
+        readOnly: readOnly,
+        onTap: onTap,
         style: TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1), // Input text color
+          color: Color.fromRGBO(24, 71, 137, 1),
         ),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(
-            color: Color.fromRGBO(24, 71, 137, 1), // Label color
+            color: Color.fromRGBO(24, 71, 137, 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(
-              color:
-                  Color.fromRGBO(24, 71, 137, 1), // Border color when focused
+              color: Color.fromRGBO(24, 71, 137, 1),
               width: 2,
             ),
-            borderRadius:
-                BorderRadius.circular(12), // Optional: rounded corners
+            borderRadius: BorderRadius.circular(12),
           ),
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(
-              color: Color.fromRGBO(
-                  24, 71, 137, 1), // Border color when not focused
+              color: Color.fromRGBO(24, 71, 137, 1),
             ),
-            borderRadius:
-                BorderRadius.circular(12), // Optional: rounded corners
+            borderRadius: BorderRadius.circular(12),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

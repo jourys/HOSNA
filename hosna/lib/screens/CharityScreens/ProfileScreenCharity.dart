@@ -126,15 +126,19 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     // 🔹 Step 2: Check for active projects
     for (final project in projects) {
       String state = await _getProjectState(project);
-      if (state == "active" || state == "canceled" || state == "failed") {
+      if (state == "active" ||
+          state == "canceled" ||
+          state == "failed" ||
+          state == "voting" ||
+          state == "in-progress") {
         print(
-            "You cannot delete your account while having active, canceled, or failed projects.");
+            "You cannot delete your account while having active, canceled, failed, voting, or in-progress projects.");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  "You cannot delete your account while having active, canceled, or failed projects.")),
+                  "You cannot delete your account while having active, canceled, failed, voting, or in-progress projects.")),
         );
-        return; // Exit without deleting
+        return;
       }
     }
 
@@ -331,6 +335,80 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
       print("Error determining project state for ID $projectId: $e");
       return "unknown";
     }
+  }
+
+  Future<bool> _showAccountDeleteConfirmation(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text(
+                'Confirm Deletion',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: const Text(
+                'Are you sure you want to delete your account?',
+                style: TextStyle(
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              actions: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(212, 63, 63, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Color.fromRGBO(212, 63, 63, 1),
+                      ),
+                      child: const Text(
+                        '   Yes   ',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+            );
+          },
+        ) ??
+        false;
   }
 
   Future<void> _getCharityData() async {
@@ -545,26 +623,10 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                               width: MediaQuery.of(context).size.width * .8,
                               child: ElevatedButton(
                                 onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: Text("Confirm Deletion"),
-                                      content: Text(
-                                          "Are you sure you want to delete your account? This action cannot be undone."),
-                                      actions: [
-                                        TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                            child: Text("Cancel")),
-                                        TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                            child: Text("Delete")),
-                                      ],
-                                    ),
-                                  );
-
-                                  if (confirm == true) {
+                                  final confirm =
+                                      await _showAccountDeleteConfirmation(
+                                          context);
+                                  if (confirm) {
                                     await deleteCharityAccount();
                                   }
                                 },
