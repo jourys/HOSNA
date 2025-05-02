@@ -262,10 +262,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    if (website.isNotEmpty && !Uri.parse(website).isAbsolute) {
-      showError("Please enter a valid website URL.");
+    if (website.isNotEmpty &&
+        !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
+            .hasMatch(website)) {
+      showError("Enter a valid website URL.");
       return;
     }
+
     if (description.length > 250) {
       showError("Description must be at most 250 characters.");
       return;
