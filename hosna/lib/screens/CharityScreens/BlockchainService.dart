@@ -922,39 +922,39 @@ class BlockchainService {
   }
 
   Future<void> cancelPendingTransaction() async {
-  try {
-    // Step 1: Ensure the wallet is connected
-    await connect();
+    try {
+      // Step 1: Ensure the wallet is connected
+      await connect();
 
-    // Step 2: Get your wallet address
-    final address = await _credentials.extractAddress();
+      // Step 2: Get your wallet address
+      final address = await _credentials.extractAddress();
 
-    // Step 3: Get the current pending nonce (should match the stuck transaction)
-    final nonce = await _web3Client.getTransactionCount(
-      address,
-      atBlock: const BlockNum.pending(),
-    );
+      // Step 3: Get the current pending nonce (should match the stuck transaction)
+      final nonce = await _web3Client.getTransactionCount(
+        address,
+        atBlock: const BlockNum.pending(),
+      );
 
-    // Step 4: Send a 0 ETH transaction to yourself with higher gas price
-    final txHash = await _web3Client.sendTransaction(
-      _credentials,
-      Transaction(
-        to: address, // Sending to self
-        value: EtherAmount.zero(), // 0 ETH
-        gasPrice: EtherAmount.inWei(BigInt.from(2 * 1000000000)), // 2 Gwei (higher than old tx)
-        maxGas: 21000, // Minimum required gas for basic tx
-        nonce: nonce, // Use same nonce to replace the pending tx
-      ),
-      chainId: 11155111, // Sepolia
-    );
+      // Step 4: Send a 0 ETH transaction to yourself with higher gas price
+      final txHash = await _web3Client.sendTransaction(
+        _credentials,
+        Transaction(
+          to: address, // Sending to self
+          value: EtherAmount.zero(), // 0 ETH
+          gasPrice: EtherAmount.inWei(
+              BigInt.from(2 * 1000000000)), // 2 Gwei (higher than old tx)
+          maxGas: 21000, // Minimum required gas for basic tx
+          nonce: nonce, // Use same nonce to replace the pending tx
+        ),
+        chainId: 11155111, // Sepolia
+      );
 
-    print("✅ Fake transaction sent to cancel pending tx. Hash: $txHash");
-  } catch (e) {
-    print("❌ Failed to cancel pending transaction: $e");
-    throw e;
+      print("✅ Fake transaction sent to cancel pending tx. Hash: $txHash");
+    } catch (e) {
+      print("❌ Failed to cancel pending transaction: $e");
+      throw e;
+    }
   }
-}
-
 
   Future<void> addProject(
     String name,
@@ -972,7 +972,7 @@ class BlockchainService {
 
       final contract = await _getContract();
       final function = contract.function('addProject');
- checkBalance() ;
+      checkBalance();
       final transactionHash = await _web3Client.sendTransaction(
         _credentials,
         Transaction.callContract(
@@ -986,7 +986,7 @@ class BlockchainService {
             totalAmountInWei, // Send Wei value
             projectType,
           ],
-         gasPrice: await _web3Client.getGasPrice(), // 1 Gwei,
+          gasPrice: await _web3Client.getGasPrice(), // 1 Gwei,
           maxGas: 300000,
         ),
         chainId: 11155111, // Sepolia Testnet Chain ID

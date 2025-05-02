@@ -1907,7 +1907,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
 
       if (amount.isEmpty || double.tryParse(amount) == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid donation amount.')),
+          const SnackBar(content: Text('Amount is required')),
         );
         return;
       }
