@@ -126,12 +126,13 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
     // 🔹 Step 2: Check for active projects
     for (final project in projects) {
       String state = await _getProjectState(project);
-      if (state == "active") {
-        print("Cannot delete account while having active projects.");
+      if (state == "active" || state == "canceled" || state == "failed") {
+        print(
+            "You cannot delete your account while having active, canceled, or failed projects.");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  "You cannot delete your account while having active projects.")),
+                  "You cannot delete your account while having active, canceled, or failed projects.")),
         );
         return; // Exit without deleting
       }

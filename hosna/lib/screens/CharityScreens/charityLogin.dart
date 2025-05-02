@@ -38,9 +38,9 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       "0xC6bbeC9116dB9955987b21f0093cabA4dF895EBF";
   bool _isPasswordVisible = false; // Track password visibility
   final creatorPrivateKey =
-        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
+      "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
   final String _charityRegistryAddress =
-        "0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7";
+      "0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7";
 
   @override
   void initState() {
@@ -70,9 +70,9 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
       if (authSuccess) {
         print("✅ Login successful!");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login successful!')),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Login successful!')),
+        // );
 
         // Perform wallet lookup
         String walletAddress = await _getWalletAddressByEmail(email);
@@ -110,7 +110,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
           //   );
           // });
         } else {
-          print("❌ No wallet address found!");
+          print("❌ No Email address found!");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No wallet address found!')),
           );
@@ -148,14 +148,14 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       String? privateKey = prefs.getString(privateKeyKey);
 
       if (privateKey != null) {
-        print('✅ Private key retrieved for wallet $walletAddress');
+        print('Private key retrieved for wallet $walletAddress');
       } else {
-        print('❌ Private key not found for wallet $walletAddress');
+        print('Private key not found for wallet $walletAddress');
       }
 
       return privateKey;
     } catch (e) {
-      print('⚠️ Error retrieving private key: $e');
+      print('Error retrieving private key: $e');
       return null;
     }
   }
@@ -186,11 +186,11 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         print("✅ Wallet Address Found: ${walletResult[0].hex}");
         return walletResult[0].hex;
       } else {
-        print("❌ No valid wallet address found!");
+        print("No valid wallet address found!");
         return "";
       }
     } catch (e) {
-      print('❌ Error in wallet lookup: $e');
+      print('Error in wallet lookup: $e');
       return "";
     }
   }
@@ -223,10 +223,10 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         String? storedKey = prefs.getString('privateKey');
         print("🔍 Retrieved Private Key After Saving: $storedKey");
       } else {
-        print("❌ Private Key is null or empty! Check login process.");
+        print("Private Key is null or empty! Check login process.");
       }
     } catch (e) {
-      print("❌ Error saving wallet details: $e");
+      print("Error saving wallet details: $e");
     }
   }
 
@@ -242,26 +242,23 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         String accountStatus = userDoc['accountStatus'];
 
         if (accountStatus == 'approved') {
+          late ProjectNotificationListener projectNotificationListener;
 
+          projectNotificationListener = ProjectNotificationListener(
+            blockchainService: BlockchainService(),
+            notificationService: NotificationService(),
+          );
 
- late ProjectNotificationListener projectNotificationListener;
+          projectNotificationListener.checkProjectsForCreator();
 
-  projectNotificationListener = ProjectNotificationListener(
-    blockchainService: BlockchainService(),
-    notificationService: NotificationService(),
-  );
-
- projectNotificationListener.checkProjectsForCreator();
-
-
-         Navigator.pushAndRemoveUntil(
-  context,
-  MaterialPageRoute(
-    builder: (context) => CharityMainScreen(walletAddress: walletAddress),
-  ),
-  (route) => false, 
-);
-
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  CharityMainScreen(walletAddress: walletAddress),
+            ),
+            (route) => false,
+          );
         } else if (accountStatus == 'pending') {
           Navigator.pushReplacement(
             context,
@@ -289,7 +286,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         );
       }
     } catch (e) {
-      print("❌ Error checking account status: $e");
+      print("Error checking account status: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("An error occurred. Please try again."),
@@ -322,18 +319,16 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
           password: password,
         );
         authSuccess = true;
-      } 
-      on FirebaseAuthException catch (e) {
+      } on FirebaseAuthException catch (e) {
         print("Firebase authentication error: ${e.code} - ${e.message}");
         authSuccess = false;
-      } 
+      }
     }
     return authSuccess;
   }
-  
-  Future<void> _blockchainPasswordChange(String email, String password) async {
 
-      // Get the owner's credentials to pay for the gas fees
+  Future<void> _blockchainPasswordChange(String email, String password) async {
+    // Get the owner's credentials to pay for the gas fees
     final creatorCredentials = await _web3Client.credentialsFromPrivateKey(
         creatorPrivateKey); // Private key of contract owner
     final creatorWallet = await creatorCredentials.extractAddress();
@@ -459,18 +454,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     print("Function reference obtained: $deleteCharity");
 
     final authResult = await _web3Client.call(
-        contract: contract,
-        function: debugEmailMapping,
-        params: [email],
-      );
+      contract: contract,
+      function: debugEmailMapping,
+      params: [email],
+    );
 
     final charityWalletAddress = authResult[0];
 
     final charityDetails = await _web3Client.call(
-        contract: contract,
-        function: getCharity,
-        params: [charityWalletAddress],
-      );
+      contract: contract,
+      function: getCharity,
+      params: [charityWalletAddress],
+    );
 
     final charityName = charityDetails[0];
     final charityEmail = charityDetails[1];
@@ -482,8 +477,6 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
     final charityEstablishmentDate = charityDetails[7];
 
     print("Charity details: $charityDetails");
-    
-
 
     try {
       // Send the transaction to register the donor using the creator's wallet for gas
@@ -493,7 +486,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
           contract: contract,
           function: deleteCharity,
           parameters: [
-            charityWalletAddress,  
+            charityWalletAddress,
           ],
           gasPrice: web3.EtherAmount.inWei(BigInt.from(30000000000)),
           maxGas: 1000000,
@@ -501,10 +494,8 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         chainId: 11155111, // Replace with your network chain ID
       );
       print("Transaction result: $result");
-
     } catch (e) {
       print("Error changing password: $e");
-
     }
     try {
       // Send the transaction to register the donor using the creator's wallet for gas
@@ -531,45 +522,43 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         chainId: 11155111, // Replace with your network chain ID
       );
       print("Transaction result: $result");
-
     } catch (e) {
       print("Error changing password: $e");
-
     }
   }
 
   Future<bool> _tryFirebaseAuth(String email, String password) async {
-     try {
-       await FirebaseAuth.instance.signInWithEmailAndPassword(
-         email: email,
-         password: password,
-       );
-       print("✅ Firebase authentication successful");
-       return true;
-     } on FirebaseAuthException catch (e) {
-       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
-       String errorMessage;
-       switch (e.code) {
-         case 'user-not-found':
-           errorMessage = 'No user found with this email.';
-           break;
-         case 'wrong-password':
-           errorMessage = 'Wrong password provided.';
-           break;
-         case 'invalid-email':
-           errorMessage = 'The email address is not valid.';
-           break;
-         case 'user-disabled':
-           errorMessage = 'This user account has been disabled.';
-           break;
-         default:
-           errorMessage = e.message ?? 'Authentication failed';
-       }
-       return false;
-     }
-   }
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print("Firebase authentication successful");
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print("Firebase authentication error: ${e.code} - ${e.message}");
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user account has been disabled.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Authentication failed';
+      }
+      return false;
+    }
+  }
 
-   Future<bool> _tryBlockchainAuth(String email, String password) async {
+  Future<bool> _tryBlockchainAuth(String email, String password) async {
     try {
       final authContract = DeployedContract(
         ContractAbi.fromJson(
@@ -591,7 +580,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
 
       return authResult.isNotEmpty && authResult[0] == true;
     } catch (e) {
-      print('❌ Error during blockchain authentication: $e');
+      print('Error during blockchain authentication: $e');
       return false;
     }
   }
@@ -656,32 +645,32 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                 ),
               ),
               SizedBox(height: 30),
-               Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Navigate to the Reset Password page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const PasswordResetPage(), // الانتقال إلى صفحة إعادة تعيين كلمة المرور
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Forgot your password?',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color.fromRGBO(24, 71, 137, 1),
-                          fontWeight: FontWeight.bold,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to the Reset Password page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const PasswordResetPage(), // الانتقال إلى صفحة إعادة تعيين كلمة المرور
                         ),
+                      );
+                    },
+                    child: const Text(
+                      'Forgot your password?',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Color.fromRGBO(24, 71, 137, 1),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 30),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
                   onPressed: () => _authenticateCharity(),

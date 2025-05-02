@@ -10,7 +10,6 @@ import 'dart:convert';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 
-
 import 'package:hosna/screens/CharityScreens/CharityNotificationsCenter.dart';
 
 class CharityEmployeeHomePage extends StatefulWidget {
@@ -25,7 +24,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
   String _organizationName = '';
   List<Map<String, dynamic>> _projects = [];
   String? walletAddress;
-      bool _isLoading = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -62,7 +61,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     setState(() {
       walletAddress = savedWallet;
-       _isLoading = true;
+      _isLoading = true;
     });
 
     print('🧾 Logged-in Wallet Address: $walletAddress');
@@ -122,97 +121,99 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     setState(() {
       _projects = filtered;
-       _isLoading = false;
+      _isLoading = false;
     });
 
     print("✅ Filtered Projects Count: ${_projects.length}");
     await _checkProjectStates();
   }
 
- 
+  Future<String> _getProjectState(Map<String, dynamic> project) async {
+    DateTime now = DateTime.now();
+    String projectId = project['id'].toString(); // Ensure it's a String
 
-Future<String> _getProjectState(Map<String, dynamic> project) async {
-  DateTime now = DateTime.now();
-  String projectId = project['id'].toString(); // Ensure it's a String
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .get();
 
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .get();
+      if (!doc.exists) {
+        print("⚠️ Project not found. Creating default fields...");
+        await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .set({
+          'isCanceled': false,
+          'isCompleted': false,
+          'isEnded': false,
+          'votingInitiated': false,
+        });
+      }
 
-    if (!doc.exists) {
-      print("⚠️ Project not found. Creating default fields...");
-      await FirebaseFirestore.instance.collection('projects').doc(projectId).set({
-        'isCanceled': false,
-        'isCompleted': false,
-        'isEnded': false,
-        'votingInitiated': false,
-      });
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+
+      bool isCanceled = data['isCanceled'] ?? false;
+      bool isCompleted = data['isCompleted'] ?? false;
+      bool isEnded = false;
+      final votingId = data['votingId'];
+
+      if (votingId != null) {
+        final votingDocRef = FirebaseFirestore.instance
+            .collection("votings")
+            .doc(votingId.toString());
+
+        final votingDoc = await votingDocRef.get();
+        final votingData = votingDoc.data();
+
+        if (votingDoc.exists) {
+          isEnded = votingData?['IsEnded'] ?? false;
+        }
+      }
+      bool votingInitiated = data['votingInitiated'] ?? false;
+
+      // Determine projectState based on Firestore flags
+      if (isEnded) {
+        return "ended";
+      }
+      if (isCompleted) {
+        return "completed";
+      } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
+        return "voting";
+      } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
+        return "canceled";
+      }
+
+      // Fallback to logic based on time and funding progress
+      DateTime startDate = project['startDate'] != null
+          ? (project['startDate'] is DateTime
+              ? project['startDate']
+              : DateTime.parse(project['startDate']))
+          : DateTime.now();
+
+      DateTime endDate = project['endDate'] != null
+          ? (project['endDate'] is DateTime
+              ? project['endDate']
+              : DateTime.parse(project['endDate']))
+          : DateTime.now();
+
+      double totalAmount = (project['totalAmount'] ?? 0).toDouble();
+      double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
+
+      if (now.isBefore(startDate)) {
+        return "upcoming";
+      } else if (donatedAmount >= totalAmount) {
+        return "in-progress";
+      } else if (now.isAfter(endDate)) {
+        return "failed";
+      } else {
+        return "active";
+      }
+    } catch (e) {
+      print("❌ Error determining project state for ID $projectId: $e");
+      return "unknown";
     }
-
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    bool isCanceled = data['isCanceled'] ?? false;
-    bool isCompleted = data['isCompleted'] ?? false;
-bool isEnded = false;
-final votingId = data['votingId'];
-
-if (votingId != null) {
-  final votingDocRef = FirebaseFirestore.instance
-      .collection("votings")
-      .doc(votingId.toString());
-
-  final votingDoc = await votingDocRef.get();
-  final votingData = votingDoc.data();
-
-  if (votingDoc.exists) {
-    isEnded = votingData?['IsEnded'] ?? false;
   }
-}
-    bool votingInitiated = data['votingInitiated'] ?? false;
-
-    // Determine projectState based on Firestore flags
-    if (isEnded) {
-      return "ended";}
-    if (isCompleted) {
-      return "completed";
-    } else if (votingInitiated && (!isCompleted) && (!isEnded)) {
-      return "voting";
-    } else if (isCanceled && (!votingInitiated) && (!isEnded)) {
-      return "canceled";
-    }
-
-    // Fallback to logic based on time and funding progress
-    DateTime startDate = project['startDate'] != null
-        ? (project['startDate'] is DateTime
-            ? project['startDate']
-            : DateTime.parse(project['startDate']))
-        : DateTime.now();
-
-    DateTime endDate = project['endDate'] != null
-        ? (project['endDate'] is DateTime
-            ? project['endDate']
-            : DateTime.parse(project['endDate']))
-        : DateTime.now();
-
-    double totalAmount = (project['totalAmount'] ?? 0).toDouble();
-    double donatedAmount = (project['donatedAmount'] ?? 0).toDouble();
-
-    if (now.isBefore(startDate)) {
-      return "upcoming";
-    } else if (donatedAmount >= totalAmount) {
-      return "in-progress";
-    } else if (now.isAfter(endDate)) {
-      return "failed";
-    } else {
-      return "active";
-    }
-  } catch (e) {
-    print("❌ Error determining project state for ID $projectId: $e");
-    return "unknown";
-  }
-}
 
   Future<bool> _isProjectCanceled(String projectId) async {
     try {
@@ -223,7 +224,10 @@ if (votingId != null) {
 
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>?;
-        return data != null && (data['isCanceled'] == true && (data['votingInitiated'] == false || !data.containsKey('votingInitiated') ));
+        return data != null &&
+            (data['isCanceled'] == true &&
+                (data['votingInitiated'] == false ||
+                    !data.containsKey('votingInitiated')));
       }
     } catch (e) {
       print("❌ Error checking if project is canceled: $e");
@@ -393,112 +397,112 @@ if (votingId != null) {
                 padding: const EdgeInsets.all(16.0),
                 children: [
                   // Projects Awaiting section
-                 Container(
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(10),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.grey.withOpacity(0.1),
-        spreadRadius: 1,
-        blurRadius: 4,
-        offset: const Offset(0, 1),
-      ),
-    ],
-  ),
-  child: Column(
-    children: [
-      // Header
-      Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Projects Awaiting You To Start Voting',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color.fromRGBO(24, 71, 137, 1),
-            ),
-          ),
-        ),
-      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Header
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Projects Awaiting You To Start Voting',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                              ),
+                            ),
+                          ),
+                        ),
 
-      // Content
-      if (_isLoading) 
-        Padding(
-  padding: const EdgeInsets.all(16.0),
-  child: Center(
-    child: CircularProgressIndicator(
-      valueColor: AlwaysStoppedAnimation<Color>(
-        Color.fromRGBO(24, 71, 137, 1),
-      ),
-    ),
-  ),
-)
+                        // Content
+                        if (_isLoading)
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color.fromRGBO(24, 71, 137, 1),
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (_projects.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Center(
+                              child: Text(
+                                'No projects found.',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ..._projects.take(2).map((project) {
+                            final status = project['status'];
+                            final color = status == 'failed'
+                                ? Colors.red
+                                : (status == 'canceled'
+                                    ? Colors.orange
+                                    : Colors.blue);
 
-      else if (_projects.isEmpty)
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Center(
-            child: Text(
-              'No projects found.',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        )
-      else
-        ..._projects.take(2).map((project) {
-          final status = project['status'];
-          final color = status == 'failed'
-              ? Colors.red
-              : (status == 'canceled'
-                  ? Colors.orange
-                  : Colors.blue);
+                            return _buildProjectCard(
+                              project['name'],
+                              status[0].toUpperCase() + status.substring(1),
+                              color,
+                              '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                            );
+                          }).toList(),
 
-          return _buildProjectCard(
-            project['name'],
-            status[0].toUpperCase() + status.substring(1),
-            color,
-            '${(project['progress'] * 100).toStringAsFixed(0)}%',
-          );
-        }).toList(),
-
-      if (!_isLoading && _projects.length > 2)
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CanceledFailedProjects(),
-                ),
-              );
-            },
-            icon: const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: Color.fromRGBO(24, 71, 137, 1),
-            ),
-            label: const Text(
-              'See All',
-              style: TextStyle(
-                color: Color.fromRGBO(24, 71, 137, 1),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.only(right: 16),
-            ),
-          ),
-        ),
-    ],
-  ),
-),
+                        if (!_isLoading && _projects.length > 2)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CanceledFailedProjects(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: Color.fromRGBO(24, 71, 137, 1),
+                              ),
+                              label: const Text(
+                                'See All',
+                                style: TextStyle(
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.only(right: 16),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 24),
                   // Draft Projects section

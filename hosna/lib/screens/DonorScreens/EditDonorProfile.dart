@@ -293,11 +293,11 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       );
 
       print("✅ Transaction Hash: $txHash");
-      print("⏳ Waiting for blockchain confirmation...");
+      print("Waiting for updating your profile...");
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('⏳ Waiting for blockchain confirmation...')),
+          SnackBar(content: Text('Waiting for updating your profile...')),
         );
       }
 
@@ -325,14 +325,15 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:AppBar(
+      appBar: AppBar(
         backgroundColor: Colors.white,
         title: const Text(
           'Edit Profile',
-          style: TextStyle(color:const Color.fromRGBO(24, 71, 137, 1)),
+          style: TextStyle(color: const Color.fromRGBO(24, 71, 137, 1)),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color:const Color.fromRGBO(24, 71, 137, 1)),
+          icon: const Icon(Icons.arrow_back,
+              color: const Color.fromRGBO(24, 71, 137, 1)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -359,7 +360,8 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
                       bottom: 0,
                       right: 0,
                       child: IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue[900]), iconSize: 40,
+                        icon: Icon(Icons.edit, color: Colors.blue[900]),
+                        iconSize: 40,
                         onPressed: () {
                           showModalBottomSheet(
                             context: context,
@@ -397,26 +399,27 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
               _buildTextField(firstNameController, 'First Name'),
               SizedBox(height: 10),
               _buildTextField(lastNameController, 'Last Name'),
-               SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildTextField(emailController, 'Email', isEmail: true),
-               SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildTextField(phoneController, 'Phone', isPhone: true),
               SizedBox(height: 150),
               ElevatedButton(
                 onPressed: _updateDonorData,
                 child: Text('Save Changes'),
-                 style: ElevatedButton.styleFrom(
-  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-  foregroundColor: Colors.white,
-  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16), // Makes it bigger
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(20), // Rounded corners
-  ),
-  textStyle: TextStyle(
-    fontSize: 18, // Optional: Make the text inside bigger too
-    fontWeight: FontWeight.bold,
-  ),
-),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 32, vertical: 16), // Makes it bigger
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20), // Rounded corners
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: 18, // Optional: Make the text inside bigger too
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -425,64 +428,66 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     );
   }
 
- Widget _buildTextField(TextEditingController controller, String label,
-    {bool isEmail = false, bool isPhone = false}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: TextFormField(
-      controller: controller,
-      style: const TextStyle(
-        color: Color.fromRGBO(24, 71, 137, 1), // ✅ Input text color
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1), // ✅ Label color
+  Widget _buildTextField(TextEditingController controller, String label,
+      {bool isEmail = false, bool isPhone = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        style: const TextStyle(
+          color: Color.fromRGBO(24, 71, 137, 1), // ✅ Input text color
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
-          borderSide: const BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1), // ✅ Border color
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(
+            color: Color.fromRGBO(24, 71, 137, 1), // ✅ Label color
+          ),
+          border: OutlineInputBorder(
+            borderRadius:
+                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
+            borderSide: const BorderSide(
+              color: Color.fromRGBO(24, 71, 137, 1), // ✅ Border color
+            ),
+          ),
+          enabledBorder: const OutlineInputBorder(
+            borderRadius:
+                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
+            borderSide: BorderSide(
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius:
+                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
+            borderSide: BorderSide(
+              color: Color.fromRGBO(24, 71, 137, 1),
+              width: 2.0,
+            ),
           ),
         ),
-        enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
-          borderSide: BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1),
-          ),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
-          borderSide: BorderSide(
-            color: Color.fromRGBO(24, 71, 137, 1),
-            width: 2.0,
-          ),
-        ),
-      ),
-      readOnly: isEmail,
-      keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-      inputFormatters: isPhone
-          ? [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ]
-          : [],
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Enter $label';
-        }
-        if (isPhone) {
-          if (value.length != 10) {
-            return 'Phone number must be exactly 10 digits';
+        readOnly: isEmail,
+        keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+        inputFormatters: isPhone
+            ? [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ]
+            : [],
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Enter $label';
           }
-          if (!value.startsWith('05')) {
-            return 'Phone number must start with 05';
+          if (isPhone) {
+            if (value.length != 10) {
+              return 'Phone number must be exactly 10 digits';
+            }
+            if (!value.startsWith('05')) {
+              return 'Phone number must start with 05';
+            }
           }
-        }
-        return null;
-      },
-    ),
-  );
-}
-
+          return null;
+        },
+      ),
+    );
+  }
 }
