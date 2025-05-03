@@ -120,35 +120,28 @@ class _PostUpdateState extends State<PostUpdate> {
       body: Column(
         children: [
           PreferredSize(
-            preferredSize: const Size.fromHeight(100),
+            preferredSize: const Size.fromHeight(60),
             child: AppBar(
               backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
               elevation: 0,
               leading: Container(),
               flexibleSpace: Padding(
-                padding: const EdgeInsets.only(left: 20, bottom: 20),
+                padding: const EdgeInsets.only(left: 20, top: 50),
                 child: Align(
                   alignment: Alignment.bottomLeft,
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 20, bottom: 10),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back,
-                              color: Colors.white, size: 30),
-                          onPressed: () => Navigator.pop(context),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back,
+                            color: Colors.white, size: 30),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 10),
-                        child: Text(
-                          "Post Update",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 27,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      const Text(
+                        "           Post Updates",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],

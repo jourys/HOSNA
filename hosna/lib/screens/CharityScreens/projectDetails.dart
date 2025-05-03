@@ -869,8 +869,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                       SizedBox(height: 15),
 
                       SizedBox(height: 30),
-                      //  if (userType == 1 &&
-                      //     widget.projectCreatorWallet == globalWalletAddress)
+                       if (userType == 1 &&
+                          widget.projectCreatorWallet == globalWalletAddress)
                       GestureDetector(
                         onTap: () {
                           print("View all donors");
@@ -972,6 +972,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                     projectState == "canceled") &&
                                 widget.projectCreatorWallet ==
                                     globalWalletAddress)
+
                               Center(
                                 child: ElevatedButton(
                                   onPressed: () async {
@@ -1116,6 +1117,9 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                   ),
                                 ),
                               ),
+
+
+                              
                             if (canVote &&
                                 votingInitiated &&
                                 userType == 0 &&
@@ -1176,7 +1180,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                             BorderRadius.circular(15)),
                                   ),
                                   child: Text(
-                                    "Cast Your Vote ",
+                                    "  Cast Your Vote  ",
                                     style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -2663,9 +2667,8 @@ class _ReportPopupState extends State<ReportPopup> {
                   });
                 } else {
                   await _showSendConfirmationDialog(context);
-                  Navigator.pop(context, true);
-
-//  showSuccessPopup(context); // Call the popup here
+ Navigator.pop(context, true);
+ Navigator.pop(context, true);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -2814,11 +2817,7 @@ class _ReportPopupState extends State<ReportPopup> {
                           final walletAddress = await _loadAddress();
 
                           if (walletAddress == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Error: Wallet address not found. Please log in again.')),
-                            );
+                            print('Error: Wallet address not found. Please log in again.');
                             return;
                           }
 
@@ -2847,7 +2846,7 @@ class _ReportPopupState extends State<ReportPopup> {
                                 'project', // ✅ Added the complaintType field
                           });
 
-                          Navigator.pop(context, true);
+                         
                           showSuccessPopup(context);
                         } catch (e) {
                           print("❌ Error submitting complaint: $e");

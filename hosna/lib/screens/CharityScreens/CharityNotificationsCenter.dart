@@ -20,56 +20,69 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
     _loadWalletAndNotifications();
   }
 
-  Future<void> _loadWalletAndNotifications() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final address = prefs.getString('walletAddress');
+ Future<void> _loadWalletAndNotifications() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final address = prefs.getString('walletAddress');
 
-      if (address == null || address.isEmpty) {
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
-
-      setState(() {
-        walletAddress = address;
-      });
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .collection('notifications')
-          .orderBy('timestamp', descending: true)
-          .get();
-
-      final fetchedNotifications = snapshot.docs.map((doc) {
-        return doc.data();
-      }).toList();
-      
-      final snapshotJustifications = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(walletAddress)
-          .collection('justifications')
-          .orderBy('timestamp', descending: true)
-          .get();
-
-      final fetchedJustifications = snapshotJustifications.docs.map((doc) {
-        return doc.data();
-      }).toList();
-
-      setState(() {
-        notifications = fetchedNotifications;
-        notifications.addAll(fetchedJustifications);
-        isLoading = false;
-      });
-    } catch (e) {
-      print("❌ Error loading notifications: $e");
+    if (address == null || address.isEmpty) {
       setState(() {
         isLoading = false;
       });
+      return;
     }
+
+    setState(() {
+      walletAddress = address;
+    });
+
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(walletAddress);
+
+    final notificationsFuture = userDoc
+        .collection('notifications')
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    final justificationsFuture = userDoc
+        .collection('justifications')
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    final results = await Future.wait([notificationsFuture, justificationsFuture]);
+
+    final notificationsSnapshot = results[0];
+    final justificationsSnapshot = results[1];
+
+    final combinedItems = [
+      ...notificationsSnapshot.docs.map((doc) => {
+            'type': 'notification',
+            'data': doc.data(),
+            'timestamp': doc['timestamp'],
+          }),
+      ...justificationsSnapshot.docs.map((doc) => {
+            'type': 'justification',
+            'data': doc.data(),
+            'timestamp': doc['timestamp'],
+          }),
+    ];
+
+    combinedItems.sort((a, b) {
+      Timestamp tsA = a['timestamp'];
+      Timestamp tsB = b['timestamp'];
+      return tsB.compareTo(tsA);
+    });
+
+    setState(() {
+      notifications = combinedItems;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("❌ Error loading notifications: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -122,31 +135,30 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
   padding: EdgeInsets.all(16),
   itemBuilder: (context, index) {
     final notif = notifications[index];
-    final title = notif['title'] ?? 'No Title';
-    final body = notif['body'] ?? '';
+    final data = notif['data'] ?? {};
+    final title = data['title'] ?? 'No Title';
+    final body = data['body'] ?? '';
     final timestamp = notif['timestamp']?.toDate();
 
-    // Random color for each notification for more variety
     Color cardColor = Colors.primaries[index % Colors.primaries.length];
     Color iconColor = cardColor.withOpacity(0.8);
     String formattedDate = '';
     String formattedTime = '';
     if (timestamp != null) {
-      formattedDate = DateFormat('dd/MM/yyyy').format(timestamp);  // التاريخ
-      formattedTime = DateFormat('HH:mm').format(timestamp); // الساعة والدقائق
+      formattedDate = DateFormat('dd/MM/yyyy').format(timestamp);
+      formattedTime = DateFormat('HH:mm').format(timestamp);
     }
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 5,
       margin: EdgeInsets.only(bottom: 16),
-      color: Colors.white, // Make the card background white
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon inside square container with colorful background
             Container(
               width: 48,
               height: 48,
@@ -161,7 +173,6 @@ class _CharityNotificationsPageState extends State<CharityNotificationsPage> {
               ),
             ),
             SizedBox(width: 16),
-            // Notification content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

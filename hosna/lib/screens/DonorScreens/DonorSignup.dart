@@ -460,30 +460,66 @@ CheckboxListTile(
         .get();
 
     final termsList = querySnapshot.docs
-        .map((doc) => doc.data()['text']?.toString() ?? '')
-        .where((content) => content.isNotEmpty)
+        .map((doc) => {
+              'title': doc.data()['title']?.toString() ?? '', // Default to empty string if null
+              'text': doc.data()['text']?.toString() ?? ''    // Default to empty string if null
+            })
+        .where((term) => term['title']?.isNotEmpty == true && term['text']?.isNotEmpty == true)
         .toList();
 
     final allTerms = termsList
         .asMap()
         .entries
-        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .map((entry) =>
+            '${entry.key + 1}. \n${entry.value['title']}: \n${entry.value['text']}')
         .join('\n\n');
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Terms and Conditions'),
+          title: Text(
+            'Terms and Conditions',
+            style: TextStyle(
+              fontSize: 22, // Larger size for the title
+              fontWeight: FontWeight.bold, // Bold title
+              color: Color.fromRGBO(24, 71, 137, 1), // You can adjust the color
+            ),
+          ),
           content: SingleChildScrollView(
-            child: Text(
-              allTerms.isNotEmpty ? allTerms : 'No terms and conditions found.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: termsList.map((term) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+ SizedBox(height: 12),                      Text(
+                        term['title']!,
+                        style: TextStyle(
+                          fontSize: 16, // Larger font size for title from Firebase
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      // Display the term text
+                      Text(
+                        term['text']!,
+                        style: TextStyle(fontSize: 14), // Standard font size for content
+                      ),
+                       SizedBox(height: 8),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: const Text('Close' , style: TextStyle(fontSize: 18 ,  fontWeight: FontWeight.bold,) ),
             ),
           ],
         );

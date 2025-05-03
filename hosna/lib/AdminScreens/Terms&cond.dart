@@ -37,8 +37,21 @@ class _AdminTermsAndConditionsPageState extends State<AdminTermsAndConditionsPag
   bool isSidebarVisible = true;
 final TextEditingController _termsController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+final TextEditingController _titleController = TextEditingController();
+String? _titleError;
+String? _termError;
+bool get isInputValid {
+  final title = _titleController.text.trimLeft();
+  final term = _termsController.text.trimLeft();
 
- 
+  // Title and term must be longer than 10 characters and not start with whitespace
+  return title.isNotEmpty &&
+        
+         term.isNotEmpty &&
+         term.length > 10 &&
+         (_termError == null || _termError!.isEmpty); // Safe null check
+}
+
 @override
 void initState() {
   super.initState();
@@ -52,28 +65,28 @@ void initState() {
     DocumentSnapshot snapshot = await _firestore.collection('admin').doc('terms').get();
    
   }
-/// Function to add a new term
- Future<void> _addTerm(String newText) async {
+Future<void> _addTerm(String title, String newText) async {
   bool confirmAdd = await _showAddConfirmationDialog(context);
   if (confirmAdd) {
     await _firestore.collection('terms_conditions').add({
-      'text': newText,
+      'title': title.trimLeft(),
+      'text': newText.trimLeft(),
       'createdAt': FieldValue.serverTimestamp(),
     });
-    // After successful addition of a term
 
+    // Clear the controllers after successful addition
+    _titleController.clear();
+    _termsController.clear();
 
-     _termsController.clear();
-      showAddSuccessPopup(context);
+    showAddSuccessPopup(context);
     print("✅ Term successfully added!");
   } else {
     print("❌ Term addition canceled.");
   }
-   
-  }
+}
 
-  /// Function to update a term
-Future<bool> _updateTerm(String docId, String newText) async {
+ /// Function to update a term
+Future<bool> _updateTerm(String docId, String newTitle, String newText) async {
   // Show the confirmation dialog
   bool confirmSave = await _showSaveEditConfirmationDialog(context);
   
@@ -81,16 +94,16 @@ Future<bool> _updateTerm(String docId, String newText) async {
   if (confirmSave) {
     // Perform the actual update here
     await _firestore.collection('terms_conditions').doc(docId).update({
+      'title': newTitle,
       'text': newText,
     });
 
-    return true; 
-
-// Indicating the update was successful
+    return true; // Indicating the update was successful
   } else {
     return false; // Indicating the update was canceled
   }
 }
+
 
 
 
@@ -187,6 +200,8 @@ void showDeleteSuccessPopup(BuildContext context) {
     },
   );
 }
+
+
 void showUpdateSuccessPopup(BuildContext context) {
   // Show dialog
   showDialog(
@@ -227,102 +242,146 @@ void showUpdateSuccessPopup(BuildContext context) {
     },
   );
 }
-
- /// Show edit dialog
-  void _showEditDialog(String docId, String currentText) {
+void _showEditDialog(String docId, String currentTitle, String currentText) {
+  TextEditingController titleController = TextEditingController(text: currentTitle);
   TextEditingController editController = TextEditingController(text: currentText);
-  
+
+  String? titleError;
+  String? textError;
+
   showDialog(
     context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16), // Increased border radius
-      ),
-      child: Container(
-        width: 400, // Fixed width
-        height: 300, // Fixed height
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Edit Terms or Conditions",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color.fromRGBO(24, 71, 137, 1), // Title color
-              ),
-            ),
-            SizedBox(height: 60),
-            TextField(
-              controller: editController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: "Edit Term or Condition",
-                labelStyle: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)), // Label color
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), // Increased border radius
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), // Increased border radius for focus
-                  borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2), // Color when focused
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), // Increased border radius for non-focus
-                  borderSide: BorderSide(color: Colors.grey, width: 1), // Color when not focused
-                ),
-              ),
-            ),
-            SizedBox(height: 60),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15), // Bigger button
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text("Cancel", style: TextStyle(color: Colors.white, fontSize: 16)),
-                ),
-                SizedBox(width: 20),
-               ValueListenableBuilder<TextEditingValue>(
-  valueListenable: editController,
-  builder: (context, value, child) {
-    return ElevatedButton(
-      onPressed: value.text.trim().isEmpty
-          ? null // Disable button if the text is empty
-          : () async {
-              bool success = await _updateTerm(docId, value.text.trim());
-              if (success) {
-                Navigator.pop(context);
-                showUpdateSuccessPopup(context);
-              }
-            },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
         ),
-      ),
-      child: Text("Save", style: TextStyle(color: Colors.white, fontSize: 16)),
-    );
-  },
-),
-
-              ],
-            ),
-          ],
+        child: Container(
+          width: 400,
+          height: 470,
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Edit Terms or Conditions",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(24, 71, 137, 1),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: titleController,
+                maxLength: 22,
+                decoration: InputDecoration(
+                  labelText: "Edit Title",
+                  labelStyle: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey, width: 1),
+                  ),
+                  errorText: titleError,
+                  counterText: "${titleController.text.trim().length}/22",
+                ),
+                onChanged: (text) {
+                  setState(() {
+                    final trimmed = text.trim();
+                    titleError = trimmed.isEmpty
+                        ? "Title cannot be empty or whitespace"
+                        : (trimmed.length > 22
+                            ? "Title must not exceed 22 characters"
+                            : null);
+                  });
+                },
+              ),
+              SizedBox(height: 5),
+              TextField(
+                controller: editController,
+                maxLines: 2,
+                maxLength: 300,
+                decoration: InputDecoration(
+                  labelText: "Edit Term or Condition",
+                  labelStyle: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey, width: 1),
+                  ),
+                  errorText: textError,
+                  counterText: "${editController.text.trim().length}/300",
+                ),
+                onChanged: (text) {
+                  setState(() {
+                    final trimmed = text.trim();
+                    textError = trimmed.isEmpty
+                        ? "Text cannot be empty or whitespace"
+                        : (trimmed.length < 10 || trimmed.length > 300
+                            ? "Text must be between 10 and 300 characters"
+                            : null);
+                  });
+                },
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text("Cancel", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                  SizedBox(width: 20),
+                  ElevatedButton(
+                    onPressed: (titleError == null &&
+                            textError == null &&
+                            titleController.text.trim().isNotEmpty &&
+                            editController.text.trim().isNotEmpty)
+                        ? () async {
+                            bool success = await _updateTerm(
+                              docId,
+                              titleController.text.trim(),
+                              editController.text.trim(),
+                            );
+                            if (success) {
+                              Navigator.pop(context);
+                              showUpdateSuccessPopup(context);
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text("Save", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     ),
   );
 }
+
+
 Future<bool> _showSaveEditConfirmationDialog(BuildContext context) async {
   return await showDialog<bool>(
     context: context,
@@ -592,63 +651,111 @@ Future<bool> _showAddConfirmationDialog(BuildContext context) async {
         padding: EdgeInsets.all(16),
         child: Column(
           children: [
-            // Input Field
-          TextField(
-  controller: _termsController,
-  maxLines: 2,
+
+            TextField(
+  controller: _titleController,
+  maxLength: 22,
   decoration: InputDecoration(
-    labelText: "Add Term or Condition", // Label for the field
-    labelStyle: TextStyle(
-      color: Color.fromRGBO(24, 71, 137, 1), // Label color
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12), // Increased border radius
-    ),
+    labelText: "Title",
+    labelStyle: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12), // Increased border radius for focus
-      borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2), // Color when focused
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12), // Increased border radius for non-focus
-      borderSide: BorderSide(color: Colors.grey, width: 1), // Color when not focused
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey, width: 1),
     ),
-    hintText: "Enter a term or condition...",
+    errorText: _titleError,
+    hintText: "Enter a short title (max 22 chars)",
   ),
   onChanged: (text) {
-    // Disable whitespace-only input
-    if (text.trim().isEmpty) {
-      _termsController.clear(); // Clear the text if it's only whitespace
-    }
+    setState(() {
+      if (text.trimLeft().isEmpty) {
+        _titleError = "Title cannot be empty or start with space";
+      } else if (text.trimLeft().length > 22) {
+        _titleError = "Max 22 characters allowed";
+      } else {
+        _titleError = null;
+      }
+    });
+  },
+),
+SizedBox(height: 10),
+TextField(
+  controller: _termsController,
+  maxLines: 2,
+  maxLength: 300, // Limit to 300 characters
+  decoration: InputDecoration(
+    labelText: "Add Term or Condition",
+    labelStyle: TextStyle(color: Color.fromRGBO(24, 71, 137, 1)),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey, width: 1),
+    ),
+    errorText: _termError,
+    hintText: "Enter a term or condition...",
+    counterText:
+        "${_termsController.text.trim().length}/300", // Live counter
+  ),
+  onChanged: (text) {
+    setState(() {
+      String trimmed = text.trimLeft();
+      int length = text.trim().length;
+
+      if (trimmed.isEmpty) {
+        _termError = "Term cannot be empty or only whitespace";
+      } else if (length < 10) {
+        _termError = "Term must be at least 10 characters";
+      } else if (length > 300) {
+        _termError = "Term cannot exceed 300 characters";
+      } else {
+        _termError = null;
+      }
+    });
   },
 ),
 
-
-
             SizedBox(height: 10),
 
-            // Add Button
-          ElevatedButton(
-  onPressed: _termsController.text.trim().isEmpty
-      ? null
-      : () async {
-          await _addTerm(_termsController.text.trim());
-        },
+        SizedBox(height: 10),
+
+ElevatedButton(
+  onPressed: isInputValid
+      ? () async {
+          final title = _titleController.text.trimLeft();
+          final term = _termsController.text.trimLeft();
+
+          // Example call with both title and term
+          await _addTerm(title, term);
+
+          // Clear the text controllers after adding
+          _titleController.clear();
+          _termsController.clear();
+
+          setState(() {}); // Refresh validation state
+        }
+      : null,
   child: Text(
     "Add",
-    style: TextStyle(
-      color: Colors.white, // White text color
-      fontSize: 16,
-    ),
+    style: TextStyle(color: Colors.white, fontSize: 16),
   ),
   style: ElevatedButton.styleFrom(
     backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-    padding: EdgeInsets.symmetric(horizontal: 55, vertical: 20), // Bigger button
+    padding: EdgeInsets.symmetric(horizontal: 55, vertical: 20),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(6), // Decreased border radius
+      borderRadius: BorderRadius.circular(6),
     ),
   ),
 ),
-            SizedBox(height: 20),
+
+SizedBox(height: 20),
 
             // Terms List
             Expanded(
@@ -672,7 +779,7 @@ Future<bool> _showAddConfirmationDialog(BuildContext context) async {
 
 
       // StreamBuilder for displaying terms and conditions
-      Expanded( // Ensuring ListView gets proper constraints
+      Expanded( 
         child: StreamBuilder<QuerySnapshot>(
           stream: _firestore.collection('terms_conditions').orderBy('createdAt', descending: true).snapshots(),
           builder: (context, snapshot) {
@@ -682,48 +789,61 @@ Future<bool> _showAddConfirmationDialog(BuildContext context) async {
             final terms = snapshot.data!.docs;
 
             return ListView.builder(
-              itemCount: terms.length,
-              itemBuilder: (context, index) {
-                var termData = terms[index].data() as Map<String, dynamic>;
-                String termText = termData['text'] ?? "";
-                String docId = terms[index].id;
+  itemCount: terms.length,
+  itemBuilder: (context, index) {
+    var termData = terms[index].data() as Map<String, dynamic>;
+    String title = termData['title'] ?? "";
+    String termText = termData['text'] ?? "";
+    String docId = terms[index].id;
 
-                return Card(
-                  color: Colors.grey[200], // White background for the card
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2), // Border color and width
-                    borderRadius: BorderRadius.circular(8), // Rounded corners
-                  ),
-                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 16), // Card margin
-                  child: ListTile(
-                    contentPadding: EdgeInsets.all(16.0), // Padding inside the card
-                    title: Text(
-                      termText,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color.fromRGBO(24, 71, 137, 1),
-                        fontWeight: FontWeight.bold, // Text color
-                      ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Edit button with updated color
-                        IconButton(
-                          icon: Icon(Icons.edit, color: Color.fromRGBO(24, 71, 137, 1)),
-                          onPressed: () => _showEditDialog(docId, termText),
-                        ),
-                        // Delete button
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteTerm(docId),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
+    return Card(
+      color: Colors.grey[200],
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      margin: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      child: ListTile(
+        contentPadding: EdgeInsets.all(16.0),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: Color.fromRGBO(24, 71, 137, 1),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              termText,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit, color: Color.fromRGBO(24, 71, 137, 1)),
+              onPressed: () => _showEditDialog(docId, title, termText), // Pass both
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteTerm(docId),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+);
+
           },
         ),
       ),
