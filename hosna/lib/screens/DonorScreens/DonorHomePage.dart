@@ -465,10 +465,22 @@ class _HomePageState extends State<HomePage> {
             ),
           )
         else if (votingProjects.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('No projects currently need your vote'),
-          )
+        
+         const Padding(
+  padding: const EdgeInsets.all(16.0),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        ' No projects currently need your vote',
+      ),
+      const SizedBox(height: 70), // Adds space after the text
+    ],
+  ),
+)
+
+
+          
         else
           ...votingProjects.take(2).map((project) {
             final votingDeadline = project['votingDeadline'] ?? 'Unknown';
@@ -789,86 +801,104 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
-        child: AppBar(
-          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          flexibleSpace: Padding(
-            padding: const EdgeInsets.only(left: 25, bottom: 10),
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 50),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Good Day, ${_firstName}!",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 27,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+    body: Stack(
+      children: [
+        // AppBar as a normal widget (not in appBar property)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SizedBox(
+            height: 100,
+            child: AppBar(
+              backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              flexibleSpace: Padding(
+                padding: const EdgeInsets.only(left: 25, bottom: 10),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      SizedBox(
-                        width: 120,
-                        height: 90,
-                        child: IconButton(
-                          icon: const Icon(Icons.account_circle,
-                              size: 75, color: Colors.white),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfileScreenTwo()),
-                            );
-                          },
+                      Padding(
+                        padding: const EdgeInsets.only(top: 55),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Good Day,  ${_firstName}!",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            height: 30,
+                            child: IconButton(
+                              icon: const Icon(Icons.account_circle,
+                                  size: 75, color: Colors.white),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => ProfileScreenTwo()),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: RefreshIndicator(
-          onRefresh: _loadWalletAndData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildVotingSection(),
-                const Divider(height: 32),
-                _buildDonationHistorySection(),
-              ],
+
+        // Body with rounded top corners
+        Positioned.fill(
+          top: 120, // Adjust this to control how much it overlaps the AppBar
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(25),
+                topRight: Radius.circular(25),
+              ),
+            ),
+            child: RefreshIndicator(
+              onRefresh: _loadWalletAndData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildVotingSection(),
+                    const Divider(height: 32),
+                    _buildDonationHistorySection(),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
+
 }

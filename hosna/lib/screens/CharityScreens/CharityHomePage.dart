@@ -504,7 +504,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 70),
                   // Draft Projects section
                   Container(
                     decoration: BoxDecoration(
