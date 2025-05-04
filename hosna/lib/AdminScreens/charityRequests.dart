@@ -42,48 +42,49 @@ class _CharityRequestsState extends State<CharityRequests> {
 
     return walletAddresses;
   }
+bool hasLoadedCharityRequests = false;
+bool hasNoCharityRequests = false;
 
   Future<void> _loadCharityRequests() async {
-    print("🔄 Fetching pending charity wallet addresses...");
+  print("🔄 Fetching pending charity wallet addresses...");
 
-    // Fetch pending charities from Firestore
-    List<String> walletAddresses = await fetchPendingCharities();
+  List<String> walletAddresses = await fetchPendingCharities();
 
-    print("✅ Wallet addresses fetched: $walletAddresses");
+  print("✅ Wallet addresses fetched: $walletAddresses");
 
-    // Initialize CharityService
-    final charityService = CharityService(
-      rpcUrl: 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac',
-      contractAddress: '0x25ef93ac312D387fdDeFD62CD852a29328c4B122',
-    );
+  final charityService = CharityService(
+    rpcUrl: 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac',
+    contractAddress: '0x25ef93ac312D387fdDeFD62CD852a29328c4B122',
+  );
 
-    await charityService.initialize();
+  await charityService.initialize();
 
-    setState(() {
-      pendingWalletAddresses = walletAddresses;
-    });
+  setState(() {
+    pendingWalletAddresses = walletAddresses;
+    hasLoadedCharityRequests = true;
+    hasNoCharityRequests = walletAddresses.isEmpty;
+  });
 
-    // Fetch and store charity details
-    for (String walletAddress in walletAddresses) {
-      print("🔍 Fetching charity details for wallet: $walletAddress");
+  for (String walletAddress in walletAddresses) {
+    print("🔍 Fetching charity details for wallet: $walletAddress");
 
-      var details = await charityService.getCharityDetails(walletAddress);
+    var details = await charityService.getCharityDetails(walletAddress);
 
-      if (details != null) {
-        print("📄 Details fetched for wallet $walletAddress: $details");
+    if (details != null) {
+      print("📄 Details fetched for wallet $walletAddress: $details");
 
-        setState(() {
-          charityDetails[walletAddress] = details;
-        });
+      setState(() {
+        charityDetails[walletAddress] = details;
+      });
 
-        print("✅ Charity details for wallet $walletAddress added to state.");
-      } else {
-        print("⚠️ No details found for wallet: $walletAddress");
-      }
+      print("✅ Charity details for wallet $walletAddress added to state.");
+    } else {
+      print("⚠️ No details found for wallet: $walletAddress");
     }
-
-    print("🎉 Charity request loading complete!");
   }
+
+  print("🎉 Charity request loading complete!");
+}
 
   @override
   Widget build(BuildContext context) {
@@ -117,9 +118,15 @@ class _CharityRequestsState extends State<CharityRequests> {
                   ),
                 ),
                 Expanded(
-                  child: pendingWalletAddresses.isEmpty
-                      ? Center(child: CircularProgressIndicator())
-                      : ListView.builder(
+                  child:  hasLoadedCharityRequests
+        ? hasNoCharityRequests
+            ? Center(
+                child: Text(
+                  "No pending charity requests found.",
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              )
+            : ListView.builder(
                           padding: EdgeInsets.all(16.0),
                           itemCount: pendingWalletAddresses.length,
                           itemBuilder: (context, index) {
@@ -349,7 +356,7 @@ class _CharityRequestsState extends State<CharityRequests> {
                               ),
                             );
                           },
-                        ),
+                        ) : Center(child: CircularProgressIndicator()),
                 ),
               ],
             ),

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseOrganizations.dart';
-import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/Terms&cond.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';

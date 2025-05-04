@@ -13,21 +13,12 @@ import 'package:intl/intl.dart';
 import '../firebase_options.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:hosna/AdminScreens/AdminBrowseOrganizations.dart';
-import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
-import 'package:hosna/AdminScreens/Terms&cond.dart';
-import 'package:hosna/AdminScreens/AdminHomePage.dart';
-import 'package:hosna/AdminScreens/AdminLogin.dart';
+
 import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'AdminSidebar.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+
 import 'package:hosna/screens/NotificationManager.dart';
 
 // Define your Ethereum RPC and contract details
@@ -94,6 +85,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
+        fontFamily: 'Georgia',
+
         primaryColor: const Color.fromRGBO(24, 71, 137, 1), // Set primary color
         colorScheme: ColorScheme.fromSwatch(
           primarySwatch: const MaterialColor(

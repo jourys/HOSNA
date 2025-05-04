@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:hosna/AdminScreens/AdminBrowseOrganizations.dart';
-import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/Terms&cond.dart';
 import 'package:hosna/AdminScreens/AdminHomePage.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/ViewComplaintsPage.dart';
+import 'package:hosna/AdminScreens/charityRequests.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:http/http.dart';
@@ -38,6 +38,9 @@ class AdminSidebar extends StatelessWidget {
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(
               context, "Home", () => _navigateTo(context, AdminHomePage())),
+               Divider(color: Color.fromRGBO(24, 71, 137, 1)),
+               _buildSidebarItem(
+              context, "Charities Requests", () => _navigateTo(context, CharityRequests())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
           _buildSidebarItem(context, "Organizations",
               () => _navigateTo(context, AdminBrowseOrganizations())),

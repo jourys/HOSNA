@@ -86,7 +86,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x421679ff91d6443B13b40082a56D7cD38D94e6dc");
+        EthereumAddress.fromHex("0x2D2cDD99eff93AC01F825b45eE0844d44345F058");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
@@ -650,7 +650,7 @@ class VotingGlassEffectContainer extends StatelessWidget {
 class RefundService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x983Fe46EF603b4FB6d2DD995CE09719dF6bE498d';
+  final String contractAddress = '0x94F3a1791df973Bd599EC2a448e2F1A52e1cF5E3';
 
   late Web3Client web3client;
   late DeployedContract donationContract;

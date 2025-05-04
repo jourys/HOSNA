@@ -44,6 +44,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Admin Login',
       theme: ThemeData(
+        fontFamily: 'Georgia',
+
         primaryColor: const Color.fromRGBO(24, 71, 137, 1), // Set primary color
         colorScheme: ColorScheme.fromSwatch(
           primarySwatch: const MaterialColor(

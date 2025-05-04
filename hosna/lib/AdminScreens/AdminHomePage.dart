@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:hosna/AdminScreens/AdminBrowseProjects.dart';
 import 'package:hosna/AdminScreens/AdminLogin.dart';
 import 'package:hosna/AdminScreens/charityRequests.dart';
+import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'AdminSidebar.dart'; //
 import 'package:hosna/screens/BrowseProjects.dart';
 
@@ -12,6 +13,103 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage> {
   bool isSidebarVisible = true;
+    final BlockchainService _blockchainService = BlockchainService();
+
+int _projectCount = 0;
+
+ Future<void> fetchProjectCount() async {
+  final projectCount = await _blockchainService.getProjectCount();
+
+  // Use projectCount here (e.g., update state or log)
+  print('Project count: $projectCount');
+
+  // If you need to store it in a variable, declare it outside this method
+  setState(() {
+    _projectCount = projectCount;
+  });
+}
+Future<int> countUnresolvedReports() async {
+  try {
+    // Query for reports where 'resolved' is false
+    final querySnapshotFalse = await FirebaseFirestore.instance
+        .collection('reports')
+        .where('resolved', isEqualTo: false)
+        .get();
+
+    // Query for reports where 'resolved' is null
+    final querySnapshotNull = await FirebaseFirestore.instance
+        .collection('reports')
+        .where('resolved', isNull: true)
+        .get();
+
+    // Query for reports where 'resolved' field does not exist
+    // Firestore doesn't support querying missing fields directly, 
+    // but we can filter them in client-side code after fetching all reports
+    final querySnapshotAllReports = await FirebaseFirestore.instance
+        .collection('reports')
+        .get();
+
+    // Count reports with 'resolved' missing
+    int missingResolvedCount = querySnapshotAllReports.docs.where((doc) =>
+        !doc.data().containsKey('resolved')).length;
+
+    // Combine the counts from all three queries
+    return querySnapshotFalse.docs.length + 
+           querySnapshotNull.docs.length + 
+           missingResolvedCount;
+  } catch (e) {
+    print('Error counting unresolved reports: $e');
+    return 0;
+  }
+}
+
+Future<int> countPendingUsers() async {
+  try {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('accountStatus', isEqualTo: 'pending')
+        .get();
+    return querySnapshot.docs.length;
+  } catch (e) {
+    print('Error counting pending users: $e');
+    return 0;
+  }
+}
+
+
+@override
+void initState() {
+  super.initState();
+  fetchProjectCount();
+  
+}
+
+Widget _buildreportsCard(
+    BuildContext context, String title, int count) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10.0),
+    child: Container(
+      width: 300,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        border: Border.all(color: Color.fromRGBO(24, 71, 137, 1), width: 2),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Center(
+        child: Text(
+          "$title: $count",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(24, 71, 137, 1),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -57,40 +155,92 @@ class _AdminHomePageState extends State<AdminHomePage> {
                             vertical:
                                 20), // Added horizontal padding for white space
                         child: GridView(
-                          shrinkWrap:
-                              true, // Makes GridView take only the necessary space
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 1, // 1 card per row
-                            crossAxisSpacing: 10, // Reduced horizontal spacing
-                            mainAxisSpacing: 10, // Reduced vertical spacing
-                            mainAxisExtent: 100, // Reduced height of each card
-                          ),
-                          children: [
-                            _buildDashboardCard(context, "Total projects", () {
-                              // The navigation happens here
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const BrowseProjects(walletAddress: ''),
-                                ),
-                              );
-                            }),
-                            _buildDashboardCard(
-                                context, "Total new charity requests", () {
-                              // The navigation happens here
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CharityRequests(),
-                                ),
-                              );
-                            }),
-                            _buildDashboardCard(
-                                context, "Total new complaints", () {}),
-                          ],
-                        ),
+  shrinkWrap: true, // Makes GridView take only the necessary space
+  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2, // 2 cards per row for a more balanced layout
+    crossAxisSpacing: 10, // Horizontal spacing
+    mainAxisSpacing: 10, // Vertical spacing
+    mainAxisExtent: 150, // Adjusted height of each card to make it visually appealing
+  ),
+  children: [
+    // Total Projects Card with an Icon
+    _buildDashboardCard(
+      context, 
+      "Total Projects $_projectCount", 
+      Icons.business, 
+      Colors.blue,
+      () {},
+    ),
+    
+    // Total Pending Users Card with FutureBuilder for async data
+    FutureBuilder<int>(
+      future: countPendingUsers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildDashboardCard(
+            context, 
+            "Total New Charity Requests", 
+            Icons.pending_actions, 
+            Colors.orange,
+            () {},
+          );
+        } else if (snapshot.hasError) {
+          return _buildDashboardCard(
+            context, 
+            "Error Loading Requests", 
+            Icons.error_outline, 
+            Colors.red,
+            () {},
+          );
+        } else {
+          final count = snapshot.data ?? 0;
+          return _buildDashboardCard(
+            context,
+            "Total New Charity Requests ($count)",
+            Icons.assignment_turned_in,
+            Colors.green,
+            () {},
+          );
+        }
+      },
+    ),
+
+    // Total Unresolved Reports Card with FutureBuilder for async data
+    FutureBuilder<int>(
+      future: countUnresolvedReports(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildDashboardCard(
+            context, 
+            "Total Unresolved Complaints", 
+            Icons.report_problem, 
+            Colors.redAccent,
+            () {},
+          );
+        } else if (snapshot.hasError) {
+          return _buildDashboardCard(
+            context, 
+            "Error Loading Complaints", 
+            Icons.error, 
+            Colors.red,
+            () {},
+          );
+        } else {
+          final count = snapshot.data ?? 0;
+          return _buildDashboardCard(
+            context,
+            "Total Unresolved Complaints ($count)",
+            Icons.report_problem,
+            Colors.redAccent,
+            () {},
+          );
+        }
+      },
+    ),
+  ],
+),
+
+
                       ),
                     ),
                   ),
@@ -102,6 +252,52 @@ class _AdminHomePageState extends State<AdminHomePage> {
       ),
     );
   }
+Widget _buildDashboardCard(
+  BuildContext context,
+  String title,
+  IconData icon,
+  Color color,
+  VoidCallback onTap,
+) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10.0),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 150, // Adjust width to fit content better
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1), // Light background color
+          border: Border.all(
+            color: color,
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(10), // Rounded corners for a modern look
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 40, // Icon size
+              color: color, // Icon color
+            ),
+            SizedBox(height: 10), // Space between icon and title
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color, // Text color matches card's theme
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   Widget _buildSidebarItem(
       BuildContext context, String title, VoidCallback onTap,
@@ -120,38 +316,74 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 // admin@gmail.com
 
-  Widget _buildDashboardCard(
-      BuildContext context, String title, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          vertical: 10.0), // Add spacing between cards
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 300, // Adjust width as needed
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // Gray background
-            border: Border.all(
-                color: Color.fromRGBO(24, 71, 137, 1),
-                width: 2), // Border color
-            borderRadius: BorderRadius.circular(5), // Slightly rounded corners
+ 
+  Widget _buildrequestsCard(
+  BuildContext context,
+  String title,
+  Future<int> countFuture,
+  VoidCallback onTap,
+) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10.0),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 300,
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          border: Border.all(
+            color: Color.fromRGBO(24, 71, 137, 1),
+            width: 2,
           ),
-          child: Center(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold, // Make text bold
-                color: Color.fromRGBO(24, 71, 137, 1), // Text color
-              ),
-            ),
-          ),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: FutureBuilder<int>(
+          future: countFuture,
+          builder: (context, snapshot) {
+            String subtitle = '';
+
+            // Check the connection state and display accordingly
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              subtitle = 'Loading...';
+            } else if (snapshot.hasError) {
+              subtitle = 'Error';
+            } else if (snapshot.hasData) {
+              subtitle = snapshot.data != null ? '${snapshot.data}' : '0';
+            } else {
+              subtitle = 'No Data';
+            }
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color:  Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   Widget _buildSidebarButton({
     required String title,
