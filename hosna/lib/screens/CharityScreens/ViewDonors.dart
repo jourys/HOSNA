@@ -519,7 +519,8 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                 } else {
                   await _showSendConfirmationDialog(context);
                   Navigator.pop(context, true);
-                  // showSuccessPopup(context); // Reuse the same success popup
+                   Navigator.pop(context, true);
+                  showSuccessPopup(context); // Reuse the same success popup
                 }
               },
               style: ElevatedButton.styleFrom(
