@@ -48,7 +48,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
+  final String contractAddress = '0x25ef93ac312D387fdDeFD62CD852a29328c4B122';
 
   final _formKey = GlobalKey<FormState>();
 

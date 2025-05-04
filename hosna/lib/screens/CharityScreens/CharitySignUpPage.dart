@@ -61,7 +61,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
     _web3Client = Web3Client(rpcUrl, Client());
     _contractAddress =
-        EthereumAddress.fromHex("0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7");
+        EthereumAddress.fromHex("0x25ef93ac312D387fdDeFD62CD852a29328c4B122");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 

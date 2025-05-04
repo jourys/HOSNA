@@ -222,39 +222,38 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
 
       await docRef.update({'resolved': true});
 
-  final complaintDoc = await FirebaseFirestore.instance
+      final complaintDoc = await FirebaseFirestore.instance
           .collection('reports')
           .doc(complaintDocId)
           .get();
-      
+
       if (!complaintDoc.exists) {
         print("❌ Complaint not found.");
         return;
       }
 
-
       final complaintData = complaintDoc.data()!;
 
-  if (complaintData.containsKey('complainant')) {
+      if (complaintData.containsKey('complainant')) {
         final complainantAddress = complaintData['complainant'];
-        
+
         final title = "Complaint Resolved";
-        final body = 'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and resolved by an admin.';
+        final body =
+            'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and resolved by an admin.';
 
         // notificationService.showNotification(title: title, body: body);
 
-        // Store in Firestore 
-        final userDocRef = FirebaseFirestore.instance.collection("users").doc( complainantAddress);
+        // Store in Firestore
+        final userDocRef = FirebaseFirestore.instance
+            .collection("users")
+            .doc(complainantAddress);
         await userDocRef.set({}, SetOptions(merge: true));
         await userDocRef.collection("justifications").add({
           "title": title,
           "body": body,
           "timestamp": FieldValue.serverTimestamp(),
-          
         });
-        
       }
-
 
       print("✅ Complaint marked as resolved.");
       await _fetchComplaints();
@@ -943,10 +942,13 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                             textStyle: TextStyle(fontSize: 18),
                           ),
                           onPressed: () async {
-                            final result = await _showDeleteConfirmationDialog(context);
+                            final result =
+                                await _showDeleteConfirmationDialog(context);
                             if (result != null && result['confirmed'] == true) {
-                              await _deleteComplaint(complaint['id'], result['justification']);
-                              Navigator.pop(context); // Go back to the previous page
+                              await _deleteComplaint(
+                                  complaint['id'], result['justification']);
+                              Navigator.pop(
+                                  context); // Go back to the previous page
                               showSuccessPopup(context);
                             }
                           },
@@ -975,7 +977,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     return 'N/A';
   }
 
-  Future<void> _deleteComplaint(String complaintDocId, String justification) async {
+  Future<void> _deleteComplaint(
+      String complaintDocId, String justification) async {
     if (!mounted) return;
 
     try {
@@ -986,35 +989,34 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
           .collection('reports')
           .doc(complaintDocId)
           .get();
-      
+
       if (!complaintDoc.exists) {
         print("❌ Complaint not found.");
         return;
       }
 
       final complaintData = complaintDoc.data()!;
-      
-     
-     
+
       // Send notification to the complainant
       if (complaintData.containsKey('complainant')) {
         final complainantAddress = complaintData['complainant'];
-        
+
         final title = "Complaint Deleted";
-        final body = 'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification';
+        final body =
+            'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification';
 
         // notificationService.showNotification(title: title, body: body);
 
-        // Store in Firestore 
-        final userDocRef = FirebaseFirestore.instance.collection("users").doc( complainantAddress);
+        // Store in Firestore
+        final userDocRef = FirebaseFirestore.instance
+            .collection("users")
+            .doc(complainantAddress);
         await userDocRef.set({}, SetOptions(merge: true));
         await userDocRef.collection("justifications").add({
           "title": title,
           "body": body,
           "timestamp": FieldValue.serverTimestamp(),
-          
         });
-        
       }
 
       // Delete the original complaint
@@ -1035,137 +1037,141 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     }
   }
 
-  Future<Map<String, dynamic>?> _showDeleteConfirmationDialog(BuildContext context) async {
+  Future<Map<String, dynamic>?> _showDeleteConfirmationDialog(
+      BuildContext context) async {
     print("🚀 Showing delete confirmation dialog...");
-    
+
     // Controller for the justification text field
-    final TextEditingController justificationController = TextEditingController();
+    final TextEditingController justificationController =
+        TextEditingController();
     bool isJustificationValid = false;
 
     return await showDialog<Map<String, dynamic>>(
-          context: context,
-          barrierDismissible:
-              false, // Prevent dismissing the dialog by tapping outside
-          builder: (BuildContext context) {
-            print("🔧 Building the dialog...");
+      context: context,
+      barrierDismissible:
+          false, // Prevent dismissing the dialog by tapping outside
+      builder: (BuildContext context) {
+        print("🔧 Building the dialog...");
 
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return AlertDialog(
-                  backgroundColor: Colors.white, // Set background to white
-                  title: const Text(
-                    'Confirm Deletion',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold, // Make title bold
-                      fontSize: 22, // Increase title font size
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Colors.white, // Set background to white
+            title: const Text(
+              'Confirm Deletion',
+              style: TextStyle(
+                fontWeight: FontWeight.bold, // Make title bold
+                fontSize: 22, // Increase title font size
+              ),
+              textAlign: TextAlign.center, // Center the title text
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Are you sure you want to delete this complaint?',
+                  style: TextStyle(
+                    fontSize: 18, // Make content text bigger
+                  ),
+                  textAlign: TextAlign.center, // Center the content text
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Please provide a justification for deleting this complaint:',
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: justificationController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter justification here...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    textAlign: TextAlign.center, // Center the title text
+                    errorText: !isJustificationValid &&
+                            justificationController.text.isNotEmpty
+                        ? 'Justification must be at least 10 characters'
+                        : null,
                   ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Are you sure you want to delete this complaint?',
-                        style: TextStyle(
-                          fontSize: 18, // Make content text bigger
-                        ),
-                        textAlign: TextAlign.center, // Center the content text
+                  onChanged: (value) {
+                    setState(() {
+                      isJustificationValid = value.trim().length >= 10;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: <Widget>[
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Center the buttons
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      print("❌ Cancel clicked - Deletion not confirmed.");
+                      Navigator.pop(context, null); // Return null on cancel
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: Color.fromRGBO(
+                            24, 71, 137, 1), // Border color for Cancel button
+                        width: 3,
                       ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Please provide a justification for deleting this complaint:',
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.left,
+                      backgroundColor: Color.fromRGBO(
+                          24, 71, 137, 1), // Background color for Cancel button
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 20, // Increase font size for buttons
+                        color:
+                            Colors.white, // White text color for Cancel button
                       ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: justificationController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: 'Enter justification here...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          errorText: !isJustificationValid && justificationController.text.isNotEmpty 
-                              ? 'Justification must be at least 10 characters' 
-                              : null,
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            isJustificationValid = value.trim().length >= 10;
-                          });
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                  actions: <Widget>[
-                    Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center, // Center the buttons
-                      children: [
-                        OutlinedButton(
-                          onPressed: () {
-                            print("❌ Cancel clicked - Deletion not confirmed.");
-                            Navigator.pop(context, null); // Return null on cancel
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: Color.fromRGBO(
-                                  24, 71, 137, 1), // Border color for Cancel button
-                              width: 3,
-                            ),
-                            backgroundColor: Color.fromRGBO(24, 71, 137,
-                                1), // Background color for Cancel button
-                          ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 20, // Increase font size for buttons
-                              color: Colors
-                                  .white, // White text color for Cancel button
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20), // Add space between the buttons
-                        OutlinedButton(
-                          onPressed: justificationController.text.trim().length >= 10 ? () {
-                            print("✅ Yes clicked - Deletion confirmed with justification: ${justificationController.text}");
+                  const SizedBox(width: 20), // Add space between the buttons
+                  OutlinedButton(
+                    onPressed: justificationController.text.trim().length >= 10
+                        ? () {
+                            print(
+                                "✅ Yes clicked - Deletion confirmed with justification: ${justificationController.text}");
                             Navigator.pop(context, {
                               'confirmed': true,
-                              'justification': justificationController.text.trim()
+                              'justification':
+                                  justificationController.text.trim()
                             });
-                          } : null,
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: Color.fromRGBO(
-                                  212, 63, 63, 1), // Border color for Yes button
-                              width: 3,
-                            ),
-                            backgroundColor: Color.fromRGBO(
-                                212, 63, 63, 1), // Background color for Yes button
-                            disabledBackgroundColor: Colors.grey,
-                          ),
-                          child: const Text(
-                            '   Yes   ',
-                            style: TextStyle(
-                              fontSize: 20, // Increase font size for buttons
-                              color:
-                                  Colors.white, // White text color for Yes button
-                            ),
-                          ),
-                        ),
-                      ],
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: Color.fromRGBO(
+                            212, 63, 63, 1), // Border color for Yes button
+                        width: 3,
+                      ),
+                      backgroundColor: Color.fromRGBO(
+                          212, 63, 63, 1), // Background color for Yes button
+                      disabledBackgroundColor: Colors.grey,
                     ),
-                  ],
-                  actionsPadding: const EdgeInsets.symmetric(
-                      vertical: 10), // Add padding for the actions
-                );
-              }
-            );
-          },
-        );
+                    child: const Text(
+                      '   Yes   ',
+                      style: TextStyle(
+                        fontSize: 20, // Increase font size for buttons
+                        color: Colors.white, // White text color for Yes button
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            actionsPadding: const EdgeInsets.symmetric(
+                vertical: 10), // Add padding for the actions
+          );
+        });
+      },
+    );
   }
 
   void showSuccessPopup(BuildContext context) {
@@ -1230,7 +1236,7 @@ class OrganizationProfile extends StatefulWidget {
 class _OrganizationProfileState extends State<OrganizationProfile> {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7';
+  final String contractAddress = '0x25ef93ac312D387fdDeFD62CD852a29328c4B122';
   final notificationService = NotificationService();
 
   late Web3Client _client;
@@ -1398,10 +1404,10 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                     MaterialPageRoute(
                                       builder: (context) => ViewProjectsPage(
                                         orgAddress: organizationData?["wallet"],
-                                         orgName: organizationData?["name"] ,
+                                        orgName: organizationData?["name"],
                                       ),
                                     ),
-                                      );
+                                  );
                                 },
                                 child: Row(
                                   children: [
@@ -1463,9 +1469,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                 _buildStyleddescRow(Icons.description, "",
                                     organizationData?["description"]),
                               ],
-                              
                             ),
-                            
                           ),
                         ),
 
@@ -1483,8 +1487,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                     "License No.: ",
                                     organizationData?["licenseNumber"]),
                                 _buildStyledInfoRow(Icons.explore, "Website: ",
-                                    organizationData?["website"]
-                                    ),
+                                    organizationData?["website"]),
                                 _buildStyledInfoRow(
                                     Icons.calendar_today,
                                     "Established date: ",
@@ -1529,7 +1532,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                         ElevatedButton(
                           onPressed: () async {
                             // Show the confirmation dialog
-                            bool isConfirmed = await _showSuspendConfirmationDialog(context);
+                            bool isConfirmed =
+                                await _showSuspendConfirmationDialog(context);
 
                             if (isConfirmed) {
                               // The suspension logic is now handled in _showSuspendConfirmationDialog
@@ -1576,7 +1580,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                               // await helper.cancelAllProjectsForOrganization(
                               //     widget.walletAddress);
 
-                               // The cancellation logic is now handled in the dialog's then() callback
+                              // The cancellation logic is now handled in the dialog's then() callback
 
                               // Just update the user's suspend status and show success popup
                               await FirebaseFirestore.instance
@@ -1671,204 +1675,157 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 
     String justification = "Admin initiated cancellation"; // Default value
     return await showDialog<bool>(
-          context: context,
-          barrierDismissible:
-              false, // Prevent dismissing the dialog by tapping outside
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: Colors.white, // Set background to white
-              title: const Text(
-                'Confirm Cancelation',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold, // Make title bold
-                  fontSize: 22, // Increase title font size
+      context: context,
+      barrierDismissible:
+          false, // Prevent dismissing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white, // Set background to white
+          title: const Text(
+            'Confirm Cancelation',
+            style: TextStyle(
+              fontWeight: FontWeight.bold, // Make title bold
+              fontSize: 22, // Increase title font size
+            ),
+            textAlign: TextAlign.center, // Center the title text
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Are you sure you want to suspend this account and cancel all projects?',
+
+                  style: TextStyle(
+                    fontSize: 18, // Make content text bigger
+                  ),
+
+                  textAlign: TextAlign.center, // Center the content text
                 ),
-                textAlign: TextAlign.center, // Center the title text
-              ),
-              content: SingleChildScrollView(
-
-                child: Column(
-
-                  mainAxisSize: MainAxisSize.min,
-
-                  children: [
-
-                    const Text(
-
-                      'Are you sure you want to suspend this account and cancel all projects?',
-
-                      style: TextStyle(
-
-                        fontSize: 18, // Make content text bigger
-
-                      ),
-
-                      textAlign: TextAlign.center, // Center the content text
-
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    const Text(
-
-                      'Please provide a justification:',
-
-                      style: TextStyle(
-
-                        fontSize: 16,
-
-                        fontWeight: FontWeight.bold,
-
-                      ),
-
-                      textAlign: TextAlign.left,
-
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    TextField(
-
-                      controller: justificationController,
-
-                      maxLines: 3,
-
-                      decoration: InputDecoration(
-
-                        hintText: 'Enter reason for cancellation...',
-
-                        border: OutlineInputBorder(
-
-                          borderRadius: BorderRadius.circular(8),
-
-                        ),
-
-                        filled: true,
-
-                        fillColor: Colors.grey[100],
-
-                      ),
-
-                      onChanged: (value) {
-
-                        if (value.trim().isNotEmpty) {
-
-                          justification = value;
-
-                        }
-
-                      },
-
-                    ),
-
-                  ],
+                const SizedBox(height: 20),
+                const Text(
+                  'Please provide a justification:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.left,
                 ),
-              ),
-              actions: <Widget>[
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the buttons
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context, false); // Return false on cancel
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Color.fromRGBO(
-                              24, 71, 137, 1), // Border color for Cancel button
-                          width: 3,
-                        ),
-                        backgroundColor:
-                            Color.fromRGBO(24, 71, 137, 1), // Background color
-                      ),
-                      child: const Text(
-                        '  No  ',
-                        style: TextStyle(
-                          fontSize: 20, // Increase font size for buttons
-                          color: Colors.white, // White text color
-                        ),
-                      ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: justificationController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter reason for cancellation...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 20), // Add space between buttons
-                    OutlinedButton(
-                      onPressed: () {
-                        // Validate if justification is provided
-
-                        if (justificationController.text.trim().isEmpty) {
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-
-                            const SnackBar(
-
-                              content: Text('Please provide a justification for cancellation.'),
-
-                              backgroundColor: Colors.red,
-
-                            ),
-
-                          );
-
-                        } else {
-
-                          // Store the justification in a global variable or a provider
-
-                          justification = justificationController.text.trim();
-
-                          Navigator.pop(context, true); // Return true with justification
-
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: const Color.fromARGB(
-                              255, 182, 12, 12), // Border color for Save button
-                          width: 3,
-                        ),
-                        backgroundColor: const Color.fromARGB(
-                            255, 182, 12, 12), // Background color
-                      ),
-                      child: const Text(
-                        '  Yes  ',
-                        style: TextStyle(
-                          fontSize: 20, // Increase font size
-                          color: Colors.white, // White text color
-                        ),
-                      ),
-                    ),
-                  ],
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                  onChanged: (value) {
+                    if (value.trim().isNotEmpty) {
+                      justification = value;
+                    }
+                  },
                 ),
               ],
-              actionsPadding: const EdgeInsets.symmetric(
-                  vertical: 10), // Add padding for the actions
-            );
-          },
-        ).then((confirmed) {
+            ),
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context, false); // Return false on cancel
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(
+                          24, 71, 137, 1), // Border color for Cancel button
+                      width: 3,
+                    ),
+                    backgroundColor:
+                        Color.fromRGBO(24, 71, 137, 1), // Background color
+                  ),
+                  child: const Text(
+                    '  No  ',
+                    style: TextStyle(
+                      fontSize: 20, // Increase font size for buttons
+                      color: Colors.white, // White text color
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20), // Add space between buttons
+                OutlinedButton(
+                  onPressed: () {
+                    // Validate if justification is provided
 
-          if (confirmed == true) {
+                    if (justificationController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Please provide a justification for cancellation.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } else {
+                      // Store the justification in a global variable or a provider
 
-            // Pass the justification to the cancellation helper
+                      justification = justificationController.text.trim();
 
-            final helper = CancelAllProjectsHelper();
+                      Navigator.pop(
+                          context, true); // Return true with justification
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: const Color.fromARGB(
+                          255, 182, 12, 12), // Border color for Save button
+                      width: 3,
+                    ),
+                    backgroundColor: const Color.fromARGB(
+                        255, 182, 12, 12), // Background color
+                  ),
+                  child: const Text(
+                    '  Yes  ',
+                    style: TextStyle(
+                      fontSize: 20, // Increase font size
+                      color: Colors.white, // White text color
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(
+              vertical: 10), // Add padding for the actions
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed == true) {
+        // Pass the justification to the cancellation helper
 
-            helper.cancelAllProjectsForOrganization(widget.walletAddress, justification);
+        final helper = CancelAllProjectsHelper();
 
-            return true;
+        helper.cancelAllProjectsForOrganization(
+            widget.walletAddress, justification);
 
-          }
+        return true;
+      }
 
-          return false;
-
-        });
+      return false;
+    });
   }
 
   Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
     print("🚀 Showing suspend confirmation dialog...");
-    
+
     // Create a TextEditingController for the justification field
     final justificationController = TextEditingController();
     String justification = "Account suspended by admin"; // Default value
-    
+
     return await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -1954,7 +1911,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     if (justificationController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Please provide a justification for suspension.'),
+                          content: Text(
+                              'Please provide a justification for suspension.'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -1995,55 +1953,58 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     });
   }
 
-  Future<void> _suspendAccountWithJustification(String walletAddress, String justification) async {
+  Future<void> _suspendAccountWithJustification(
+      String walletAddress, String justification) async {
     try {
       // Update the account in Firestore with suspension status and reason
       await FirebaseFirestore.instance
           .collection('users')
           .doc(walletAddress)
           .update({
-            'isSuspend': true,
-            'suspensionReason': justification,
-            'suspendedAt': FieldValue.serverTimestamp(),
-            'suspendedBy': 'admin'
-          });
-      
+        'isSuspend': true,
+        'suspensionReason': justification,
+        'suspendedAt': FieldValue.serverTimestamp(),
+        'suspendedBy': 'admin'
+      });
+
       // Fetch organization information to use in notification
       final orgDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(walletAddress)
           .get();
-      
+
       if (orgDoc.exists) {
         final orgData = orgDoc.data();
         final orgName = orgData?['name'] ?? 'Unknown Organization';
-        
+
         // Send notification to the suspended charity
         await _sendSuspensionNotification(
-          walletAddress,
-          orgName,
-          justification
-        );
+            walletAddress, orgName, justification);
       }
-      
-      print("✅ Account suspended successfully with justification: $justification");
+
+      print(
+          "✅ Account suspended successfully with justification: $justification");
     } catch (e) {
       print("❌ Error suspending account: $e");
     }
   }
-  
-  Future<void> _sendSuspensionNotification(String charityAddress, String orgName, String justification) async {
+
+  Future<void> _sendSuspensionNotification(
+      String charityAddress, String orgName, String justification) async {
     try {
       // Create a unique notification ID
-      final notificationId = 'account_suspended_${DateTime.now().millisecondsSinceEpoch}';
-      
+      final notificationId =
+          'account_suspended_${DateTime.now().millisecondsSinceEpoch}';
+
       final title = "Account Suspended";
-      final body = 'Your charity account has been suspended by an admin. Reason: $justification';
+      final body =
+          'Your charity account has been suspended by an admin. Reason: $justification';
 
       // notificationService.showNotification(title: title, body: body);
 
       // Store in Firestore (creator)
-      final userDocRef = FirebaseFirestore.instance.collection("users").doc(charityAddress);
+      final userDocRef =
+          FirebaseFirestore.instance.collection("users").doc(charityAddress);
       await userDocRef.set({}, SetOptions(merge: true));
       await userDocRef.collection("justifications").add({
         "title": title,
@@ -2053,7 +2014,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
         "type": "account_suspension",
         "state": "suspended",
       });
-          
+
       print("✅ Suspension notification sent to charity: $charityAddress");
     } catch (e) {
       print("❌ Error sending suspension notification: $e");
@@ -2108,30 +2069,28 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
       Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
     });
   }
-Widget _buildStyleddescRow(IconData icon, String label, String? value) {
- return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: Row(
-  children: [
-    Icon(Icons.description, color: Colors.grey),
-    SizedBox(width: 10),
-    Expanded( // Use Expanded to allow wrapping text
-      child: Text(
-        organizationData?["description"] ?? "No description available",
-        style: TextStyle(fontSize: 16, color: Colors.black),
-        softWrap: true, // Ensures text wraps to the next line if needed
-        overflow: TextOverflow.visible, // Prevents clipping
-        maxLines: null, // Remove the limit on lines to let the text wrap freely
-      ),
-    ),
-  ],
-)
 
-
-
-
-  );
-}
+  Widget _buildStyleddescRow(IconData icon, String label, String? value) {
+    return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            Icon(Icons.description, color: Colors.grey),
+            SizedBox(width: 10),
+            Expanded(
+              // Use Expanded to allow wrapping text
+              child: Text(
+                organizationData?["description"] ?? "No description available",
+                style: TextStyle(fontSize: 16, color: Colors.black),
+                softWrap: true, // Ensures text wraps to the next line if needed
+                overflow: TextOverflow.visible, // Prevents clipping
+                maxLines:
+                    null, // Remove the limit on lines to let the text wrap freely
+              ),
+            ),
+          ],
+        ));
+  }
 
 // Custom styled info row to ensure consistency
   Widget _buildStyledInfoRow(IconData icon, String label, String? value,
@@ -2322,6 +2281,7 @@ class DonorDetailsPage extends StatelessWidget {
     }
     return null; // Return null if no profile picture is found
   }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
@@ -2741,7 +2701,8 @@ class CancelAllProjectsHelper {
   final notificationService = NotificationService();
 
   /// Cancel all projects for a specific organization
-  Future<void> cancelAllProjectsForOrganization(String orgAddress, String justification) async {
+  Future<void> cancelAllProjectsForOrganization(
+      String orgAddress, String justification) async {
     try {
       print("🔎 Fetching projects for org: $orgAddress");
       List<Map<String, dynamic>> projects =
@@ -2766,7 +2727,8 @@ class CancelAllProjectsHelper {
   }
 
   /// Firestore logic to cancel a project
-  Future<void> _cancelProjectInFirestore(int projectId, String justification) async {
+  Future<void> _cancelProjectInFirestore(
+      int projectId, String justification) async {
     final docRef = FirebaseFirestore.instance
         .collection('projects')
         .doc(projectId.toString());
@@ -2775,97 +2737,67 @@ class CancelAllProjectsHelper {
 
     if (docSnapshot.exists) {
       await docRef.update({
-
         'isCanceled': true,
-
         'cancellationReason': justification,
-
         'cancelledAt': FieldValue.serverTimestamp(),
-
         'cancelledBy': 'admin'
-
       });
 
       print("📄 Firestore project updated: $projectId with justification");
 
-      
-
       // Attempt to get project details to send notification
 
       try {
-
         final project = await _blockchainService.getProjectDetails(projectId);
 
         if (!project.containsKey("error")) {
-
           await _sendCancellationNotification(
-
-            projectId.toString(), 
-
-            project['name'] ?? 'Unknown Project', 
-
-            project['organization'] ?? '', 
-
-            justification
-
-          );
-
+              projectId.toString(),
+              project['name'] ?? 'Unknown Project',
+              project['organization'] ?? '',
+              justification);
         }
-
       } catch (e) {
-
         print("⚠️ Could not send notification: $e");
-
       }
     } else {
       await docRef.set({
-
         'isCanceled': true,
-
         'cancellationReason': justification,
-
         'cancelledAt': FieldValue.serverTimestamp(),
-
         'cancelledBy': 'admin'
-
       });
 
-      print("🆕 Firestore project created and canceled: $projectId with justification");
-
+      print(
+          "🆕 Firestore project created and canceled: $projectId with justification");
     }
-
   }
-
-  
 
   // Send notification to project creator
 
-  Future<void> _sendCancellationNotification(String projectId, String projectName, String creatorAddress, String justification) async {
-
+  Future<void> _sendCancellationNotification(String projectId,
+      String projectName, String creatorAddress, String justification) async {
     try {
-
       if (creatorAddress.isEmpty) {
-
         print("❌ No project creator wallet address found");
 
         return;
-
       }
-
-      
 
       // Create notification for project creator
 
-      final notificationId = 'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
+      final notificationId =
+          'project_cancelled_${projectId}_${DateTime.now().millisecondsSinceEpoch}';
 
-      
-    final title = "Project Cancelled";
-      final body = 'Your project "$projectName" has been cancelled by an admin. Reason: $justification';
+      final title = "Project Cancelled";
+      final body =
+          'Your project "$projectName" has been cancelled by an admin. Reason: $justification';
 
       // notificationService.showNotification(title: title, body: body);
 
       // Store in Firestore (creator)
-      final userDocRef = FirebaseFirestore.instance.collection("users").doc(creatorAddress);
+      final userDocRef =
+          FirebaseFirestore.instance.collection("users").doc(creatorAddress);
       await userDocRef.set({}, SetOptions(merge: true));
       await userDocRef.collection("justifications").add({
         "title": title,
@@ -2876,12 +2808,9 @@ class CancelAllProjectsHelper {
         "state": "canceled",
       });
 
-          
-
-      print("✅ Cancellation notification sent to project creator: $creatorAddress");
-
+      print(
+          "✅ Cancellation notification sent to project creator: $creatorAddress");
     } catch (e) {
-
       print("❌ Error sending cancellation notification: $e");
     }
   }

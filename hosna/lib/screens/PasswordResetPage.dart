@@ -19,11 +19,9 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
         email: _emailController.text,
         password: "123456",
       );
-    } 
-    on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       print("❌ Firebase authentication error: ${e.code} - ${e.message}");
-    } 
-    finally {
+    } finally {
       try {
         // Send the password reset email using Firebase
         await FirebaseAuth.instance.sendPasswordResetEmail(
@@ -38,9 +36,6 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
         });
       }
     }
-
-
-    
   }
 
   @override

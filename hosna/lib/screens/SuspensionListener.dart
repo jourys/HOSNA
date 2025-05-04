@@ -22,7 +22,7 @@ class SuspensionListener {
 
         if (isSuspend) {
           await _removePrivateKey();
-        } 
+        }
       }
     }, onError: (error) {
       print("❌ Error listening for suspension: $error");
@@ -33,8 +33,7 @@ class SuspensionListener {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove('privateKey_$walletAddress');
-         
-    
+
       print("🚫 Private key removed due to suspension.");
     } catch (e) {
       print("⚠️ Error removing private key: $e");
@@ -43,7 +42,7 @@ class SuspensionListener {
 
   Future<void> reloadPrivateKey(String walletAddress) async {
     String? privateKey = await _fetchPrivateKeyFromSecureStorage(walletAddress);
-    
+
     if (privateKey != null && privateKey.isNotEmpty) {
       print("✅ Private key successfully loaded for wallet $walletAddress.");
     } else {
@@ -51,7 +50,8 @@ class SuspensionListener {
     }
   }
 
-  Future<String?> _fetchPrivateKeyFromSecureStorage(String walletAddress) async {
+  Future<String?> _fetchPrivateKeyFromSecureStorage(
+      String walletAddress) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String privateKeyKey = 'privateKey_$walletAddress';
@@ -68,5 +68,4 @@ class SuspensionListener {
     }
     return null;
   }
-  
 }

@@ -40,7 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadWalletAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? savedWalletAddress = prefs.getString('walletAddress');
-    
+
     setState(() {
       walletAddress = savedWalletAddress ?? widget.walletAddress;
       firstName = prefs.getString('firstName') ?? "User";
@@ -72,101 +72,99 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
-  }@override
-Widget build(BuildContext context) {
-  if (walletAddress == null) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    
-    );
-    
   }
-return Scaffold(
-  resizeToAvoidBottomInset: false, // Prevents resizing when the keyboard appears
-  body: Stack( // Using Stack to place the button above all widgets
-    children: [
-      Column(
-        children: [
-          Expanded(child: _pages[_selectedIndex]), // Main page content
 
-          if (isSuspended)
-            Container(
-              color: Colors.red,
-              padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(
-                    child: Text(
-                      "Your account has been suspended. You cannot make any operation.",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+  @override
+  Widget build(BuildContext context) {
+    if (walletAddress == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // Prevents resizing when the keyboard appears
+      body: Stack(
+        // Using Stack to place the button above all widgets
+        children: [
+          Column(
+            children: [
+              Expanded(child: _pages[_selectedIndex]), // Main page content
+
+              if (isSuspended)
+                Container(
+                  color: Colors.red,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Your account has been suspended. You cannot make any operation.",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _selectedIndex = 2; // Navigate to NotificationsPage
-                      });
-                    },
-                    child: const Text(
-                      "More",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedIndex = 2; // Navigate to NotificationsPage
+                          });
+                        },
+                        child: const Text(
+                          "More",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+            ],
+          ),
+          DraggableContactUsButton(), // Adding the draggable button here
         ],
       ),
-      DraggableContactUsButton(), // Adding the draggable button here
-    ],
-  ),
-  bottomNavigationBar: BottomNavigationBar(
-    currentIndex: _selectedIndex,
-    onTap: _onItemTapped,
-    selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
-    unselectedItemColor: Colors.black,
-    type: BottomNavigationBarType.fixed,
-    items: [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.home, size: 38),
-        label: 'Home',
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
+        unselectedItemColor: Colors.black,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home, size: 38),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              _selectedIndex == 1
+                  ? 'assets/BlueProjects.png'
+                  : 'assets/Projects.png',
+              width: 30,
+              height: 30,
+            ),
+            label: 'Projects',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.notifications, size: 35),
+            label: 'Notifications',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.apartment, size: 35),
+            label: 'Organizations',
+          ),
+        ],
       ),
-      BottomNavigationBarItem(
-        icon: Image.asset(
-          _selectedIndex == 1
-              ? 'assets/BlueProjects.png'
-              : 'assets/Projects.png',
-          width: 30,
-          height: 30,
-        ),
-        label: 'Projects',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.notifications, size: 35),
-        label: 'Notifications',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.apartment, size: 35),
-        label: 'Organizations',
-      ),
-    ],
-  ),
-);
-
-
+    );
+  }
 }
-
-
-}
-
 
 class DraggableContactUsButton extends StatefulWidget {
   const DraggableContactUsButton({Key? key}) : super(key: key);
@@ -203,14 +201,17 @@ class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
           child: Draggable(
             feedback: FloatingActionButton(
               onPressed: _launchEmail,
-               backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Remove background color
- // Add subtle shadow for elevation
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(50), // Circular button with no background
-  ),
+              backgroundColor: const Color.fromARGB(
+                  255, 255, 255, 255), // Remove background color
+              // Add subtle shadow for elevation
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                    50), // Circular button with no background
+              ),
               // Keeps color during dragging
               elevation: 8,
-              child: const Icon(Icons.mail, color:Color.fromRGBO(24, 71, 137, 1), size: 32),
+              child: const Icon(Icons.mail,
+                  color: Color.fromRGBO(24, 71, 137, 1), size: 32),
             ),
             childWhenDragging: const SizedBox(), // Hides original when dragging
             onDraggableCanceled: (velocity, offset) {
@@ -227,42 +228,40 @@ class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
                 }
 
                 // Clamp the top value to ensure the button stays within the screen
-                _top = offset.dy.clamp(0.0, MediaQuery.of(context).size.height - 80);
+                _top = offset.dy
+                    .clamp(0.0, MediaQuery.of(context).size.height - 80);
               });
             },
-           child: FloatingActionButton(
-  onPressed: _launchEmail,
-  backgroundColor: Colors.white,
-  elevation: 5,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(50),
-  ),
-  child: ShaderMask(
-    shaderCallback: (Rect bounds) {
-      return const LinearGradient(
-        colors: [
-          Color(0xFF0D1B2A), 
-          Color(0xFF1B365D), 
-          Color(0xFF4B9CD3), 
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(bounds);
-    },
-    blendMode: BlendMode.srcIn, 
-    child: const Icon(
-      Icons.mail,
-      color: Colors.white,
-      size: 35,
-    ),
-  ),
-),
-
-
+            child: FloatingActionButton(
+              onPressed: _launchEmail,
+              backgroundColor: Colors.white,
+              elevation: 5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: ShaderMask(
+                shaderCallback: (Rect bounds) {
+                  return const LinearGradient(
+                    colors: [
+                      Color(0xFF0D1B2A),
+                      Color(0xFF1B365D),
+                      Color(0xFF4B9CD3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcIn,
+                child: const Icon(
+                  Icons.mail,
+                  color: Colors.white,
+                  size: 35,
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 }
-

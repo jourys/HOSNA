@@ -777,7 +777,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 10),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment
                             .spaceBetween, // Space out the items
@@ -867,44 +866,42 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                         ],
                       ),
                       SizedBox(height: 15),
-
                       SizedBox(height: 30),
-                       if (userType == 1 &&
+                      if (userType == 1 &&
                           widget.projectCreatorWallet == globalWalletAddress)
-                      GestureDetector(
-                        onTap: () {
-                          print("View all donors");
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ViewDonorsPage(
-                                projectId: widget.projectId,
+                        GestureDetector(
+                          onTap: () {
+                            print("View all donors");
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ViewDonorsPage(
+                                  projectId: widget.projectId,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'View All Donors',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                                decoration: TextDecoration.underline,
-                                letterSpacing: 0.5,
+                            );
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'View All Donors',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                  decoration: TextDecoration.underline,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.group,
-                                color: Color.fromRGBO(24, 71, 137, 1),
-                                size: 30),
-                          ],
+                              SizedBox(width: 8),
+                              Icon(Icons.group,
+                                  color: Color.fromRGBO(24, 71, 137, 1),
+                                  size: 30),
+                            ],
+                          ),
                         ),
-                      ),
                       SizedBox(height: 30),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment
                             .spaceBetween, // Space out the items
@@ -915,7 +912,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                               'Goal:', '${totalAmount.toStringAsFixed(5)} ETH'),
                         ],
                       ),
-
                       SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment
@@ -933,9 +929,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                           ),
                         ],
                       ),
-
                       SizedBox(height: 15),
-
                       Visibility(
                         visible: _isFetchingDonatedAmount,
                         child: Center(child: CircularProgressIndicator()),
@@ -972,7 +966,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                     projectState == "canceled") &&
                                 widget.projectCreatorWallet ==
                                     globalWalletAddress)
-
                               Center(
                                 child: ElevatedButton(
                                   onPressed: () async {
@@ -1117,9 +1110,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                                   ),
                                 ),
                               ),
-
-
-                              
                             if (canVote &&
                                 votingInitiated &&
                                 userType == 0 &&
@@ -2667,8 +2657,8 @@ class _ReportPopupState extends State<ReportPopup> {
                   });
                 } else {
                   await _showSendConfirmationDialog(context);
- Navigator.pop(context, true);
- Navigator.pop(context, true);
+                  Navigator.pop(context, true);
+                  Navigator.pop(context, true);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -2817,7 +2807,8 @@ class _ReportPopupState extends State<ReportPopup> {
                           final walletAddress = await _loadAddress();
 
                           if (walletAddress == null) {
-                            print('Error: Wallet address not found. Please log in again.');
+                            print(
+                                'Error: Wallet address not found. Please log in again.');
                             return;
                           }
 
@@ -2846,7 +2837,6 @@ class _ReportPopupState extends State<ReportPopup> {
                                 'project', // ✅ Added the complaintType field
                           });
 
-                         
                           showSuccessPopup(context);
                         } catch (e) {
                           print("❌ Error submitting complaint: $e");

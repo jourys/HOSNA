@@ -71,5 +71,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'hosna2.firebasestorage.app',
     iosBundleId: 'com.waad.hosna',
   );
-
 }

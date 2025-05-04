@@ -44,47 +44,46 @@ class _CharityRequestsState extends State<CharityRequests> {
   }
 
   Future<void> _loadCharityRequests() async {
-  print("🔄 Fetching pending charity wallet addresses...");
+    print("🔄 Fetching pending charity wallet addresses...");
 
-  // Fetch pending charities from Firestore
-  List<String> walletAddresses = await fetchPendingCharities();
+    // Fetch pending charities from Firestore
+    List<String> walletAddresses = await fetchPendingCharities();
 
-  print("✅ Wallet addresses fetched: $walletAddresses");
+    print("✅ Wallet addresses fetched: $walletAddresses");
 
-  // Initialize CharityService
-  final charityService = CharityService(
-    rpcUrl: 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac',
-    contractAddress: '0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7',
-  );
+    // Initialize CharityService
+    final charityService = CharityService(
+      rpcUrl: 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac',
+      contractAddress: '0x25ef93ac312D387fdDeFD62CD852a29328c4B122',
+    );
 
-  await charityService.initialize();
+    await charityService.initialize();
 
-  setState(() {
-    pendingWalletAddresses = walletAddresses;
-  });
+    setState(() {
+      pendingWalletAddresses = walletAddresses;
+    });
 
-  // Fetch and store charity details
-  for (String walletAddress in walletAddresses) {
-    print("🔍 Fetching charity details for wallet: $walletAddress");
+    // Fetch and store charity details
+    for (String walletAddress in walletAddresses) {
+      print("🔍 Fetching charity details for wallet: $walletAddress");
 
-    var details = await charityService.getCharityDetails(walletAddress);
+      var details = await charityService.getCharityDetails(walletAddress);
 
-    if (details != null) {
-      print("📄 Details fetched for wallet $walletAddress: $details");
+      if (details != null) {
+        print("📄 Details fetched for wallet $walletAddress: $details");
 
-      setState(() {
-        charityDetails[walletAddress] = details;
-      });
+        setState(() {
+          charityDetails[walletAddress] = details;
+        });
 
-      print("✅ Charity details for wallet $walletAddress added to state.");
-    } else {
-      print("⚠️ No details found for wallet: $walletAddress");
+        print("✅ Charity details for wallet $walletAddress added to state.");
+      } else {
+        print("⚠️ No details found for wallet: $walletAddress");
+      }
     }
+
+    print("🎉 Charity request loading complete!");
   }
-
-  print("🎉 Charity request loading complete!");
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -128,8 +127,8 @@ class _CharityRequestsState extends State<CharityRequests> {
                                 pendingWalletAddresses[index];
                             var details = charityDetails[walletAddress];
 
-                          if (details == null) return SizedBox.shrink();
-                      return GestureDetector(
+                            if (details == null) return SizedBox.shrink();
+                            return GestureDetector(
                               onTap: () {
                                 showDialog(
                                   context: context,
@@ -191,8 +190,10 @@ class _CharityRequestsState extends State<CharityRequests> {
                                                             'licenseNumber']),
                                                     _buildDetailRow('City:',
                                                         details['city']),
-                                                _buildDetailRow('Website:', details['website'] ?? 'N/A'),
-
+                                                    _buildDetailRow(
+                                                        'Website:',
+                                                        details['website'] ??
+                                                            'N/A'),
                                                     _buildDetailRow(
                                                         'Description:',
                                                         details['description']),
@@ -438,8 +439,7 @@ class _CharityRequestsState extends State<CharityRequests> {
   }
 }
 
-
-  class CharityService {
+class CharityService {
   final String rpcUrl;
   final String contractAddress;
   late final Web3Client _client;

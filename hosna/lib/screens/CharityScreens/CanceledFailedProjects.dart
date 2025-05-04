@@ -243,10 +243,11 @@ class _CanceledFailedProjectsState extends State<CanceledFailedProjects> {
         backgroundColor: Colors.white,
         title: const Text(
           'Ended and failed Projects',
-          style: TextStyle(color:const Color.fromRGBO(24, 71, 137, 1)),
+          style: TextStyle(color: const Color.fromRGBO(24, 71, 137, 1)),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color:const Color.fromRGBO(24, 71, 137, 1)),
+          icon: const Icon(Icons.arrow_back,
+              color: const Color.fromRGBO(24, 71, 137, 1)),
           onPressed: () => Navigator.pop(context),
         ),
       ),

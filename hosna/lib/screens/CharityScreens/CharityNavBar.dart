@@ -13,7 +13,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
-
 class CharityMainScreen extends StatefulWidget {
   final String? walletAddress;
 
@@ -23,14 +22,14 @@ class CharityMainScreen extends StatefulWidget {
   _CharityMainScreenState createState() => _CharityMainScreenState();
 }
 
-class _CharityMainScreenState extends State<CharityMainScreen> with WidgetsBindingObserver {
+class _CharityMainScreenState extends State<CharityMainScreen>
+    with WidgetsBindingObserver {
+  late ProjectNotificationListener projectNotificationListener;
 
-   late ProjectNotificationListener projectNotificationListener;
-   
   int _selectedIndex = 0;
   String? walletAddress;
   String? firstName;
-  bool isSuspended = false; 
+  bool isSuspended = false;
 
   List<Widget> get _pages {
     return [
@@ -41,41 +40,36 @@ class _CharityMainScreenState extends State<CharityMainScreen> with WidgetsBindi
     ];
   }
 
- @override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addObserver(this); // Add this line
-  _loadWalletAddress();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this); // Add this line
+    _loadWalletAddress();
 
-  projectNotificationListener = ProjectNotificationListener(
-    blockchainService: BlockchainService(),
-    notificationService: NotificationService(),
-  );
-        // projectNotificationListener.checkProjectsForCreator();
-
- 
-  
-}
-
-  
- @override
-void dispose() {
-  WidgetsBinding.instance.removeObserver(this); // Always clean up
-  super.dispose();
-}
-
-
-@override
-void didChangeAppLifecycleState(AppLifecycleState state) {
-  if (state == AppLifecycleState.resumed) {
+    projectNotificationListener = ProjectNotificationListener(
+      blockchainService: BlockchainService(),
+      notificationService: NotificationService(),
+    );
     // projectNotificationListener.checkProjectsForCreator();
   }
-}
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Always clean up
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // projectNotificationListener.checkProjectsForCreator();
+    }
+  }
 
   Future<void> _loadWalletAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedWallet = prefs.getString('walletAddress') ?? widget.walletAddress;
+    String? storedWallet =
+        prefs.getString('walletAddress') ?? widget.walletAddress;
 
     setState(() {
       walletAddress = storedWallet;
@@ -95,7 +89,7 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
         .listen((snapshot) {
       if (snapshot.exists) {
         bool suspendStatus = snapshot['isSuspend'] ?? false;
-        if (suspendStatus != isSuspended) { 
+        if (suspendStatus != isSuspended) {
           setState(() {
             isSuspended = suspendStatus;
           });
@@ -128,113 +122,103 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     if (walletAddress == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
-
       );
     }
 
-  return Scaffold(
-  resizeToAvoidBottomInset: false, // Prevent resizing when the keyboard is visible
-  body: Stack(
+    return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // Prevent resizing when the keyboard is visible
+      body: Stack(
         children: [
-   Column(
-    
-    children: [
-      
-      Expanded(child: _pages[_selectedIndex]),
-          
-      if (isSuspended)
-        Container(
-          color: Colors.red,
-          padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
             children: [
-              
-              const Expanded(
-                child: Text(
-                  "Your account has been suspended. You cannot make any operation.",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+              Expanded(child: _pages[_selectedIndex]),
+              if (isSuspended)
+                Container(
+                  color: Colors.red,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 1, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Your account has been suspended. You cannot make any operation.",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          _onItemTapped(2); // Navigate to NotificationsPage
+                        },
+                        child: const Text(
+                          "More",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-             
-              TextButton(
-                onPressed: () {
-                  _onItemTapped(2); // Navigate to NotificationsPage
-                },
-                child: const Text(
-                  "More",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
+                unselectedItemColor: Colors.black,
+                type: BottomNavigationBarType.fixed,
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.home, size: 38),
+                    label: 'Home',
                   ),
-                ),
+                  BottomNavigationBarItem(
+                    icon: Image.asset(
+                      _selectedIndex == 1
+                          ? 'assets/BlueProjects.png'
+                          : 'assets/Projects.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                    label: 'Projects',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.notifications, size: 38),
+                    label: 'Notifications',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.apartment, size: 38),
+                    label: 'Organizations',
+                  ),
+                ],
               ),
             ],
           ),
-        ),
-  
-      BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: const Color.fromRGBO(24, 71, 137, 1),
-        unselectedItemColor: Colors.black,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 38),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              _selectedIndex == 1
-                  ? 'assets/BlueProjects.png'
-                  : 'assets/Projects.png',
-              width: 30,
-              height: 30,
-            ),
-            label: 'Projects',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.notifications, size: 38),
-            label: 'Notifications',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.apartment, size: 38),
-            label: 'Organizations',
-          ),
+          DraggableContactUsButton(),
         ],
       ),
-      
-    ],
-  ),
- DraggableContactUsButton(),
 
-  ],
-      ),
-
-  floatingActionButton: isSuspended
-    ? null
-    : Padding(
-        padding: const EdgeInsets.only(bottom: 22), // Adjust this value as needed
-        child: FloatingActionButton(
-          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-          shape: const CircleBorder(),
-          onPressed: _navigateToPostProject,
-          child: const Icon(Icons.add, color: Colors.white, size: 40),
-        ),
-      ),
-  floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-  
-);
-
+      floatingActionButton: isSuspended
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(
+                  bottom: 22), // Adjust this value as needed
+              child: FloatingActionButton(
+                backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                shape: const CircleBorder(),
+                onPressed: _navigateToPostProject,
+                child: const Icon(Icons.add, color: Colors.white, size: 40),
+              ),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
   }
 }
-
-
 
 class DraggableContactUsButton extends StatefulWidget {
   const DraggableContactUsButton({Key? key}) : super(key: key);
@@ -245,7 +229,7 @@ class DraggableContactUsButton extends StatefulWidget {
 }
 
 class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
-   double _top = 650; // Default position (adjust as needed)
+  double _top = 650; // Default position (adjust as needed)
   double _left = 350;
 
   void _launchEmail() async {
@@ -271,14 +255,17 @@ class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
           child: Draggable(
             feedback: FloatingActionButton(
               onPressed: _launchEmail,
-               backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Remove background color
- // Add subtle shadow for elevation
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(50), // Circular button with no background
-  ),
+              backgroundColor: const Color.fromARGB(
+                  255, 255, 255, 255), // Remove background color
+              // Add subtle shadow for elevation
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                    50), // Circular button with no background
+              ),
               // Keeps color during dragging
               elevation: 8,
-              child: const Icon(Icons.mail, color:Color.fromRGBO(24, 71, 137, 1), size: 32),
+              child: const Icon(Icons.mail,
+                  color: Color.fromRGBO(24, 71, 137, 1), size: 32),
             ),
             childWhenDragging: const SizedBox(), // Hides original when dragging
             onDraggableCanceled: (velocity, offset) {
@@ -295,40 +282,40 @@ class _DraggableContactUsButtonState extends State<DraggableContactUsButton> {
                 }
 
                 // Clamp the top value to ensure the button stays within the screen
-                _top = offset.dy.clamp(0.0, MediaQuery.of(context).size.height - 80);
+                _top = offset.dy
+                    .clamp(0.0, MediaQuery.of(context).size.height - 80);
               });
             },
-           child: FloatingActionButton(
-  onPressed: _launchEmail,
-  backgroundColor: Colors.white,
-  elevation: 5,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(50),
-  ),
-  child: ShaderMask(
-    shaderCallback: (Rect bounds) {
-      return const LinearGradient(
-        colors: [
-          Color(0xFF0D1B2A), 
-          Color(0xFF1B365D), 
-          Color(0xFF4B9CD3), 
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(bounds);
-    },
-    blendMode: BlendMode.srcIn, 
-    child: const Icon(
-      Icons.mail,
-      color: Colors.white,
-      size: 35,
-    ),
-  ),
-),
+            child: FloatingActionButton(
+              onPressed: _launchEmail,
+              backgroundColor: Colors.white,
+              elevation: 5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: ShaderMask(
+                shaderCallback: (Rect bounds) {
+                  return const LinearGradient(
+                    colors: [
+                      Color(0xFF0D1B2A),
+                      Color(0xFF1B365D),
+                      Color(0xFF4B9CD3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcIn,
+                child: const Icon(
+                  Icons.mail,
+                  color: Colors.white,
+                  size: 35,
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 }
-

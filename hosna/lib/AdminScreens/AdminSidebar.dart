@@ -45,11 +45,9 @@ class AdminSidebar extends StatelessWidget {
           _buildSidebarItem(context, "Projects",
               () => _navigateTo(context, BrowseProjects(walletAddress: ''))),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-  
           _buildSidebarItem(context, "Complaints",
               () => _navigateTo(context, ViewComplaintsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),
-         
           _buildSidebarItem(context, "Terms & Conditions",
               () => _navigateTo(context, AdminTermsAndConditionsPage())),
           Divider(color: Color.fromRGBO(24, 71, 137, 1)),

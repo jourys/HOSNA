@@ -34,14 +34,14 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   late Web3Client _web3Client;
   final String _rpcUrl =
       "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
-  final String _contractAddress = "0x7B7D010310d1544ea936b87E2Cc7AFfDf8571E7A";
+  final String _contractAddress = "0xFa8d16A4FF659c9c2E22C6f937eEcB4AC015A7a1";
   final String _lookupContractAddress =
-      "0xC6bbeC9116dB9955987b21f0093cabA4dF895EBF";
+      "0x2068dEC57b32b387f38daB251D06206b8d33481D";
   bool _isPasswordVisible = false; // Track password visibility
   final creatorPrivateKey =
       "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
   final String _charityRegistryAddress =
-      "0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7";
+      "0x25ef93ac312D387fdDeFD62CD852a29328c4B122";
 
   @override
   void initState() {

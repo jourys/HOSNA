@@ -15,7 +15,7 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
- String? walletAddress;
+  String? walletAddress;
 
   bool isLoading = true;
   List<Map<String, dynamic>> notifications = [];
@@ -111,91 +111,96 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ? Center(child: CircularProgressIndicator())
                   : notifications.isEmpty
                       ? Center(child: Text("No notifications available."))
-                      :ListView.builder(
-  itemCount: notifications.length,
-  padding: EdgeInsets.all(16),
-  itemBuilder: (context, index) {
-    final notif = notifications[index];
-    final title = notif['title'] ?? 'No Title';
-    final body = notif['body'] ?? '';
-    final timestamp = notif['timestamp']?.toDate();
+                      : ListView.builder(
+                          itemCount: notifications.length,
+                          padding: EdgeInsets.all(16),
+                          itemBuilder: (context, index) {
+                            final notif = notifications[index];
+                            final title = notif['title'] ?? 'No Title';
+                            final body = notif['body'] ?? '';
+                            final timestamp = notif['timestamp']?.toDate();
 
-    // Random color for each notification for more variety
-    Color cardColor = Colors.primaries[index % Colors.primaries.length];
-    Color iconColor = cardColor.withOpacity(0.8);
-    String formattedDate = '';
-    String formattedTime = '';
-    if (timestamp != null) {
-      formattedDate = DateFormat('dd/MM/yyyy').format(timestamp);  // التاريخ
-      formattedTime = DateFormat('HH:mm').format(timestamp); // الساعة والدقائق
-    }
+                            // Random color for each notification for more variety
+                            Color cardColor = Colors
+                                .primaries[index % Colors.primaries.length];
+                            Color iconColor = cardColor.withOpacity(0.8);
+                            String formattedDate = '';
+                            String formattedTime = '';
+                            if (timestamp != null) {
+                              formattedDate = DateFormat('dd/MM/yyyy')
+                                  .format(timestamp); // التاريخ
+                              formattedTime = DateFormat('HH:mm')
+                                  .format(timestamp); // الساعة والدقائق
+                            }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 5,
-      margin: EdgeInsets.only(bottom: 16),
-      color: Colors.white, // Make the card background white
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon inside square container with colorful background
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.notifications,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-            SizedBox(width: 16),
-            // Notification content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: cardColor,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    body,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  if (timestamp != null) ...[
-                    SizedBox(height: 8),
-                    Text(
-                      '$formattedDate $formattedTime',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  },
-),
-
+                            return Card(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                              elevation: 5,
+                              margin: EdgeInsets.only(bottom: 16),
+                              color: Colors
+                                  .white, // Make the card background white
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Icon inside square container with colorful background
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: iconColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.notifications,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    // Notification content
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: cardColor,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            body,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          if (timestamp != null) ...[
+                                            SizedBox(height: 8),
+                                            Text(
+                                              '$formattedDate $formattedTime',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ),
         ],
