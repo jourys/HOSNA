@@ -15,6 +15,17 @@ import 'package:web3dart/web3dart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class NoLeadingSpaceFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.startsWith(' ')) {
+      return oldValue;
+    }
+    return newValue;
+  }
+}
+
 class CharitySignUpPage extends StatefulWidget {
   const CharitySignUpPage({super.key});
 
@@ -727,6 +738,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           (isConfirmPassword && !_isConfirmPasswordVisible),
       keyboardType: isPhone ? TextInputType.number : TextInputType.text,
       inputFormatters: [
+        NoLeadingSpaceFormatter(),
         if (isPhone) ...[
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(10),
@@ -734,7 +746,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         if (isEmail || isPassword || label == 'Website')
           FilteringTextInputFormatter.deny(RegExp(r'\s')),
       ],
-       maxLines: isDescription ? 2 : 1,
+      maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
@@ -787,12 +799,11 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         if (isDescription && value!.length < 30) {
           return 'Description must be at least 30 characters';
         }
-       if (label == 'Website' &&
-    value!.isNotEmpty &&
-    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
-        .hasMatch(value)) {
-  return 'Enter a valid website URL';
-}
+        if (label == 'Website' &&
+            value!.isNotEmpty &&
+            !RegExp(r'^www\.[a-zA-Z0-9-]+\.com$').hasMatch(value)) {
+          return 'Enter a valid website URL';
+        }
 
         return null;
       },

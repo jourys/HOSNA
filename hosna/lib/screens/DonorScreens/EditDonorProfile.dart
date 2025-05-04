@@ -490,12 +490,13 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
         readOnly: isEmail,
         enabled: !isEmail,
         keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-        inputFormatters: isPhone
-            ? [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ]
-            : [],
+        inputFormatters: [
+          FilteringTextInputFormatter.deny(RegExp(r'\s')), // Deny all spaces
+          if (isPhone) ...[
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
+          ],
+        ],
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Enter $label';

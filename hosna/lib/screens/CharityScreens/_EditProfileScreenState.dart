@@ -13,6 +13,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
+class NoLeadingSpaceFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.startsWith(' ')) {
+      return oldValue;
+    }
+    return newValue;
+  }
+}
+
 class EditProfileScreen extends StatefulWidget {
   final String organizationName;
   final String email;
@@ -281,8 +292,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     if (website.isNotEmpty &&
-    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
-            .hasMatch(website)) {
+        !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$').hasMatch(website)) {
       showError("Enter a valid website URL.");
       return;
     }
@@ -644,12 +654,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-          inputFormatters: isPhone
-              ? [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ]
-              : [],
+          inputFormatters: [
+            NoLeadingSpaceFormatter(),
+            if (isPhone) ...[
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+          ],
           validator: (value) {
             if (value == null || value.isEmpty) {
               return '$label cannot be empty';
@@ -664,11 +675,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 !RegExp(r"^[a-zA-Z\s,.'-]{2,50}$").hasMatch(value)) {
               return 'Enter a valid city name';
             }
-             if (label == 'Website' &&
-    value!.isNotEmpty &&
-    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
-        .hasMatch(value)) {
-  return 'Enter a valid website URL';
+            if (label == 'Website' &&
+                value!.isNotEmpty &&
+                !RegExp(r'^www\.[a-zA-Z0-9-]+\.(com)$').hasMatch(value)) {
+              return 'Enter a valid website URL';
             }
 
             if (label == 'Description' && value.length < 30) {

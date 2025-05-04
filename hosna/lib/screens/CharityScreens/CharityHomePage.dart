@@ -319,45 +319,43 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 70),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Good Day, ${_organizationName}!",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 23,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    padding: const EdgeInsets.only(
+                        top: 30, bottom: 10), // reduce top space
+                    child: Text(
+                      "Good Day, ${_organizationName}!",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Row(
-  children: [
-    SizedBox(
-      width: 120,
-      height: 75, // Height should match the icon's size for full visibility
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ProfileScreenCharity()),
-          );
-        },
-        child: Transform.translate(
-          offset: const Offset(5, 30), // Move left and down
-          child: const Icon(
-            Icons.account_circle,
-            size: 75,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    ),
-  ],
-),
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        height:
+                            75, // Height should match the icon's size for full visibility
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ProfileScreenCharity()),
+                            );
+                          },
+                          child: Transform.translate(
+                            offset: const Offset(5, 30), // Move left and down
+                            child: const Icon(
+                              Icons.account_circle,
+                              size: 75,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
