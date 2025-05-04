@@ -744,8 +744,7 @@ showSuccessPopup( context);
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final walletAddress =
-        widget.walletAddress; // Use the wallet address from the widget
+    final walletAddress = widget.walletAddress;
 
     if (walletAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -754,8 +753,13 @@ showSuccessPopup( context);
       return;
     }
 
-    // Save project details as a draft
+    // Reuse existing ID if editing, or create a new one
+    final draftId = widget.draft != null
+        ? widget.draft!['id']
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
     final draft = {
+      'id': draftId,
       'name': _projectNameController.text,
       'description': _descriptionController.text,
       'startDate': _startDateController.text,
@@ -764,15 +768,22 @@ showSuccessPopup( context);
       'projectType': _selectedProjectType ?? 'Other',
     };
 
-    // Retrieve existing drafts for this user
-    final userDraftsKey = 'drafts_$walletAddress'; // Unique key per user
+    final userDraftsKey = 'drafts_$walletAddress';
     final drafts = prefs.getStringList(userDraftsKey) ?? [];
-    drafts.add(jsonEncode(draft)); // Convert draft to JSON and save
+    List<Map<String, dynamic>> parsedDrafts =
+        drafts.map((d) => jsonDecode(d) as Map<String, dynamic>).toList();
 
-    // Save updated drafts list for this user
-    await prefs.setStringList(userDraftsKey, drafts);
+    final existingIndex = parsedDrafts.indexWhere((d) => d['id'] == draftId);
+    if (existingIndex != -1) {
+      parsedDrafts[existingIndex] = draft;
+    } else {
+      parsedDrafts.add(draft);
+    }
 
-    print("✅ Draft saved: ${_projectNameController.text}");
+    final updatedDrafts = parsedDrafts.map((d) => jsonEncode(d)).toList();
+    await prefs.setStringList(userDraftsKey, updatedDrafts);
+
+    print("Draft saved: ${_projectNameController.text}");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Draft saved successfully!')),
     );
@@ -890,7 +901,18 @@ showSuccessPopup( context);
 
       print("✅ Project successfully posted!");
 
-      
+      if (widget.draft == null || widget.walletAddress == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final userDraftsKey = 'drafts_${widget.walletAddress}';
+      final drafts = prefs.getStringList(userDraftsKey) ?? [];
+
+      final updatedDrafts = drafts.where((d) {
+        final decoded = jsonDecode(d);
+        return decoded['id'] != widget.draft!['id'];
+      }).toList();
+
+      await prefs.setStringList(userDraftsKey, updatedDrafts);
      
     
       // Navigate to project details page only after successful posting
