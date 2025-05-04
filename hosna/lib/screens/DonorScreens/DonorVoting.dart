@@ -481,7 +481,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
                                         });
 
                                         try {
-                                          // التحقق من نوع الخيار (تصويت أو استرجاع)
+                                          
                                           if (selectedProjectIndex
                                               .startsWith('refund_')) {
                                             final refundIndex =
@@ -512,11 +512,13 @@ class _DonorVotePageState extends State<DonorVotePage> {
                                             Navigator.pop(context);
                                           } else if (selectedProjectIndex
                                               .startsWith('vote_')) {
-                                            // تصويت
-                                            await _submitVote(); // تأكدي إنها معرفة وتعتمد على selectedProjectIndex
+                                            final stopwatch = Stopwatch()..start();
+                                            await _submitVote(); 
+                                            stopwatch.stop();
+                                            print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
                                             Navigator.pop(context);
                                           } else {
-                                            // حالة غير متوقعة
+                                            
                                             throw Exception(
                                                 "❌ Invalid selection value");
                                           }

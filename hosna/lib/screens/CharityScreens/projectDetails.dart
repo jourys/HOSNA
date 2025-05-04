@@ -1064,6 +1064,7 @@ _listenForSuspension(walletAddress.toString());
                                   ),
                                 ),
                               ),
+                              
                             if (((hasRefunded || hasVoted) ||
                                     (userType == 1 &&
                                         widget.projectCreatorWallet ==
@@ -1132,6 +1133,8 @@ _listenForSuspension(walletAddress.toString());
                                   ),
                                 ),
                               ),
+
+                                SizedBox(height: 30),
                             if (canVote &&
                                 votingInitiated &&
                                 userType == 0 &&

@@ -319,8 +319,8 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(
-                        top: 30, bottom: 10), // reduce top space
+                    padding: const EdgeInsets.only(top: 70),
+                       // reduce top space
                     child: Text(
                       "Good Day, ${_organizationName}!",
                       style: const TextStyle(
