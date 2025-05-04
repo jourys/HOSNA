@@ -889,8 +889,8 @@ _listenForSuspension(walletAddress.toString());
                       ),
                       SizedBox(height: 15),
                       SizedBox(height: 30),
-                      if (userType == 1 &&
-                          widget.projectCreatorWallet == globalWalletAddress)
+                      // if (userType == 1 &&
+                      //     widget.projectCreatorWallet == globalWalletAddress)
                         GestureDetector(
                           onTap: () {
                             print("View all donors");
