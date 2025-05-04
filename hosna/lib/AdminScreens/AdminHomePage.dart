@@ -169,7 +169,8 @@ Widget _buildreportsCard(
       context, 
       "Total Projects $_projectCount", 
       Icons.business, 
-      Colors.blue,
+      Color.fromRGBO(
+                            24, 71, 137, 1), 
       () {},
     ),
 
@@ -182,7 +183,8 @@ Widget _buildreportsCard(
             context, 
             "Total New Charity Requests", 
             Icons.assignment_turned_in,
-            Colors.green,
+            Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         } else if (snapshot.hasError) {
@@ -190,7 +192,8 @@ Widget _buildreportsCard(
             context, 
             "Error Loading Requests", 
             Icons.error_outline, 
-            Colors.red,
+            Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         } else {
@@ -199,7 +202,8 @@ Widget _buildreportsCard(
             context,
             "Total New Charity Requests ($count)",
             Icons.assignment_turned_in,
-            Colors.green,
+            Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         }
@@ -215,7 +219,8 @@ Widget _buildreportsCard(
             context, 
             "Total Unresolved Complaints", 
             Icons.report_problem, 
-            Colors.redAccent,
+             Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         } else if (snapshot.hasError) {
@@ -223,7 +228,8 @@ Widget _buildreportsCard(
             context, 
             "Error Loading Complaints", 
             Icons.error, 
-            Colors.red,
+            Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         } else {
@@ -232,7 +238,8 @@ Widget _buildreportsCard(
             context,
             "Total Unresolved Complaints ($count)",
             Icons.report_problem,
-            Colors.redAccent,
+            Color.fromRGBO(
+                            24, 71, 137, 1), 
             () {},
           );
         }
