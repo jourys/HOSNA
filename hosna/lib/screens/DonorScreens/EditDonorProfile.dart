@@ -112,6 +112,26 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     }
   }
 
+
+ Future<bool> isPhoneNumberTaken(String phone) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .get();
+
+      final prefs = await SharedPreferences.getInstance();
+      String? myWallet = prefs.getString('walletAddress');
+
+      // If the phone is used by someone else (not this user), return true
+      return querySnapshot.docs.any((doc) => doc.id != myWallet);
+    } catch (e) {
+      print('❌ Error checking phone duplication: $e');
+      return false;
+    }
+  }
+
+
   Future<void> _uploadImageToFirebase() async {
     if (_imageFile == null || _donorAddress.isEmpty) {
       print('⚠️ No image selected or donor address is empty.');
@@ -283,9 +303,18 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     if (firstName.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("⚠️ First name cannot be empty")),
+          SnackBar(content: Text(" First name cannot be empty")),
         );
       }
+      return;
+    }
+
+      bool taken = await isPhoneNumberTaken( phoneController.text);
+    if (taken) {
+       ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(" This phone number is already registered with another account.")),
+        );
+     
       return;
     }
 

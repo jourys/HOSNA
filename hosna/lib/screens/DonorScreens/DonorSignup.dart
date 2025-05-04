@@ -158,7 +158,14 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     final password = _passwordController.text;
 
     print("Form inputs: $firstName, $lastName, $email, $phone, $password");
-
+bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
+    if (phoneTaken) {
+      print("Charity with this phone number already exists!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone number is already registered!')),
+      );
+      return;
+    }
     try {
       // Send the transaction to register the donor using the creator's wallet for gas
       final result = await _web3Client.sendTransaction(
@@ -248,6 +255,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
           .set({
         'walletAddress': walletAddress,
         'email': email,
+         'phone': _phoneController.text,
         'userType': 0, // 0 means donor
         'isSuspend': false,
       });
@@ -286,7 +294,19 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     }
     return null;
   }
+ Future<bool> isPhoneNumberTaken(String phone) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .get();
 
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking phone duplication: $e');
+      return false;
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
