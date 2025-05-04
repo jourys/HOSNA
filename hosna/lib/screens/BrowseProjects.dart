@@ -170,9 +170,6 @@ class _BrowseProjectsState extends State<BrowseProjects> {
           .where((project) =>
               project['name']
                   .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ||
-              project['description']
-                  .toLowerCase()
                   .contains(_searchQuery.toLowerCase()))
           .toList();
     }
