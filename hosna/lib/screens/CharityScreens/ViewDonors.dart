@@ -258,7 +258,7 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
                                     fontSize: 13, color: Colors.grey[700]),
                               ),
                             ),
-                            onTap: () => _navigateToDetails(donor),
+                            // onTap: () => _navigateToDetails(donor),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
