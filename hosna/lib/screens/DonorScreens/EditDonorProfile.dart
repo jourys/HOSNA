@@ -52,6 +52,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
   void initState() {
     super.initState();
     _initializeWeb3();
+    _loadProfilePicture();
     _web3Client = Web3Client(rpcUrl, Client());
 
     // ✅ Directly initialize controllers with provided values
@@ -86,6 +87,28 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
         _imageFile = File(pickedFile.path);
       });
       _uploadImageToFirebase();
+    }
+  }
+
+  Future<void> _loadProfilePicture() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletAddress = prefs.getString('walletAddress') ?? '';
+
+    if (walletAddress.isNotEmpty) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(walletAddress)
+            .get();
+
+        if (doc.exists && doc.data()?.containsKey('profile_picture') == true) {
+          setState(() {
+            _profilePictureUrl = doc.data()!['profile_picture'];
+          });
+        }
+      } catch (e) {
+        print('❌ Error loading profile picture: $e');
+      }
     }
   }
 
@@ -349,9 +372,12 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.grey,
-                      backgroundImage:
-                          _imageFile != null ? FileImage(_imageFile!) : null,
-                      child: _imageFile == null
+                      backgroundImage: _imageFile != null
+                          ? FileImage(_imageFile!)
+                          : (_profilePictureUrl.isNotEmpty
+                              ? NetworkImage(_profilePictureUrl)
+                              : null) as ImageProvider?,
+                      child: _imageFile == null && _profilePictureUrl.isEmpty
                           ? Icon(Icons.account_circle,
                               size: 100, color: Colors.white)
                           : null,
@@ -410,13 +436,12 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 16), // Makes it bigger
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20), // Rounded corners
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   textStyle: TextStyle(
-                    fontSize: 18, // Optional: Make the text inside bigger too
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -434,38 +459,36 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
-        style: const TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1), // ✅ Input text color
+        style: TextStyle(
+          color: isEmail ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(
-            color: Color.fromRGBO(24, 71, 137, 1), // ✅ Label color
+          labelStyle: TextStyle(
+            color: isEmail ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
           ),
           border: OutlineInputBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
-            borderSide: const BorderSide(
-              color: Color.fromRGBO(24, 71, 137, 1), // ✅ Border color
+            borderRadius: BorderRadius.all(Radius.circular(12.0)),
+            borderSide: BorderSide(
+              color: isEmail ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
             ),
           ),
-          enabledBorder: const OutlineInputBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12.0)),
             borderSide: BorderSide(
-              color: Color.fromRGBO(24, 71, 137, 1),
+              color: isEmail ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
             ),
           ),
-          focusedBorder: const OutlineInputBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(12.0)), // ✅ Rounded corners
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12.0)),
             borderSide: BorderSide(
-              color: Color.fromRGBO(24, 71, 137, 1),
+              color: isEmail ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
               width: 2.0,
             ),
           ),
         ),
         readOnly: isEmail,
+        enabled: !isEmail,
         keyboardType: isPhone ? TextInputType.number : TextInputType.text,
         inputFormatters: isPhone
             ? [

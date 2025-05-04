@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hosna/screens/CharityScreens/CharityNavBar.dart';
 import 'package:hosna/screens/NotificationListener.dart';
 import 'package:hosna/screens/NotificationManager.dart';
@@ -620,12 +621,28 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                    labelText: 'Email Address', border: OutlineInputBorder()),
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(),
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                ],
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!RegExp(
+                          r'^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
+                      .hasMatch(value.toLowerCase())) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 30),
               TextFormField(
                 controller: _passwordController,
-                obscureText: !_isPasswordVisible, // Toggle visibility
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
@@ -643,6 +660,15 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                     },
                   ),
                 ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                ],
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 30),
               Row(
@@ -673,7 +699,11 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
-                  onPressed: () => _authenticateCharity(),
+                  onPressed: () {
+                    if (_formKey.currentState?.validate() ?? false) {
+                      _authenticateCharity();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(300, 50),
                       backgroundColor: Color.fromRGBO(24, 71, 137, 1)),

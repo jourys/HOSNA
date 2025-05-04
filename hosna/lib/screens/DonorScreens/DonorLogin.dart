@@ -418,76 +418,56 @@ class _DonorLogInPageState extends State<DonorLogInPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 300),
-                Column(
+                const SizedBox(
+                    height: 30), // smaller spacing after password field
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        _authenticateUser();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(300, 50),
+                      backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
+                    ),
+                    child: const Text(
+                      'Log In',
+                      style: TextStyle(fontSize: 20, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          print('Login button pressed');
-
-                          if (_formKey.currentState?.validate() ?? false) {
-                            print('Form validation successful');
-                            _authenticateUser();
-                          } else {
-                            print('Form validation failed');
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(300, 50),
-                          backgroundColor: const Color.fromRGBO(24, 71, 137, 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              width: 2,
-                            ),
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color.fromARGB(255, 102, 100, 100),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DonorSignUpPage(),
                           ),
-                        ),
-                        child: const Text(
-                          'Log In',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
-                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Sign Up",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color.fromARGB(255, 102, 100, 100),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            print('Navigating to Sign Up page');
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const DonorSignUpPage(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color.fromRGBO(24, 71, 137, 1),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),

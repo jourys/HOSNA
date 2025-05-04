@@ -134,8 +134,21 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
       for (int i = 0; i < wallets.length; i++) {
         String wallet = wallets[i].toString();
 
-        // Only include charities that are approved in Firestore
         if (approvedWallets.contains(wallet)) {
+          // Fetch profile picture from Firestore
+          String? profilePictureUrl;
+          try {
+            var doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(wallet)
+                .get();
+            if (doc.exists && doc.data()!.containsKey('profilePicture')) {
+              profilePictureUrl = doc['profilePicture'];
+            }
+          } catch (e) {
+            print("Error fetching profile picture for $wallet: $e");
+          }
+
           tempOrganizations.add({
             "wallet": wallet,
             "name": names[i],
@@ -146,6 +159,7 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
             "description": descriptions[i],
             "licenseNumber": licenseNumbers[i],
             "establishmentDate": establishmentDates[i],
+            "profilePicture": profilePictureUrl,
           });
         }
       }
@@ -309,18 +323,31 @@ class _AdminBrowseOrganizationsState extends State<AdminBrowseOrganizations> {
                                                       horizontal: 14,
                                                       vertical: 10),
                                               leading: SizedBox(
-                                                width: 60, // Increased width
-                                                height: 100, // Increased height
-                                                child: CircleAvatar(
-                                                  radius:
-                                                      40, // Increased avatar size
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  child: Icon(
-                                                      Icons.account_circle,
-                                                      size: 75,
-                                                      color: Colors
-                                                          .grey), // Increased icon size
+                                                width: 60,
+                                                height: 60,
+                                                child: ClipOval(
+                                                  child: charity[
+                                                              "profilePicture"] !=
+                                                          null
+                                                      ? Image.network(
+                                                          charity[
+                                                              "profilePicture"],
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder:
+                                                              (context, error,
+                                                                  stackTrace) {
+                                                            return Icon(
+                                                                Icons
+                                                                    .account_circle,
+                                                                size: 60,
+                                                                color: Colors
+                                                                    .grey);
+                                                          },
+                                                        )
+                                                      : Icon(
+                                                          Icons.account_circle,
+                                                          size: 60,
+                                                          color: Colors.grey),
                                                 ),
                                               ),
                                               title: Column(

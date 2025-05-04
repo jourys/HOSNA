@@ -95,17 +95,17 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
   Future<void> _loadProfilePicture() async {
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('charities')
+          .collection('users')
           .doc(_charityAddress)
           .get();
 
-      if (doc.exists && doc.data()?.containsKey('profile_picture') == true) {
+      if (doc.exists && doc.data()?.containsKey('profilepicture') == true) {
         setState(() {
-          _profilePictureUrl = doc.data()!['profile_picture'];
+          _profilePictureUrl = doc.data()!['profilepicture'];
         });
       }
     } catch (e) {
-      print('Error loading profile picture: $e');
+      print('Error loading profile picture from users collection: $e');
     }
   }
 
@@ -169,11 +169,10 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
 // Check for null or empty
       if (walletAddress == null || walletAddress.isEmpty) {
-        print("❌ Wallet address not found.");
+        print("Wallet address not found.");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text("❌ Wallet address not found. Please log in again.")),
+              content: Text("Wallet address not found. Please log in again.")),
         );
         return;
       }
@@ -540,24 +539,15 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        InfoRow(title: 'phone : ', value: _phone), // Phone
-                        InfoRow(title: 'Email : ', value: _email), // Email
+                        InfoRow(title: 'Phone', value: _phone),
+                        InfoRow(title: 'Email', value: _email),
+                        InfoRow(title: 'License Number', value: _licenseNumber),
+                        InfoRow(title: 'City', value: _organizationCity),
+                        InfoRow(title: 'Website', value: _organizationURL),
                         InfoRow(
-                            title: 'License : ',
-                            value: _licenseNumber), // License Number
-                        InfoRow(
-                            title: 'Location : ',
-                            value: _organizationCity), // City
-                        InfoRow(
-                            title: 'Website : ',
-                            value: _organizationURL), // Website
-                        InfoRow(
-                            title: 'Founded : ',
-                            value: _establishmentDate), // Establishment Date
-                        InfoRow(
-                            title: 'About : ',
-                            value: _description), // Description
-
+                            title: 'Establishment Date',
+                            value: _establishmentDate),
+                        InfoRow(title: 'Description', value: _description),
                         SizedBox(height: 20),
                         Center(
                           child: SizedBox(

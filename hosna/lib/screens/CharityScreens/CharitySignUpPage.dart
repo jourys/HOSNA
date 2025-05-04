@@ -62,7 +62,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     _web3Client = Web3Client(rpcUrl, Client());
     _contractAddress =
         EthereumAddress.fromHex("0xa4234E1103A8d00c8b02f15b7F3f1C2eDbf699b7");
-    print("✅ Web3 initialized with contract address: $_contractAddress");
+    print("Web3 initialized with contract address: $_contractAddress");
   }
 
   String _generatePrivateKey() {
@@ -76,8 +76,8 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('walletAddress', walletAddress);
     await prefs.setString('privateKey', privateKey);
-    print('✅ Saved walletAddress: $walletAddress');
-    print('✅ Saved privateKey: $privateKey');
+    print('Saved walletAddress: $walletAddress');
+    print('Saved privateKey: $privateKey');
   }
 
   Uint8List hashPassword(String password) {
@@ -155,7 +155,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           existingCharity[0] !=
               EthereumAddress.fromHex(
                   "0x0000000000000000000000000000000000000000")) {
-        print("❌ Charity with this email already exists!");
+        print("Charity with this email already exists!");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Charity with this email is already registered!')),
@@ -163,12 +163,12 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         return;
       }
     } catch (e) {
-      print("ℹ️ No existing charity found, proceeding with registration.");
+      print("No existing charity found, proceeding with registration.");
     }
 // 🔵 Check if phone is already used
     bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
     if (phoneTaken) {
-      print("❌ Charity with this phone number already exists!");
+      print("Charity with this phone number already exists!");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Phone number is already registered!')),
       );
@@ -193,23 +193,23 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
             charityWallet,
             _passwordController.text.trim()
           ],
-          gasPrice: EtherAmount.inWei(BigInt.from(10000000000)), // ✅ 10 Gwei
+          gasPrice: EtherAmount.inWei(BigInt.from(10000000000)), // 10 Gwei
 
           maxGas: 4000000,
         ),
         chainId: 11155111,
       );
 
-      print("✅ Transaction successful! Hash: $result");
+      print("Transaction successful! Hash: $result");
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 Account created successfully!')),
+        const SnackBar(content: Text('Account created successfully!')),
       );
 
       await _storeDonorInFirebase(charityWallet.toString(),
           _organizationEmailController.text.toLowerCase());
       await _storePrivateKey(charityWallet.toString(), charityPrivateKey);
-      print("private key stored in shared prefs ✅");
+      print("private key stored in shared prefs");
 
 // 🔐 Register with Firebase Auth for reset password support
       await _registerWithFirebase(
@@ -226,7 +226,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         ),
       );
     } catch (e) {
-      print("❌ Error registering charity: $e");
+      print("Error registering charity: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('⚠️ Registration failed: $e')),
       );
@@ -274,7 +274,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         );
       }
     } catch (e) {
-      print("❌ Error checking account status: $e");
+      print("Error checking account status: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("An error occurred. Please try again."),
@@ -286,85 +286,91 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
   }
 
   void _showTermsConditionsDialog(BuildContext context) async {
-  try {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('terms_conditions')
-        .get();
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance.collection('terms_conditions').get();
 
-    final termsList = querySnapshot.docs
-        .map((doc) => {
-              'title': doc.data()['title']?.toString() ?? '', // Default to empty string if null
-              'text': doc.data()['text']?.toString() ?? ''    // Default to empty string if null
-            })
-        .where((term) => term['title']?.isNotEmpty == true && term['text']?.isNotEmpty == true)
-        .toList();
+      final termsList = querySnapshot.docs
+          .map((doc) => {
+                'title': doc.data()['title']?.toString() ?? '',
+                'text': doc.data()['text']?.toString() ?? ''
+              })
+          .where((term) =>
+              term['title']?.isNotEmpty == true &&
+              term['text']?.isNotEmpty == true)
+          .toList();
 
-    final allTerms = termsList
-        .asMap()
-        .entries
-        .map((entry) =>
-            '${entry.key + 1}. \n${entry.value['title']}: \n${entry.value['text']}')
-        .join('\n\n');
+      final allTerms = termsList
+          .asMap()
+          .entries
+          .map((entry) =>
+              '${entry.key + 1}. \n${entry.value['title']}: \n${entry.value['text']}')
+          .join('\n\n');
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Terms and Conditions',
-            style: TextStyle(
-              fontSize: 22, // Larger size for the title
-              fontWeight: FontWeight.bold, // Bold title
-              color: Color.fromRGBO(24, 71, 137, 1), // You can adjust the color
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'Terms and Conditions',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(24, 71, 137, 1),
+              ),
             ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: termsList.map((term) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
- SizedBox(height: 12),                      Text(
-                        term['title']!,
-                        style: TextStyle(
-                          fontSize: 16, // Larger font size for title from Firebase
-                          fontWeight: FontWeight.bold,
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: termsList.map((term) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 12),
+                        Text(
+                          term['title']!,
+                          style: TextStyle(
+                            fontSize:
+                                16, // Larger font size for title from Firebase
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      // Display the term text
-                      Text(
-                        term['text']!,
-                        style: TextStyle(fontSize: 14), // Standard font size for content
-                      ),
-                       SizedBox(height: 8),
-                    ],
-                  ),
-                );
-              }).toList(),
+                        SizedBox(height: 4),
+                        // Display the term text
+                        Text(
+                          term['text']!,
+                          style: TextStyle(
+                              fontSize: 14), // Standard font size for content
+                        ),
+                        SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close' , style: TextStyle(fontSize: 18 ,  fontWeight: FontWeight.bold,) ),
-            ),
-          ],
-        );
-      },
-    );
-  } catch (e) {
-    print('❌ Error fetching terms: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to load terms and conditions.')),
-    );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    )),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print('Error fetching terms: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load terms and conditions.')),
+      );
+    }
   }
-}
-
 
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
     try {
@@ -377,12 +383,12 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       bool isSaved = await prefs.setString(privateKeyKey, privateKey);
 
       if (isSaved) {
-        print('✅ Private key for wallet $walletAddress saved successfully!');
+        print('Private key for wallet $walletAddress saved successfully!');
       } else {
-        print('❌ Failed to save private key for wallet $walletAddress');
+        print('Failed to save private key for wallet $walletAddress');
       }
     } catch (e) {
-      print('⚠️ Error saving private key: $e');
+      print('Error saving private key: $e');
     }
   }
 
@@ -394,15 +400,15 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           .set({
         'walletAddress': walletAddress,
         'email': email,
-        'phone': _phoneController.text, // ⬅️ add this
+        'phone': _phoneController.text,
 
         'userType': 1, // 1 means charity
         'isSuspend': false,
         'accountStatus': 'pending', // Default status is 'pending'
       });
-      print("✅ Charity data successfully stored in Firebase! 🎉");
+      print("Charity data successfully stored in Firebase! 🎉");
     } catch (e) {
-      print("❌ Error storing charity in Firebase: $e ");
+      print("Error storing charity in Firebase: $e ");
     }
   }
 
@@ -411,7 +417,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      print('✅ Firebase account created for ${userCredential.user?.email}');
+      print('Firebase account created for ${userCredential.user?.email}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration successful')),
       );
@@ -429,7 +435,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
-      print('❌ Error: $e');
+      print('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Unexpected error occurred')),
       );
@@ -468,7 +474,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final storedWallet = prefs.getString('walletAddress');
 
     if (storedWallet == null || storedWallet.isEmpty) {
-      print("❌ Error: No wallet address found in storage!");
+      print("Error: No wallet address found in storage!");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text('No wallet address found! Please log in again.')),
@@ -479,10 +485,10 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     final result = await _web3Client.call(
       contract: contract,
       function: getCharity,
-      params: [EthereumAddress.fromHex(storedWallet)], // ✅ Use stored wallet
+      params: [EthereumAddress.fromHex(storedWallet)],
     );
 
-    print("📌 Charity Details:");
+    print("Charity Details:");
     print("Name: ${result[0]}");
     print("Email: ${result[1]}");
     print("Phone: ${result[2]}");
@@ -592,44 +598,43 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                     return null;
                   },
                 ),
-               
-CheckboxListTile(
-  title: RichText(
-    text: TextSpan(
-      style: TextStyle(
-        fontSize: 14,
-        color: _isAgreedToTerms
-            ? const Color.fromRGBO(24, 71, 137, 1)
-            : const Color.fromARGB(255, 102, 100, 100),
-      ),
-      children: [
-        const TextSpan(text: 'By creating an account, you agree to our '),
-       TextSpan(
-  text: 'Terms & Conditions',
-  style: const TextStyle(
-    color: Color.fromRGBO(24, 71, 137, 1),
-    fontWeight: FontWeight.bold,
-    decoration: TextDecoration.none, // أزلنا التسطير كما طلبت
-  ),
-  recognizer: TapGestureRecognizer()
-    ..onTap = () {
-      _showTermsConditionsDialog(context);
-    },
-),
-
-      ],
-    ),
-  ),
-  value: _isAgreedToTerms,
-  onChanged: (bool? value) {
-    setState(() {
-      _isAgreedToTerms = value ?? false;
-    });
-  },
-  controlAffinity: ListTileControlAffinity.leading,
-  activeColor: const Color.fromRGBO(24, 71, 137, 1),
-),
-
+                CheckboxListTile(
+                  title: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _isAgreedToTerms
+                            ? const Color.fromRGBO(24, 71, 137, 1)
+                            : const Color.fromARGB(255, 102, 100, 100),
+                      ),
+                      children: [
+                        const TextSpan(
+                            text: 'By creating an account, you agree to our '),
+                        TextSpan(
+                          text: 'Terms & Conditions',
+                          style: const TextStyle(
+                            color: Color.fromRGBO(24, 71, 137, 1),
+                            fontWeight: FontWeight.bold,
+                            decoration:
+                                TextDecoration.none, // أزلنا التسطير كما طلبت
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              _showTermsConditionsDialog(context);
+                            },
+                        ),
+                      ],
+                    ),
+                  ),
+                  value: _isAgreedToTerms,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _isAgreedToTerms = value ?? false;
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: const Color.fromRGBO(24, 71, 137, 1),
+                ),
                 Center(
                   child: ElevatedButton(
                     onPressed: () {
@@ -702,8 +707,7 @@ CheckboxListTile(
     );
   }
 
-  bool _isConfirmPasswordVisible =
-      false; // New variable for confirm password visibility
+  bool _isConfirmPasswordVisible = false;
 
   bool _isPasswordVisible = false;
   Widget _buildTextField(TextEditingController controller, String label,
@@ -720,15 +724,15 @@ CheckboxListTile(
       controller: controller,
       obscureText: (isPassword && !_isPasswordVisible) ||
           (isConfirmPassword && !_isConfirmPasswordVisible),
-      keyboardType: isPhone
-          ? TextInputType.number
-          : TextInputType.text, // ✅ Numeric keyboard for phone
-      inputFormatters: isPhone
-          ? [
-              FilteringTextInputFormatter.digitsOnly, // ✅ Allow only numbers
-              LengthLimitingTextInputFormatter(10), // ✅ Limit to 10 digits
-            ]
-          : [],
+      keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+      inputFormatters: [
+        if (isPhone) ...[
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(10),
+        ],
+        if (isEmail || isPassword || label == 'Website')
+          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+      ],
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
@@ -757,7 +761,7 @@ CheckboxListTile(
       ),
       validator: (value) {
         if (isRequired && (value == null || value.isEmpty)) {
-          return 'Required';
+          return 'Please enter $label';
         }
         if (isEmail &&
             !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
@@ -774,15 +778,15 @@ CheckboxListTile(
         if (isConfirmPassword && value != _passwordController.text) {
           return 'Passwords do not match';
         }
-        if (isCity && !RegExp(r'^[a-zA-Z ]{1,20}$').hasMatch(value!)) {
-          return 'City must contain only letters';
+        if (isCity && !RegExp(r"^[a-zA-Z\s,.'-]{2,50}$").hasMatch(value!)) {
+          return 'Enter a valid city name';
         }
 
         if (isDescription && value!.length < 30) {
           return 'Description must be at least 30 characters';
         }
         if (label == 'Website' &&
-            value!.isNotEmpty && // ✅ Check if not empty
+            value!.isNotEmpty &&
             !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
                 .hasMatch(value!)) {
           return 'Enter a valid website URL';

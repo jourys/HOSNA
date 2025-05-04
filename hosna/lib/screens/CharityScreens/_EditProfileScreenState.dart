@@ -369,7 +369,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (walletAddress.isNotEmpty) {
       try {
         final doc = await FirebaseFirestore.instance
-            .collection('charities')
+            .collection('users')
             .doc(walletAddress)
             .get();
 
@@ -415,7 +415,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       print('🔄 Starting image upload process...');
       FirebaseStorage storage = FirebaseStorage.instance;
-      String filePath = 'charity_profile_pictures/$_charityAddress.jpg';
+      String filePath = 'user_profile_pictures/$_charityAddress.jpg';
       Reference storageRef = storage.ref(filePath);
 
       print('📂 Uploading image to Firebase Storage at: $filePath');
@@ -440,7 +440,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           print('✅ Download URL: $downloadUrl');
 
           await FirebaseFirestore.instance
-              .collection('charities')
+              .collection('users')
               .doc(_charityAddress)
               .set({'profilepicture': downloadUrl}, SetOptions(merge: true));
 
@@ -542,7 +542,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               SizedBox(height: 20),
               _buildTextField(nameController, 'Organization Name'),
-              _buildTextField(emailController, 'Email'),
+              _buildTextField(emailController, 'Email', readOnly: true),
               _buildTextField(phoneController, 'Phone', isPhone: true),
               // _buildTextField(licenseController, 'License Number'),
               _buildTextField(cityController, 'City'),
@@ -607,62 +607,76 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     int maxLines = 1,
     bool isPhone = false,
     bool readOnly = false,
+    bool? enabled,
     VoidCallback? onTap,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        readOnly: readOnly,
-        onTap: onTap,
-        style: TextStyle(
-          color: Color.fromRGBO(24, 71, 137, 1),
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: Color.fromRGBO(24, 71, 137, 1),
+          controller: controller,
+          maxLines: maxLines,
+          readOnly: readOnly,
+          enabled: enabled ?? !readOnly,
+          onTap: onTap,
+          style: TextStyle(
+            color: readOnly ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Color.fromRGBO(24, 71, 137, 1),
-              width: 2,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: readOnly ? Colors.grey : Color.fromRGBO(24, 71, 137, 1),
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Color.fromRGBO(24, 71, 137, 1),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Color.fromRGBO(24, 71, 137, 1),
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            borderRadius: BorderRadius.circular(12),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Color.fromRGBO(24, 71, 137, 1),
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-        inputFormatters: isPhone
-            ? [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ]
-            : [],
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return '$label cannot be empty';
-          }
-          if (isPhone) {
-            if (value.length != 10) {
-              return 'Phone number must be exactly 10 digits';
+          keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+          inputFormatters: isPhone
+              ? [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ]
+              : [],
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '$label cannot be empty';
             }
-            if (!value.startsWith('05')) {
-              return 'Phone number must start with 05';
+            if (label == 'Phone') {
+              if (value.length != 10 || !value.startsWith('05')) {
+                return 'Phone number must start with 05 and be 10 digits';
+              }
             }
-          }
-          return null;
-        },
-      ),
+
+            if (label == 'City' &&
+                !RegExp(r"^[a-zA-Z\s,.'-]{2,50}$").hasMatch(value)) {
+              return 'Enter a valid city name';
+            }
+            if (label == 'Website' &&
+                value!.isNotEmpty &&
+                !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
+                    .hasMatch(value!)) {
+              return 'Enter a valid website URL';
+            }
+
+            if (label == 'Description' && value.length < 30) {
+              return 'Description must be at least 30 characters';
+            }
+
+            return null;
+          }),
     );
   }
 }

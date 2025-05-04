@@ -130,7 +130,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
         String wallet = wallets[i].toString();
 
         if (seenWallets.contains(wallet)) {
-          continue; // Skip duplicate wallets
+          continue;
         }
 
         if (approvedWallets.contains(wallet)) {
@@ -138,13 +138,14 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 
           try {
             var doc = await FirebaseFirestore.instance
-                .collection('charities')
+                .collection('users')
                 .doc(wallet)
                 .get();
+
             if (doc.exists &&
                 doc.data() != null &&
-                doc.data()!.containsKey('profile_picture')) {
-              profilePictureUrl = doc.data()!['profile_picture'];
+                doc.data()!.containsKey('profilepicture')) {
+              profilePictureUrl = doc.data()!['profilepicture'];
             }
           } catch (e) {
             print('❌ Error fetching profile picture for $wallet: $e');
