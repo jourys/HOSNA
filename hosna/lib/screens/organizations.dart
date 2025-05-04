@@ -460,6 +460,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
                                   );
                                 },
                               ),
+                                const SizedBox(height: 300),
                   ],
                 ),
               ),
