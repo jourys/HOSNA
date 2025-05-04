@@ -48,6 +48,7 @@ void main() {
     late ContractFunction initiateVoting;
 
     setUp(() async {
+
       client = Web3Client(rpcUrl, Client());
       credentials = EthPrivateKey.fromHex(privateKey);
       contractAddr = EthereumAddress.fromHex(contractAddress);
@@ -58,28 +59,48 @@ void main() {
       initiateVoting = contract.function('initiateVoting');
     });
 
-    test('should reliably initiate voting multiple times', () async {
-      for (int i = 0; i < 3; i++) {
-        final List<BigInt> projectIds = [BigInt.from(Random().nextInt(1000)), BigInt.from(Random().nextInt(1000))];
-        final List<String> projectNames = ['Test Project A #$i', 'Test Project B #$i'];
+   test('should reliably initiate voting multiple times', () async {
+  int successCount = 0;
+  int failureCount = 0;
 
-        try {
-          final txHash = await client.sendTransaction(
-            credentials,
-            Transaction.callContract(
-              contract: contract,
-              function: initiateVoting,
-              parameters: [BigInt.from(5), projectIds, projectNames],
-              maxGas: 300000,
-            ),
-            chainId: 11155111,
-          );
+  for (int i = 0; i < 5; i++) {
+    final List<BigInt> projectIds = [
+      BigInt.from(Random().nextInt(10)), 
+      BigInt.from(Random().nextInt(10)),
+      BigInt.from(Random().nextInt(10))
+    ];
 
-          print('✅ Test #$i passed. Transaction hash: $txHash');
-        } catch (e) {
-          fail('❌ Test #$i failed. Error: $e');
-        }
-      }
-    });
+    final List<String> projectNames = [
+      'Test Project A #$i',
+      'Test Project B #$i',
+      'Test Project C #$i'
+    ];
+
+    try {
+      final txHash = await client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: contract,
+          function: initiateVoting,
+          parameters: [BigInt.from(5), projectIds, projectNames],
+          maxGas: 300000,
+        ),
+        chainId: 11155111,
+      );
+
+      print('✅ Test #$i passed. Transaction hash: $txHash');
+      successCount++;
+    } catch (e) {
+      print('❌ Test #$i failed. Error: $e');
+      failureCount++;
+    }
+  }
+
+  print('\n Test Summary ');
+  print('Total: ${successCount + failureCount}');
+  print('Success: $successCount');
+  print('Failure: $failureCount');
+  print('Reliability: ${(successCount / (successCount + failureCount) * 100).toStringAsFixed(2)}%');
+});
   });
 }

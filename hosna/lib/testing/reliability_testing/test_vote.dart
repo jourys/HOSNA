@@ -7,11 +7,12 @@ void main() async {
   final String rpcUrl = "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
   final EthereumAddress contractAddress = EthereumAddress.fromHex("0x421679ff91d6443B13b40082a56D7cD38D94e6dc");
 
-  // Replace these with your own funded Sepolia private keys
   final List<String> privateKeys = [
     "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c",
     "353dd3ae69d4257f6ae4c400ff8e7f0cf5add1df661f74680891f90979c0fc1b",
     "41d18b76c68ea16736643f91d29ad709f25fe829d789695154a2e7fd3381921c",
+    'c93d0fa275a26cdce1750f0acbc6c5a203dd8f6069b7485338405ac8a888e173',
+    'eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90',
   ];
 
   final String abi = '''[
@@ -47,12 +48,11 @@ void main() async {
   final contract = DeployedContract(ContractAbi.fromJson(abi, 'CharityVoting'), contractAddress);
   final voteFunction = contract.function('vote');
 
-  final votingId = BigInt.from(11);
+  final votingId = BigInt.from(23);
   final projectIndex = BigInt.from(0);
 
   int successCount = 0;
   int failCount = 0;
-  int alreadyVotedCount = 0;
 
   final stopwatch = Stopwatch()..start();
 
@@ -76,18 +76,8 @@ void main() async {
       print("✅ Transaction sent: $txHash");
       successCount++;
     } catch (e) {
-      if (e is RPCError) {
-        print("❌ RPCError: ${e.message}");
-      } else {
-        final error = e.toString();
-        if (error.contains("revert") && error.contains("Already voted")) {
-          print("❌ Already voted - skipping.");
-          alreadyVotedCount++;
-        } else {
-          print("❌ Error during vote: $error");
-          failCount++;
-        }
-      }
+      print("❌ Error during vote: $e");
+      failCount++;
     }
   }
 
@@ -97,7 +87,10 @@ void main() async {
   print("Total time: ${stopwatch.elapsed}");
   print("Successful votes: $successCount");
   print("Failed votes: $failCount");
-  print("Already voted: $alreadyVotedCount");
+
+  final totalAttempts = successCount + failCount;
+  final reliability = (successCount / totalAttempts) * 100;
+  print("Reliability: ${reliability.toStringAsFixed(2)}%");
 
   client.dispose();
 }
