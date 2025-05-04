@@ -658,7 +658,9 @@ class OrganizationProfilePage extends StatelessWidget {
               }
 
               // Check if the private key is available (not null)
-              if (snapshot.hasData && snapshot.data != null &&  organization["wallet"] == _loadWalletAddress()) {
+              if (snapshot.hasData &&
+                  snapshot.data != null &&
+                  organization["wallet"] == _loadWalletAddress()) {
                 return Positioned(
                   top: 16,
                   right: 16,

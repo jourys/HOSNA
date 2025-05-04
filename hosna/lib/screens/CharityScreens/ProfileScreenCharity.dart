@@ -456,80 +456,80 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
       return [];
     }
   }
-  Future<bool> _showLogoutConfirmation(BuildContext context) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
-            title: const Text(
-              'Confirm Logout',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: const Text(
-              'Are you sure you want to log out?',
-              style: TextStyle(
-                fontSize: 18,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            actions: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color.fromRGBO(24, 71, 137, 1),
-                        width: 3,
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Color.fromRGBO(24, 71, 137, 1),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context, true);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color.fromRGBO(212, 63, 63, 1),
-                        width: 3,
-                      ),
-                      backgroundColor: Color.fromRGBO(212, 63, 63, 1),
-                    ),
-                    child: const Text(
-                      '   Yes   ',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            actionsPadding: const EdgeInsets.symmetric(vertical: 10),
-          );
-        },
-      ) ??
-      false;
-}
 
+  Future<bool> _showLogoutConfirmation(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text(
+                'Confirm Logout',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: const Text(
+                'Are you sure you want to log out?',
+                style: TextStyle(
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              actions: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(212, 63, 63, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Color.fromRGBO(212, 63, 63, 1),
+                      ),
+                      child: const Text(
+                        '   Yes   ',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+            );
+          },
+        ) ??
+        false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -592,12 +592,12 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
             children: [
               CircleAvatar(
                 radius: 50,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Colors.white,
                 backgroundImage: _profilePictureUrl.isNotEmpty
                     ? NetworkImage(_profilePictureUrl)
                     : null,
                 child: _profilePictureUrl.isEmpty
-                    ? Icon(Icons.business, size: 100, color: Colors.white)
+                    ? Icon(Icons.business, size: 60, color: Colors.blue[900])
                     : null,
               ),
               SizedBox(height: 30),
@@ -618,9 +618,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                         InfoRow(title: 'License Number', value: _licenseNumber),
                         InfoRow(title: 'City', value: _organizationCity),
                         InfoRow(title: 'Website', value: _organizationURL),
-                        InfoRow(
-                            title: 'Founded ',
-                            value: _establishmentDate),
+                        InfoRow(title: 'Founded ', value: _establishmentDate),
                         InfoRow(title: 'About us', value: _description),
                         SizedBox(height: 20),
                         Center(
@@ -628,37 +626,44 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                               height: MediaQuery.of(context).size.height * .066,
                               width: MediaQuery.of(context).size.width * .8,
                               child: ElevatedButton(
-                               onPressed: () async {
-  final confirm = await _showLogoutConfirmation(context);
-  if (!confirm) return;
+                                onPressed: () async {
+                                  final confirm =
+                                      await _showLogoutConfirmation(context);
+                                  if (!confirm) return;
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+                                  SharedPreferences prefs =
+                                      await SharedPreferences.getInstance();
 
-  // Retrieve private key and wallet address before clearing session data
-  String? privateKey = prefs.getString('privateKey');
-  String? walletAddress = prefs.getString('walletAddress');
+                                  // Retrieve private key and wallet address before clearing session data
+                                  String? privateKey =
+                                      prefs.getString('privateKey');
+                                  String? walletAddress =
+                                      prefs.getString('walletAddress');
 
-  // Clear session-related data
-  await prefs.remove('userSession');
+                                  // Clear session-related data
+                                  await prefs.remove('userSession');
 
-  // Restore private key and wallet address
-  if (privateKey != null) {
-    await prefs.setString('privateKey', privateKey);
-  }
-  if (walletAddress != null) {
-    await prefs.setString('walletAddress', walletAddress);
-  }
+                                  // Restore private key and wallet address
+                                  if (privateKey != null) {
+                                    await prefs.setString(
+                                        'privateKey', privateKey);
+                                  }
+                                  if (walletAddress != null) {
+                                    await prefs.setString(
+                                        'walletAddress', walletAddress);
+                                  }
 
-  print('User logged out. Session cleared but private key and wallet address retained.');
+                                  print(
+                                      'User logged out. Session cleared but private key and wallet address retained.');
 
-  // Navigate to UsersPage
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => UsersPage()),
-    (route) => false,
-  );
-},
-
+                                  // Navigate to UsersPage
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => UsersPage()),
+                                    (route) => false,
+                                  );
+                                },
                                 child: Text(
                                   'Log out',
                                   style: TextStyle(
@@ -667,13 +672,13 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.blue[900],
-                                    shape: RoundedRectangleBorder(
-                                        side: BorderSide(
-                                            color: Colors.blue[900]!),
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(24)))),
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.blue[900],
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(color: Colors.blue[900]!),
+                                  ),
+                                ),
                               )),
                         ),
                         SizedBox(height: 12),
@@ -698,13 +703,13 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red[800],
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                        side:
-                                            BorderSide(color: Colors.red[900]!),
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(24)))),
+                                  backgroundColor: Colors.red[800],
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(color: Colors.red[800]!),
+                                  ),
+                                ),
                               )),
                         )
                       ],
@@ -766,7 +771,7 @@ class _InfoRowState extends State<InfoRow> {
                     widget.title,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       color: Colors.blue[900],
                     ),
                   ),
@@ -780,10 +785,10 @@ class _InfoRowState extends State<InfoRow> {
                         : widget.value.length > 60
                             ? widget.value.substring(0, 60) + '...'
                             : widget.value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey,
+                      color: Colors.grey[800],
                     ),
                     textAlign: TextAlign.left,
                   ),
@@ -803,8 +808,9 @@ class _InfoRowState extends State<InfoRow> {
                   child: Text(
                     _isExpanded ? "less" : "more",
                     style: TextStyle(
-                      color: Colors.blue[900],
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
+                      color: Colors.blue[900],
                     ),
                   ),
                 ),
