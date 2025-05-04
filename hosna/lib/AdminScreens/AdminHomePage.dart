@@ -154,16 +154,17 @@ Widget _buildreportsCard(
                             horizontal: 120,
                             vertical:
                                 20), // Added horizontal padding for white space
-                        child: GridView(
-  shrinkWrap: true, // Makes GridView take only the necessary space
+                        child:GridView(
+  shrinkWrap: true,
+  physics: NeverScrollableScrollPhysics(), // Prevents scrolling inside if used within a scrollable widget
   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2, // 2 cards per row for a more balanced layout
-    crossAxisSpacing: 10, // Horizontal spacing
-    mainAxisSpacing: 10, // Vertical spacing
-    mainAxisExtent: 150, // Adjusted height of each card to make it visually appealing
+    crossAxisCount: 1, // One card per row
+    crossAxisSpacing: 10,
+    mainAxisSpacing: 10,
+    mainAxisExtent: 150,
   ),
   children: [
-    // Total Projects Card with an Icon
+    // Total Projects Card
     _buildDashboardCard(
       context, 
       "Total Projects $_projectCount", 
@@ -171,8 +172,8 @@ Widget _buildreportsCard(
       Colors.blue,
       () {},
     ),
-    
-    // Total Pending Users Card with FutureBuilder for async data
+
+    // Total Pending Users
     FutureBuilder<int>(
       future: countPendingUsers(),
       builder: (context, snapshot) {
@@ -180,8 +181,8 @@ Widget _buildreportsCard(
           return _buildDashboardCard(
             context, 
             "Total New Charity Requests", 
-            Icons.pending_actions, 
-            Colors.orange,
+            Icons.assignment_turned_in,
+            Colors.green,
             () {},
           );
         } else if (snapshot.hasError) {
@@ -205,7 +206,7 @@ Widget _buildreportsCard(
       },
     ),
 
-    // Total Unresolved Reports Card with FutureBuilder for async data
+    // Total Unresolved Reports
     FutureBuilder<int>(
       future: countUnresolvedReports(),
       builder: (context, snapshot) {
@@ -239,6 +240,7 @@ Widget _buildreportsCard(
     ),
   ],
 ),
+
 
 
                       ),
