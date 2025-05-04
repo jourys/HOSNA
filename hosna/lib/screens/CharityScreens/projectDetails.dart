@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:hosna/screens/NotificationListener.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:hosna/screens/CharityScreens/InitiateVoting.dart';
@@ -113,6 +114,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     _fetchVotingStatus();
 
     checkIfDonorVoted();
+        
   }
 
   Future<void> checkIfDonorVoted() async {
@@ -1855,9 +1857,16 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                   ElevatedButton(
                     onPressed: errorMessage == null
                         ? () async {
-                            await _processDonation(
-                                amountController.text, isAnonymous);
+                              // performance testing 
+                                final stopwatch = Stopwatch()..start();
+
+                                await _processDonation(amountController.text, isAnonymous);
+
+                                stopwatch.stop();
+                                print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
+
                             Navigator.pop(context);
+                             showSuccessPopup( context);
                           }
                         : null, // Disable if input is invalid
                     style: ElevatedButton.styleFrom(
@@ -1950,10 +1959,9 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       // Print transaction hash with check emoji
       print("Transaction successful! ✅ Hash: $result");
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Donation successful! ✅')),
-      );
 
+
+ 
       // Store donation details
 // Store donation details
       await _storeDonationInfo({
@@ -2014,6 +2022,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
 
         if (response.statusCode == 200) {
           print('Confirmation email sent to $userEmail');
+            
+
         } else {
           print('Failed to send email. Status: ${response.statusCode}');
           print('Response body: ${response.body}');
@@ -2044,7 +2054,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       final donationsJson = prefs.getString(donationsKey) ?? '[]';
       final List<dynamic> donations = json.decode(donationsJson);
 
-      print("📌 Current donations count: ${donations.length}");
+      // print("📌 Current donations count: ${donations.length}");
 
       // Create donation info with all necessary details
       final donationInfo = {
@@ -2078,9 +2088,62 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       await prefs.setString(donationsKey, json.encode(donations));
       print(
           "✅ Successfully stored ${donations.length} donations for wallet $address");
+
     } catch (e) {
       print("❌ Error storing donation info: $e");
     }
+  }
+  void showSuccessPopup(BuildContext context) {
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
+          ),
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'Donation sent successfully!',
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      // Check if the widget is still mounted before performing Navigator.pop
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+      }
+      Navigator.pop(context, true);
+    });
   }
 }
 

@@ -281,7 +281,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     if (website.isNotEmpty &&
-        !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
+    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
             .hasMatch(website)) {
       showError("Enter a valid website URL.");
       return;
@@ -664,11 +664,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 !RegExp(r"^[a-zA-Z\s,.'-]{2,50}$").hasMatch(value)) {
               return 'Enter a valid city name';
             }
-            if (label == 'Website' &&
-                value!.isNotEmpty &&
-                !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
-                    .hasMatch(value!)) {
-              return 'Enter a valid website URL';
+             if (label == 'Website' &&
+    value!.isNotEmpty &&
+    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
+        .hasMatch(value)) {
+  return 'Enter a valid website URL';
             }
 
             if (label == 'Description' && value.length < 30) {

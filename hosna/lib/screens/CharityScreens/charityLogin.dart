@@ -260,6 +260,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
             ),
             (route) => false,
           );
+           showSuccessPopup( context);
         } else if (accountStatus == 'pending') {
           Navigator.pushReplacement(
             context,
@@ -716,6 +717,59 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
         ),
       ),
     );
+  }
+   void showSuccessPopup(BuildContext context) {
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
+          ),
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'You have logged in successfully!'
+,
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      // Check if the widget is still mounted before performing Navigator.pop
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+      }
+      Navigator.pop(context, true);
+    });
   }
 }
 

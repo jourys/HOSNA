@@ -837,26 +837,31 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 120,
-                              height: 30,
-                              child: IconButton(
-                                icon: const Icon(Icons.account_circle,
-                                    size: 75, color: Colors.white),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            ProfileScreenTwo()),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+                       Row(
+  children: [
+    SizedBox(
+      width: 120,
+      height: 75, // Height should match the icon's size for full visibility
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProfileScreenTwo()),
+          );
+        },
+        child: Transform.translate(
+          offset: const Offset(5, 30), // Move left and down
+          child: const Icon(
+            Icons.account_circle,
+            size: 75,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+
                       ],
                     ),
                   ),

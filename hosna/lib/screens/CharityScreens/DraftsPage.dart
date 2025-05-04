@@ -93,13 +93,8 @@ class _DraftsPageState extends State<DraftsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CharityEmployeeHomePage(),
-              ),
-              (Route<dynamic> route) => false, // Remove all previous routes
-            );
+                     Navigator.pop(context);
+
           },
         ),
         title: Text(

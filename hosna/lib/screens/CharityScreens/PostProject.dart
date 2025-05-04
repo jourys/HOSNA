@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hosna/screens/BrowseProjects.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
+import 'package:hosna/screens/NotificationListener.dart';
+import 'package:hosna/screens/NotificationManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/DraftsPage.dart';
 import 'dart:convert';
@@ -158,6 +160,8 @@ class _PostProjectScreenState extends State<PostProject> {
                   //         ),
                   //       )
                   //     : SizedBox.shrink(),
+                                    SizedBox(height: 45),
+
                   FocusableTextField(
                     label: 'Project Name:',
                     controller: _projectNameController,
@@ -343,6 +347,11 @@ class _PostProjectScreenState extends State<PostProject> {
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
                                 _postProject();
+                                
+                               
+  Navigator.pop(context);
+showSuccessPopup( context);
+
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -769,6 +778,60 @@ class _PostProjectScreenState extends State<PostProject> {
     );
   }
 
+ void showSuccessPopup(BuildContext context) {
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
+          ),
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'Project posted successfully!',
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      // Check if the widget is still mounted before performing Navigator.pop
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+      }
+      Navigator.pop(context, true);
+    });
+  }
+
+
   void _postProject() async {
     if (_formKey.currentState!.validate()) {
       print("✅ Form validation passed, proceeding to post project...");
@@ -826,7 +889,10 @@ class _PostProjectScreenState extends State<PostProject> {
       // Send notifications to donors
 
       print("✅ Project successfully posted!");
-      Navigator.pop(context);
+
+      
+     
+    
       // Navigate to project details page only after successful posting
       // Navigator.pushReplacement(
       //   context,

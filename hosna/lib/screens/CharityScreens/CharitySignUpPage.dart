@@ -103,7 +103,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     print("🛠 Registering charity...");
 
     final String ownerPrivateKey =
-        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+        "c93d0fa275a26cdce1750f0acbc6c5a203dd8f6069b7485338405ac8a888e173";
     final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
@@ -228,7 +228,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     } catch (e) {
       print("Error registering charity: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('⚠️ Registration failed: $e')),
+        SnackBar(content: Text(' Registration failed: $e')),
       );
     }
   }
@@ -559,6 +559,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                 _buildTextField(
                   _organizationDescriptionController,
                   'Description',
+                  isDescription: true,
                 ),
                 const SizedBox(height: 30),
                 _buildTextField(_organizationURLController, 'Website'),
@@ -733,6 +734,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         if (isEmail || isPassword || label == 'Website')
           FilteringTextInputFormatter.deny(RegExp(r'\s')),
       ],
+       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
@@ -785,12 +787,13 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         if (isDescription && value!.length < 30) {
           return 'Description must be at least 30 characters';
         }
-        if (label == 'Website' &&
-            value!.isNotEmpty &&
-            !RegExp(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
-                .hasMatch(value!)) {
-          return 'Enter a valid website URL';
-        }
+       if (label == 'Website' &&
+    value!.isNotEmpty &&
+    !RegExp(r'^www\.[a-zA-Z0-9\-]+(\.[a-zA-Z]{2,})+$')
+        .hasMatch(value)) {
+  return 'Enter a valid website URL';
+}
+
         return null;
       },
     );
