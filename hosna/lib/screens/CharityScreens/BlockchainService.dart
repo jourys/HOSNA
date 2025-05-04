@@ -5,7 +5,7 @@ import 'package:web3dart/web3dart.dart';
 class BlockchainService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x3de48B90f1a0cc9eA6F40c3Cb57eBA9E5C35a2FD';
+  final String contractAddress = '0xb03502E0bfB7df492F95619BB33E074D87132caD';
   final String votingContractAddress =
       '0x10cB71B23561853CB19fEB587f31B1962b4fc802';
   late Web3Client _web3Client;
@@ -973,6 +973,19 @@ class BlockchainService {
       final contract = await _getContract();
       final function = contract.function('addProject');
       checkBalance();
+      final estimatedGas = await _web3Client.estimateGas(
+        sender: _ownAddress,
+        to: EthereumAddress.fromHex(contractAddress), // ✅ Corrected
+        data: function.encodeCall([
+          name,
+          description,
+          BigInt.from(startDate),
+          BigInt.from(endDate),
+          totalAmountInWei,
+          projectType,
+        ]),
+      );
+
       final transactionHash = await _web3Client.sendTransaction(
         _credentials,
         Transaction.callContract(
@@ -983,13 +996,13 @@ class BlockchainService {
             description,
             BigInt.from(startDate),
             BigInt.from(endDate),
-            totalAmountInWei, // Send Wei value
+            totalAmountInWei,
             projectType,
           ],
-          gasPrice: await _web3Client.getGasPrice(), // 1 Gwei,
-          maxGas: 300000,
+          gasPrice: await _web3Client.getGasPrice(),
+          maxGas: estimatedGas.toInt(), // ✅ Safer and adaptive
         ),
-        chainId: 11155111, // Sepolia Testnet Chain ID
+        chainId: 11155111,
       );
 
       print("✅ Transaction sent. Hash: $transactionHash");

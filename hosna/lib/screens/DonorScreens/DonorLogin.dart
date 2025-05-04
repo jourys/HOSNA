@@ -476,7 +476,10 @@ void showSuccessPopup(BuildContext context) {
                   child: ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState?.validate() ?? false) {
+                        final stopwatch = Stopwatch()..start();
                         _authenticateUser();
+                         stopwatch.stop();
+                          print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
                       }
                     },
                     style: ElevatedButton.styleFrom(

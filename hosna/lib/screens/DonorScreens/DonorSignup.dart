@@ -180,9 +180,9 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
       print("Transaction result: $result");
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signup successful!')),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Signup successful!')),
+      // );
 
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -198,14 +198,26 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
       );
-    } catch (e) {
-      print("Error registering donor: $e");
+    }catch (e) {
+  print("Error registering donor: $e");
 
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to sign up, please try again.')),
-      );
-    }
+  // Clean the error message
+  String errorMessage = e.toString();
+
+  // Remove the known prefix if it exists
+  if (errorMessage.contains('RPCError: got code 3 with msg "execution reverted:')) {
+    errorMessage = errorMessage.replaceAll(
+      RegExp(r'RPCError: got code 3 with msg "execution reverted:\s*'), '');
+    errorMessage = errorMessage.replaceAll('"', ''); // remove trailing quote
+  }
+
+  // Show the cleaned error message
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Failed to sign up: $errorMessage'),
+    ),
+  );
+}
   }
 
   Future<void> _storePrivateKey(String walletAddress, String privateKey) async {
@@ -379,7 +391,11 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Signing up...')),
                               );
+                              final stopwatch = Stopwatch()..start();
                               _registerDonor(); // Register donor on the blockchain
+                              stopwatch.stop();
+                                print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
+
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

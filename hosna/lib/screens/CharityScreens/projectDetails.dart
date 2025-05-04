@@ -373,6 +373,26 @@ class _ProjectDetailsState extends State<ProjectDetails> {
     print("All keys: ${prefs.getKeys()}");
   }
 
+ bool isSuspended = false;
+ void _listenForSuspension(String wallet) {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(wallet)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        bool suspendStatus = snapshot['isSuspend'] ?? false;
+        if (suspendStatus != isSuspended) {
+          setState(() {
+            isSuspended = suspendStatus;
+          });
+        }
+      }
+    }, onError: (error) {
+      print("❌ Error checking suspension: $error");
+    });
+  }
+
   Future<String?> _loadWalletAddress() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -392,8 +412,8 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       });
 
       String? privateKey = await _loadPrivateKey(walletAddress);
-
-      if (privateKey == null && userType != null) {
+_listenForSuspension(walletAddress.toString());
+      if (privateKey == null && userType != null &&  isSuspended  ) {
         print("Error: Private key not found for wallet address.");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -740,7 +760,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
           automaticallyImplyLeading: false, // We're adding a custom back button
           leading: IconButton(
             icon: Icon(Icons.arrow_back,
-                color: Colors.white, size: 30), // White back arrow
+                color: Colors.white, size: 28), // White back arrow
             onPressed: () {
               Navigator.pop(context); // Navigate back when tapped
             },
@@ -753,7 +773,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                 widget.projectName,
                 style: TextStyle(
                   color: Colors.white, // Make text white
-                  fontSize: 24, // Increase font size
+                  fontSize: 20, // Increase font size
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1935,7 +1955,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
       // Load contract
       final donationContract = DeployedContract(
         ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0x94F3a1791df973Bd599EC2a448e2F1A52e1cF5E3'),
+        EthereumAddress.fromHex('0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626'),
       );
 
       final function = donationContract.function('donate');
@@ -2237,7 +2257,7 @@ class DonorServices {
   static const String _rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
   static const String _contractAddress =
-      '0x94F3a1791df973Bd599EC2a448e2F1A52e1cF5E3'; // Contract address on Sepolia
+      '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626'; // Contract address on Sepolia
 
   // Constructor for initializing Web3 client and contract
   DonorServices()

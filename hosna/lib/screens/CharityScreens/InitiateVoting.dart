@@ -1799,7 +1799,7 @@ class VoteListener {
 class DonationService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x94F3a1791df973Bd599EC2a448e2F1A52e1cF5E3';
+  final String contractAddress = '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626';
 
   final String senderAddress;
   final String receiverAddress;

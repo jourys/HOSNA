@@ -171,6 +171,7 @@ class _PostProjectScreenState extends State<PostProject> {
                     label: 'Project Description:',
                     controller: _descriptionController,
                     hintText: 'Enter project description',
+                     isDescription: true,
                   ),
                   _buildDatePickerField(
                     label: 'Project Start Date:',
@@ -942,6 +943,8 @@ class FocusableTextField extends StatefulWidget {
   final String? hintText;
   final bool isNumber;
   final bool isStartDate; // Add a parameter to check if it's the start date
+ final bool isDescription;
+
 
   FocusableTextField({
     required this.label,
@@ -949,6 +952,7 @@ class FocusableTextField extends StatefulWidget {
     this.hintText,
     this.isNumber = false,
     this.isStartDate = false, // Default to false
+     this.isDescription = false, 
   });
 
   @override
@@ -988,7 +992,8 @@ class _FocusableTextFieldState extends State<FocusableTextField> {
         inputFormatters:
             widget.isNumber ? [FilteringTextInputFormatter.digitsOnly] : [],
         focusNode: _focusNode, // Attach focus node
-
+maxLines: widget.isDescription ? 3 : 1,
+ minLines: 1,
         style: TextStyle(
           color: widget.controller.text.isNotEmpty || _focusNode.hasFocus
               ? Color.fromRGBO(
