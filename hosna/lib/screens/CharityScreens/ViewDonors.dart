@@ -867,7 +867,6 @@ class DonorDetailsPage extends StatelessWidget {
     );
   }
 }
-
 class ProfileItem extends StatelessWidget {
   final String title;
   final String value;
@@ -879,15 +878,20 @@ class ProfileItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center, 
         children: [
-          Icon(
-            _getIconForTitle(title),
-            color: Color.fromRGBO(24, 71, 137, 1), // Updated color
+          SizedBox(
+            width: 30, 
+            child: Icon(
+              _getIconForTitle(title),
+              color: Color.fromRGBO(24, 71, 137, 1),
+            ),
           ),
-          SizedBox(width: 12),
-          Expanded(
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 250, 
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start, 
               children: [
                 Text(
                   title,
@@ -897,10 +901,10 @@ class ProfileItem extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
                     fontWeight: FontWeight.w500,

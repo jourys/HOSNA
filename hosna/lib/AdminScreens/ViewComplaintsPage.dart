@@ -1584,7 +1584,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                 const SnackBar(
                                   content: Text(
                                       "Account has been suspended successfully."),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: Color.fromARGB(255, 54, 142, 57),
                                   duration: Duration(seconds: 3),
                                 ),
                               );
@@ -2372,50 +2372,348 @@ class DonorDetailsPage extends StatelessWidget {
             ),
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                SizedBox(height: 12),
-                SizedBox(
-                  height: 120,
-                  width: 120,
-                  child: donor['profile_picture'] != null
-                      ? ClipOval(
-                          child: Image.network(
-                            donor['profile_picture'],
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              print('Error loading image: $error');
-                              return Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.person,
-                                    size: 60, color: Colors.white),
-                              );
-                            },
-                          ),
-                        )
-                      : CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.grey[300],
-                          child:
-                              Icon(Icons.person, size: 60, color: Colors.white),
-                        ),
+  padding: const EdgeInsets.all(24.0),
+  child: Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center, // 👈 Center children horizontally
+      children: [
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 120,
+          width: 120,
+          child: donor['profile_picture'] != null
+              ? ClipOval(
+                  child: Image.network(
+                    donor['profile_picture'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('Error loading image: $error');
+                      return Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.person,
+                            size: 60, color: Colors.white),
+                      );
+                    },
+                  ),
+                )
+              : CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.grey[300],
+                  child: const Icon(Icons.person, size: 60, color: Colors.white),
                 ),
-                SizedBox(height: 65),
-                ProfileItem(
-                    title: "Name",
-                    value: "${donor['firstName']} ${donor['lastName']}"),
-                Divider(),
-                ProfileItem(title: "Email", value: donor['email']),
-                Divider(),
-                ProfileItem(title: "Phone", value: donor['phone']),
+        ),
+        const SizedBox(height: 65),
+
+        ProfileItem(
+          title: "Name",
+          value: "${donor['firstName']} ${donor['lastName']}",
+        ),
+        const Divider(),
+        ProfileItem(title: "Email", value: donor['email']),
+        const Divider(),
+        ProfileItem(title: "Phone", value: donor['phone']),
+
+        const SizedBox(height: 100),
+
+        ElevatedButton(
+          onPressed: () async {
+            bool isConfirmed = await _showSuspendConfirmationDialog(context);
+
+            if (isConfirmed) {
+              showSuspendSuccessPopup(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Account has been suspended successfully."),
+                  backgroundColor: const Color.fromARGB(255, 54, 142, 57),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+
+              print("✅ Account suspended successfully!");
+            } else {
+              print("❌ Suspension cancelled by user.");
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.redAccent,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            "Suspend Account",
+            style: TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+        );
+      },
+    );
+  }
+  Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
+    print("🚀 Showing suspend confirmation dialog...");
+
+    // Create a TextEditingController for the justification field
+    final justificationController = TextEditingController();
+    String justification = "Account suspended by admin"; // Default value
+
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Confirm Account Suspension',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Are you sure you want to suspend this charity account?',
+                  style: TextStyle(
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Please provide a justification:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: justificationController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter reason for account suspension...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                  onChanged: (value) {
+                    if (value.trim().isNotEmpty) {
+                      justification = value;
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 3,
+                    ),
+                    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+                  ),
+                  child: const Text(
+                    'cancel',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                OutlinedButton(
+                  onPressed: () {
+                    // Validate if justification is provided
+           if (justificationController.text.trim().isEmpty) {
+  // Show SnackBar for empty input
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Justification cannot be empty.'),
+      backgroundColor: Colors.red,
+    ),
+  );
+} else if (justificationController.text.trim().length < 10) {
+  // Show SnackBar for text being too short
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Justification must be at least 10 characters long.'),
+      backgroundColor: Colors.red,
+    ),
+  );
+} else {
+                      // Store the justification
+                      justification = justificationController.text.trim();
+                      Navigator.pop(context, true);
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: const Color.fromARGB(255, 182, 12, 12),
+                      width: 3,
+                    ),
+                    backgroundColor: const Color.fromARGB(255, 182, 12, 12),
+                  ),
+                  child: const Text(
+                    'send ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed == true) {
+        // Suspend account and send notification
+        _suspendAccountWithJustification(walletAddress, justification);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  Future<void> _suspendAccountWithJustification(
+      String walletAddress, String justification) async {
+    try {
+      // Update the account in Firestore with suspension status and reason
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .update({
+        'isSuspend': true,
+        'suspensionReason': justification,
+        
+      });
+
+      // Fetch organization information to use in notification
+      final orgDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(walletAddress)
+          .get();
+
+      if (orgDoc.exists) {
+        final orgData = orgDoc.data();
+        final orgName = orgData?['name'] ?? 'Unknown Organization';
+
+        // Send notification to the suspended charity
+        await _sendSuspensionNotification(
+            walletAddress, orgName, justification);
+      }
+
+      print(
+          "✅ Account suspended successfully with justification: $justification");
+    } catch (e) {
+      print("❌ Error suspending account: $e");
+    }
+  }
+
+  Future<void> _sendSuspensionNotification(
+      String charityAddress, String orgName, String justification) async {
+    try {
+      // Create a unique notification ID
+      final notificationId =
+          'account_suspended_${DateTime.now().millisecondsSinceEpoch}';
+
+      final title = "Account Suspended";
+      final body =
+          'Your account has been suspended by an admin. Reason: $justification';
+
+      // notificationService.showNotification(title: title, body: body);
+
+      // Store in Firestore (creator)
+      final userDocRef =
+          FirebaseFirestore.instance.collection("users").doc(charityAddress);
+      await userDocRef.set({}, SetOptions(merge: true));
+      await userDocRef.collection("justifications").add({
+        "title": title,
+        "body": body,
+        "timestamp": FieldValue.serverTimestamp(),
+       
+       
+      });
+
+      print("✅ Suspension notification sent to charity: $charityAddress");
+    } catch (e) {
+      print("❌ Error sending suspension notification: $e");
+    }
+  }
+
+  void showSuspendSuccessPopup(BuildContext context) {
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
+          ),
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'Account suspended successfully!',
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
               ],
             ),
           ),
         );
       },
     );
+
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+    });
   }
+
 }
 
 // class ViewProjectsPage extends StatefulWidget {
