@@ -25,7 +25,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   int? userType;
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
+  final String contractAddress = '0xF565D5C3907aBA80e1e613030C250c6addea6443';
   String? _profilePictureUrl;
 
   @override

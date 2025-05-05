@@ -112,7 +112,6 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
       final function = _contract.function("getAllCharities");
       final result = await _client
           .call(contract: _contract, function: function, params: []);
-
       List<dynamic> wallets = result[0];
       List<dynamic> names = result[1];
       List<dynamic> emails = result[2];
@@ -122,17 +121,14 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
       List<dynamic> descriptions = result[6];
       List<dynamic> licenseNumbers = result[7];
       List<dynamic> establishmentDates = result[8];
-
       Set<String> seenWallets = {};
       List<Map<String, dynamic>> tempOrganizations = [];
-
       for (int i = 0; i < wallets.length; i++) {
         String wallet = wallets[i].toString();
 
         if (seenWallets.contains(wallet)) {
           continue;
         }
-
         if (approvedWallets.contains(wallet)) {
           String? profilePictureUrl;
 
@@ -150,7 +146,6 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
           } catch (e) {
             print('❌ Error fetching profile picture for $wallet: $e');
           }
-
           tempOrganizations.add({
             "wallet": wallet,
             "name": names[i],
@@ -163,11 +158,9 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
             "establishmentDate": establishmentDates[i],
             "profilePicture": profilePictureUrl,
           });
-
           seenWallets.add(wallet);
         }
       }
-
       setState(() {
         organizations = tempOrganizations;
         isLoading = false;
@@ -661,7 +654,7 @@ class OrganizationProfilePage extends StatelessWidget {
               // Check if the private key is available (not null)
               if (snapshot.hasData &&
                   snapshot.data != null &&
-                  organization["wallet"] == _loadWalletAddress()) {
+                  organization["wallet"] != _loadWalletAddress()) {
                 return Positioned(
                   top: 16,
                   right: 16,

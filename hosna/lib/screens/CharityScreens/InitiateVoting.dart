@@ -894,7 +894,8 @@ class _InitiateVotingState extends State<InitiateVoting> {
             // 🚀 CTA Button
             Center(
               child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _initiateVoting,
+               onPressed: _isLoading ? null : () => _showInitiateVotingConfirmationDialog(context),
+
                 icon: _isLoading
                     ? SizedBox(
                         width: 20,
@@ -1587,7 +1588,13 @@ class VoteListener {
                 .doc(votingId.toString())
                 .set({'IsEnded': true}, SetOptions(merge: true));
 
-            // Optionally, call transferFundsToWinner
+   await FirebaseFirestore.instance
+                .collection('projects')
+                .doc(projectId.toString())
+                .set({'IsEnded': true}, SetOptions(merge: true));
+
+
+            // call transferFundsToWinner
             await listener.initializeCredentials();
             await listener._loadContract(); // helper to reload _contract
             await listener.fetchAndStoreProjectDetails();
@@ -1676,6 +1683,16 @@ class VoteListener {
       }
 
       if (winningIndex == -1) {
+
+await FirebaseFirestore.instance
+    .collection('projects')
+    .doc(projectId.toString())
+    .set({
+      'votingInitiated': false,
+      'votingId': FieldValue.delete(),
+    }, SetOptions(merge: true));
+
+
         print("❌ No winning project found (no votes cast).");
         return;
       }

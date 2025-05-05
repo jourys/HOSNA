@@ -109,6 +109,7 @@ class ProjectNotificationListener {
         // Notify creator
         if (creatorWallet == loadedWallet?.toLowerCase()) {
           print("📬 Sending notification to creator...");
+          await Future.delayed(Duration(seconds: 20));
           notificationService.showNotification(title: title, body: body);
 
           final userDocRef =
@@ -154,6 +155,7 @@ class ProjectNotificationListener {
                 final donorDoc = FirebaseFirestore.instance
                     .collection("users")
                     .doc(userAddress);
+                     await Future.delayed(Duration(seconds: 20));
                 await donorDoc.set({}, SetOptions(merge: true));
                 await donorDoc.collection("notifications").add({
                   "title": title,

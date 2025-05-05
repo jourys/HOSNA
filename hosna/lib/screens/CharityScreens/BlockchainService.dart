@@ -334,6 +334,42 @@ class BlockchainService {
     );
   }
 
+
+
+Future<void> sendEth(String toAddress) async {
+  final privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c';
+  final rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura endpoint or use Alchemy
+
+  final httpClient = http.Client();
+  final ethClient = Web3Client(rpcUrl, httpClient);
+
+  final credentials = EthPrivateKey.fromHex(privateKey);
+  final myAddress = await credentials.extractAddress();
+
+  final transaction = Transaction(
+    to: EthereumAddress.fromHex(toAddress),
+    from: myAddress,
+    value: EtherAmount.fromUnitAndValue(EtherUnit.ether, 0.03),
+    gasPrice: await ethClient.getGasPrice(),
+    maxGas: 21000,
+  );
+
+  try {
+    final txHash = await ethClient.sendTransaction(
+      credentials,
+      transaction,
+      chainId: 11155111, // Sepolia testnet chain ID
+    );
+
+    print('Transaction sent. Hash: $txHash');
+  } catch (e) {
+    print('Transaction failed: $e');
+  } finally {
+    httpClient.close();
+  }
+}
+
+
   Future<List<Map<String, dynamic>>> getFailedOrCanceledProjects(
       BlockchainService blockchainService) async {
     List<Map<String, dynamic>> filteredProjects = [];

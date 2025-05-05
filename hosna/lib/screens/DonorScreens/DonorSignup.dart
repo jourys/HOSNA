@@ -77,12 +77,12 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   // Initialize Web3 client and set up the contract interaction
   void _initializeWeb3() {
     final String rpcUrl =
-        'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac'; // E.g., Infura, Alchemy, or local node
+        'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac'; 
     _web3Client = Web3Client(rpcUrl, Client());
 
-    // Example contract address
+ 
     _contractAddress =
-        EthereumAddress.fromHex("0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79");
+        EthereumAddress.fromHex("0xF565D5C3907aBA80e1e613030C250c6addea6443");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -100,7 +100,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
   Future<void> _registerDonor() async {
     print("Registering donor...");
     final creatorPrivateKey =
-        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+        "2741b8487256f4eb8769e5195c688f69cb985d89f9aae099d28d022d07428ba6";
     // Generate a unique private key for the donor
     _privateKey = _generatePrivateKey();
     print("Generated private key: $_privateKey");

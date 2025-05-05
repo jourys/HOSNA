@@ -20,7 +20,7 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
   final String donationContractAddress =
       '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626';
   final String donorContractAddress =
-      '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
+      '0xF565D5C3907aBA80e1e613030C250c6addea6443';
 
   late Web3Client _web3Client;
   late DeployedContract _donationContract;

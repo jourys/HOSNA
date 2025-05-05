@@ -656,8 +656,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: SizedBox(
-              width: 600,
-              height: 600,
+              width: 700,
+              height: 700,
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Column(
@@ -2228,7 +2228,7 @@ class DonorDetailsPage extends StatelessWidget {
   const DonorDetailsPage({super.key, required this.walletAddress});
 
   final String donorContractAddress =
-      '0x8a69415dcb679d808296bdb51dFcb01A4Cd2Bb79';
+      '0xF565D5C3907aBA80e1e613030C250c6addea6443';
 
   final String donorAbi = '''
   [
