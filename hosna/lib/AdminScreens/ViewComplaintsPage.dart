@@ -244,7 +244,7 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
           "timestamp": FieldValue.serverTimestamp(),
         });
       }
-
+ showresolveSuccessPopup( context);
       print("✅ Complaint marked as resolved.");
       await _fetchComplaints();
     } catch (e) {
@@ -912,8 +912,10 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                               ? null // Disable the button if resolved is true
                               : () {
                                   _resolveComplaint(complaint['id']).then((_) {
+                                     
                                     Navigator.pop(
-                                        context); // Go back to the previous page
+                                        context); 
+                                      
                                   });
                                 },
                           child: Text(
@@ -1133,14 +1135,11 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                               'justification':
                                   justificationController.text.trim()
                             });
+                            showSuccessPopup( context);
                           }
                         : null,
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: Color.fromRGBO(
-                            212, 63, 63, 1), // Border color for Yes button
-                        width: 3,
-                      ),
+                      
                       backgroundColor: Color.fromRGBO(
                           212, 63, 63, 1), // Background color for Yes button
                       disabledBackgroundColor: Colors.grey,
@@ -1193,6 +1192,56 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                 SizedBox(height: 20), // Add spacing between the icon and text
                 Text(
                   'Complaint deleted Successfully!',
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Bigger text
+                  ),
+                  textAlign: TextAlign.center, // Center-align the text
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Automatically dismiss the dialog after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context, rootNavigator: true).pop(); // Close the dialog
+    });
+  }
+
+
+   void showresolveSuccessPopup(BuildContext context) {
+    // Show dialog
+    showDialog(
+      context: context,
+      barrierDismissible: true, // allow closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding:
+              EdgeInsets.all(20), // Add padding around the dialog content
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(15), // Rounded corners for a better look
+          ),
+          content: SizedBox(
+            width: 250, // Set a custom width for the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize
+                  .min, // Ensure the column only takes the required space
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50, // Bigger icon
+                ),
+                SizedBox(height: 20), // Add spacing between the icon and text
+                Text(
+                  'Complaint Resolved Successfully!',
                   style: TextStyle(
                     color: const Color.fromARGB(255, 54, 142, 57),
                     fontWeight: FontWeight.bold,
