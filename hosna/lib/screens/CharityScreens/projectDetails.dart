@@ -891,6 +891,8 @@ _listenForSuspension(walletAddress.toString());
                       SizedBox(height: 30),
                       if (userType == 1 &&
                           widget.projectCreatorWallet == globalWalletAddress)
+                      // if (userType == 1 &&
+                      //     widget.projectCreatorWallet == globalWalletAddress)
                         GestureDetector(
                           onTap: () {
                             print("View all donors");
@@ -1760,8 +1762,7 @@ _listenForSuspension(walletAddress.toString());
         "body": body,
         "timestamp": FieldValue.serverTimestamp(),
         "projectId": projectId,
-        "type": "project_cancellation",
-        "state": "cancelled",
+       
       });
 
       print(
@@ -1878,7 +1879,7 @@ _listenForSuspension(walletAddress.toString());
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: errorMessage == null
+                    onPressed: errorMessage == null && amountController.text.trim().isNotEmpty
                         ? () async {
                               // performance testing 
                                 final stopwatch = Stopwatch()..start();
