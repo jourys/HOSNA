@@ -18,7 +18,7 @@ import 'AdminSidebar.dart';
 
 import 'package:hosna/screens/NotificationManager.dart';
 
-// Define your Ethereum RPC and contract details
+
 const String rpcUrl =
     'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
 const String contractAddress = '0x89284505E6EbCD2ADADF3d1B5cbc51B3568CcFd1';
@@ -1580,7 +1580,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 
                               showCancelSuccessPopup(context);
                             } else {
-                              print("User canceled the mass cancelation.");
+                              print("User canceled ");
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -2759,7 +2759,6 @@ class CancelAllProjectsHelper {
       await docRef.set({
         'isCanceled': true,
         'cancellationReason': justification,
-        
       });
 
       print(
