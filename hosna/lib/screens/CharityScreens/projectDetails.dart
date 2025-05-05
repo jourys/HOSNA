@@ -964,7 +964,7 @@ _listenForSuspension(walletAddress.toString());
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 100),
-                            if (projectState == "active" && userType == 0)
+                            if (projectState == "active" && userType == 0 && globalPrivateKey != null)
                               Center(
                                 child: ElevatedButton(
                                   onPressed: () => _showDonationPopup(context,
@@ -1140,7 +1140,7 @@ _listenForSuspension(walletAddress.toString());
                             if (canVote &&
                                 votingInitiated &&
                                 userType == 0 &&
-                                (!isEnded))
+                                (!isEnded) && globalPrivateKey != null)
                               Center(
                                 child: ElevatedButton(
                                   onPressed: (hasRefunded || hasVoted)
