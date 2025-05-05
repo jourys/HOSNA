@@ -114,7 +114,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     print("🛠 Registering charity...");
 
     final String ownerPrivateKey =
-        "c93d0fa275a26cdce1750f0acbc6c5a203dd8f6069b7485338405ac8a888e173";
+        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
     final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
@@ -796,9 +796,9 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
           return 'Enter a valid city name';
         }
 
-        if (isDescription && value!.length < 30) {
-          return 'Description must be at least 30 characters';
-        }
+        // if (isDescription && value!.length < 30) {
+        //   return 'Description must be at least 30 characters';
+        // }
         if (label == 'Website' &&
             value!.isNotEmpty &&
             !RegExp(r'^www\.[a-zA-Z0-9-]+\.com$').hasMatch(value)) {
