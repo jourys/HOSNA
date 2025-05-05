@@ -1135,42 +1135,48 @@ class BlockchainService {
   }
 
   /// Fetch all projects for a given organization address
-  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(
-      String orgAddress) async {
-    try {
-      final contract = await _getContract();
-      final function = contract.function("getOrganizationProjects");
+ Future<List<Map<String, dynamic>>> fetchOrganizationProjects(
+    String orgAddress) async {
+  try {
+    final contract = await _getContract();
+    final function = contract.function("getOrganizationProjects");
 
-      // Fetch project IDs for the given organization
-      List<dynamic> projectIds = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [EthereumAddress.fromHex(orgAddress)],
-      );
+    // Fetch project IDs for the given organization
+    List<dynamic> projectIds = await _web3Client.call(
+      contract: contract,
+      function: function,
+      params: [EthereumAddress.fromHex(orgAddress)],
+    );
 
-      // Flatten projectIds if it contains a list within a list
-      List<dynamic> flattenedProjectIds =
-          projectIds.expand((x) => x is List ? x : [x]).toList();
+    // Flatten projectIds if it contains a list within a list
+    List<dynamic> flattenedProjectIds =
+        projectIds.expand((x) => x is List ? x : [x]).toList();
 
-      List<Map<String, dynamic>> projects = [];
+    List<Map<String, dynamic>> projects = [];
 
-      for (var projectId in flattenedProjectIds) {
-        // Ensure that projectId is a BigInt and convert it to int
-        if (projectId is BigInt) {
-          var projectDetails = await getProjectDetails(
-              projectId.toInt()); // Convert BigInt to int
-          projects.add(projectDetails);
-        } else {
-          print("Unexpected project ID type: $projectId");
-        }
+    for (var projectId in flattenedProjectIds) {
+      // Ensure that projectId is a BigInt and convert it to int
+      if (projectId is BigInt) {
+        var projectDetails = await getProjectDetails(projectId.toInt());
+        
+        // Ensure projectId is included for sorting
+        projectDetails['projectId'] = projectId.toInt();
+
+        projects.add(projectDetails);
+      } else {
+        print("Unexpected project ID type: $projectId");
       }
-
-      return projects;
-    } catch (e) {
-      print("❌ Error fetching organization projects: $e");
-      return [];
     }
+
+    // Sort by projectId in descending order
+    projects.sort((a, b) => b['projectId'].compareTo(a['projectId']));
+
+    return projects;
+  } catch (e) {
+    print("❌ Error fetching organization projects: $e");
+    return [];
   }
+}
 
   // Check if voting exists for a project
   Future<bool> hasExistingVoting(int projectId) async {
