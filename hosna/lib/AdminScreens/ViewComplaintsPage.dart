@@ -4,16 +4,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:hosna/screens/organizations.dart';
 import 'package:intl/intl.dart';
 import '../firebase_options.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
 import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
@@ -1492,7 +1489,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 20),
                   Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1743,7 +1740,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                         Color.fromRGBO(24, 71, 137, 1), // Background color
                   ),
                   child: const Text(
-                    '  No  ',
+                    'cancel',
                     style: TextStyle(
                       fontSize: 20, // Increase font size for buttons
                       color: Colors.white, // White text color
@@ -1782,7 +1779,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                         255, 182, 12, 12), // Background color
                   ),
                   child: const Text(
-                    '  Yes  ',
+                    'send',
                     style: TextStyle(
                       fontSize: 20, // Increase font size
                       color: Colors.white, // White text color
@@ -1890,7 +1887,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     backgroundColor: Color.fromRGBO(24, 71, 137, 1),
                   ),
                   child: const Text(
-                    '  No  ',
+                    'cancel',
                     style: TextStyle(
                       fontSize: 20,
                       color: Colors.white,
@@ -1901,15 +1898,23 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                 OutlinedButton(
                   onPressed: () {
                     // Validate if justification is provided
-                    if (justificationController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Please provide a justification for suspension.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    } else {
+           if (justificationController.text.trim().isEmpty) {
+  // Show SnackBar for empty input
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Justification cannot be empty.'),
+      backgroundColor: Colors.red,
+    ),
+  );
+} else if (justificationController.text.trim().length < 10) {
+  // Show SnackBar for text being too short
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Justification must be at least 10 characters long.'),
+      backgroundColor: Colors.red,
+    ),
+  );
+} else {
                       // Store the justification
                       justification = justificationController.text.trim();
                       Navigator.pop(context, true);
@@ -1923,7 +1928,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     backgroundColor: const Color.fromARGB(255, 182, 12, 12),
                   ),
                   child: const Text(
-                    '  Yes  ',
+                    'send ',
                     style: TextStyle(
                       fontSize: 20,
                       color: Colors.white,
@@ -1956,8 +1961,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
           .update({
         'isSuspend': true,
         'suspensionReason': justification,
-        'suspendedAt': FieldValue.serverTimestamp(),
-        'suspendedBy': 'admin'
+        
       });
 
       // Fetch organization information to use in notification
@@ -2003,9 +2007,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
         "title": title,
         "body": body,
         "timestamp": FieldValue.serverTimestamp(),
-        "projectId": charityAddress,
-        "type": "account_suspension",
-        "state": "suspended",
+       
+       
       });
 
       print("✅ Suspension notification sent to charity: $charityAddress");
@@ -2732,8 +2735,7 @@ class CancelAllProjectsHelper {
       await docRef.update({
         'isCanceled': true,
         'cancellationReason': justification,
-        'cancelledAt': FieldValue.serverTimestamp(),
-        'cancelledBy': 'admin'
+        
       });
 
       print("📄 Firestore project updated: $projectId with justification");
@@ -2757,8 +2759,7 @@ class CancelAllProjectsHelper {
       await docRef.set({
         'isCanceled': true,
         'cancellationReason': justification,
-        'cancelledAt': FieldValue.serverTimestamp(),
-        'cancelledBy': 'admin'
+        
       });
 
       print(
@@ -2796,9 +2797,8 @@ class CancelAllProjectsHelper {
         "title": title,
         "body": body,
         "timestamp": FieldValue.serverTimestamp(),
-        "projectId": projectId,
-        "type": "project_cancellation",
-        "state": "canceled",
+       
+       
       });
 
       print(
