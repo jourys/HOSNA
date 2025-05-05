@@ -519,8 +519,7 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                 } else {
                   await _showSendConfirmationDialog(context);
                   Navigator.pop(context, true);
-                   Navigator.pop(context, true);
-                  showSuccessPopup(context); // Reuse the same success popup
+                 
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -577,6 +576,7 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                   const SizedBox(width: 20),
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context, true),
+                    
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(
                           color: Color.fromRGBO(212, 63, 63, 1), width: 3),
@@ -670,9 +670,11 @@ class _ReportDonorPopupState extends State<ReportDonorPopup> {
                           'timestamp': FieldValue.serverTimestamp(),
                           'resolved': false,
                         });
-
-                        Navigator.pop(context, true);
-                        showSuccessPopup(context);
+  
+                       
+                         showSuccessPopup(context);
+                           
+                   
                       } catch (e) {
                         print("❌ Error submitting complaint: $e");
                         ScaffoldMessenger.of(context).showSnackBar(
