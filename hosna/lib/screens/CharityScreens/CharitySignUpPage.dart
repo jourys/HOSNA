@@ -802,7 +802,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         if (label == 'Website' &&
             value!.isNotEmpty &&
             !RegExp(r'^www\.[a-zA-Z0-9-]+\.com$').hasMatch(value)) {
-          return 'Enter a valid website URL';
+          return 'Enter a valid website URL (e.g., www.HOSNA.com)';
         }
 
         return null;
