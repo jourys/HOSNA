@@ -51,6 +51,7 @@ dependencies:
   path_provider_android: ^2.2.16
   image_picker: ^1.1.2
   firebase_storage: ^12.4.4
+  firebase_performance: ^0.10.1+4
   lucide_icons: ^0.257.0
   url_launcher: ^6.3.1
   crypto: ^3.0.6

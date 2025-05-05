@@ -5,6 +5,7 @@ import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
 import 'package:hosna/screens/NotificationListener.dart';
 import 'package:hosna/screens/NotificationManager.dart';
 import 'firebase_options.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 
 import 'screens/CharityScreens/CharitySignUpPage.dart'; // Import the missing CharityHome screen
 import 'screens/CharityScreens/charityHome.dart'; // Import the Charity Sign-Up screen
@@ -26,6 +27,10 @@ void main() async {
     );
     print("✅ Firebase initialized successfully 🎉");
     
+FirebasePerformance performance = FirebasePerformance.instance;
+print("✅ Firebase Performance Monitoring started");
+
+
 //    late ProjectNotificationListener projectNotificationListener;
 
 //   projectNotificationListener = ProjectNotificationListener(
