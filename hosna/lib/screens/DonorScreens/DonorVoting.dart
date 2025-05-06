@@ -281,7 +281,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
         print("⚠️ Transaction failed or reverted.");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("❌ Transaction failed. Please try again.")),
+              content: Text("Transaction failed. Please try again.")),
         );
       }
     } catch (e) {
@@ -481,7 +481,6 @@ class _DonorVotePageState extends State<DonorVotePage> {
                                         });
 
                                         try {
-                                          
                                           if (selectedProjectIndex
                                               .startsWith('refund_')) {
                                             final refundIndex =
@@ -512,15 +511,21 @@ class _DonorVotePageState extends State<DonorVotePage> {
                                             Navigator.pop(context);
                                           } else if (selectedProjectIndex
                                               .startsWith('vote_')) {
-                                            final stopwatch = Stopwatch()..start();
-                                            await _submitVote(); 
+                                            final stopwatch = Stopwatch()
+                                              ..start();
+                                            await _submitVote();
                                             stopwatch.stop();
-                                            print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
+                                            print(
+                                                'Response time: ${stopwatch.elapsedMicroseconds} microseconds');
                                             Navigator.pop(context);
                                           } else {
-                                            
-                                            throw Exception(
-                                                "❌ Invalid selection value");
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      "Please select an option to vote.")),
+                                            );
+                                            return;
                                           }
                                         } catch (e) {
                                           ScaffoldMessenger.of(context)
