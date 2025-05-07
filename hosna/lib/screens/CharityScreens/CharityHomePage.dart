@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:hosna/screens/CharityScreens/PostProject.dart';
 import 'package:hosna/screens/CharityScreens/ProfileScreenCharity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/BlockchainService.dart';
@@ -297,7 +298,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
 
     return DeployedContract(
       ContractAbi.fromJson(contractAbi, 'CharityRegistration'),
-      EthereumAddress.fromHex('0x25ef93ac312D387fdDeFD62CD852a29328c4B122'),
+      EthereumAddress.fromHex('0x583472AFc3f8655FF4B22bf5253c884081e3a794'),
     );
   }
 
@@ -320,7 +321,7 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 70),
-                       // reduce top space
+                    // reduce top space
                     child: Text(
                       "Good Day, ${_organizationName}!",
                       style: const TextStyle(
@@ -720,10 +721,10 @@ class _CharityEmployeeHomePageState extends State<CharityEmployeeHomePage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => DraftsPage(
+              builder: (context) => PostProject(
+                draft: draft,
                 walletAddress: walletAddress!,
-                initialDraft:
-                    draft, // Pass the specific draft to show its details
+                showDeleteIcon: false,
               ),
             ),
           );

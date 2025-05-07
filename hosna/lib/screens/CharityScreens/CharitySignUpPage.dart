@@ -72,7 +72,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
     _web3Client = Web3Client(rpcUrl, Client());
     _contractAddress =
-        EthereumAddress.fromHex("0x25ef93ac312D387fdDeFD62CD852a29328c4B122");
+        EthereumAddress.fromHex("0x583472AFc3f8655FF4B22bf5253c884081e3a794");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -114,7 +114,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     print("🛠 Registering charity...");
 
     final String ownerPrivateKey =
-        "eb0d1b04998eefc4f3b3f0ebad479607f6e2dc5f8cd76ade6ac2dc616861fa90";
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
     final ownerCredentials = EthPrivateKey.fromHex(ownerPrivateKey);
     final ownerWallet = await ownerCredentials.extractAddress();
     print("🔹 Owner's wallet address (paying gas): $ownerWallet");
@@ -578,7 +578,18 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                 TextFormField(
                   controller: _establishmentDateController,
                   decoration: InputDecoration(
-                    labelText: 'Establishment Date',
+                    label: RichText(
+                      text: const TextSpan(
+                        text: 'Establishment Date',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                        children: [
+                          TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
                     border: OutlineInputBorder(),
                   ),
                   onTap: () async {
@@ -748,7 +759,20 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ],
       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
-        labelText: label,
+        label: isRequired
+            ? RichText(
+                text: TextSpan(
+                  text: label,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 16),
+                  children: const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ],
+                ),
+              )
+            : Text(label),
         hintText: hintText,
         border: OutlineInputBorder(),
         suffixIcon: (isPassword ||

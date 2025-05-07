@@ -260,7 +260,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
             ),
             (route) => false,
           );
-           showSuccessPopup( context);
+          showSuccessPopup(context);
         } else if (accountStatus == 'pending') {
           Navigator.pushReplacement(
             context,
@@ -622,7 +622,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: 'Email Address',
+                  label: RichText(
+                    text: const TextSpan(
+                      text: 'Email Address',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      children: [
+                        TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
                   border: OutlineInputBorder(),
                 ),
                 inputFormatters: [
@@ -645,7 +656,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  label: RichText(
+                    text: const TextSpan(
+                      text: 'Password',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      children: [
+                        TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
                   border: OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -718,7 +740,8 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
       ),
     );
   }
-   void showSuccessPopup(BuildContext context) {
+
+  void showSuccessPopup(BuildContext context) {
     // Show dialog
     showDialog(
       context: context,
@@ -746,8 +769,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                 ),
                 SizedBox(height: 20), // Add spacing between the icon and text
                 Text(
-                  'You have logged in successfully!'
-,
+                  'You have logged in successfully!',
                   style: TextStyle(
                     color: const Color.fromARGB(255, 54, 142, 57),
                     fontWeight: FontWeight.bold,

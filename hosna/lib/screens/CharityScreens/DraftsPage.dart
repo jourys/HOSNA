@@ -93,8 +93,7 @@ class _DraftsPageState extends State<DraftsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-                     Navigator.pop(context);
-
+            Navigator.pop(context);
           },
         ),
         title: Text(
@@ -141,7 +140,11 @@ class _DraftsPageState extends State<DraftsPage> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: Icon(Icons.delete),
+                      icon: Icon(
+                        Icons.delete,
+                        color: Colors.red, // 🔴 Red trash icon
+                      ),
+                      tooltip: 'Delete draft',
                       onPressed: () => _deleteDraft(index),
                     ),
                     onTap: () {
