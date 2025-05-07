@@ -1883,14 +1883,12 @@ _listenForSuspension(walletAddress.toString());
                         ? () async {
                               // performance testing 
                                 final stopwatch = Stopwatch()..start();
-
                                 await _processDonation(amountController.text, isAnonymous);
-
                                 stopwatch.stop();
                                 print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
 
                             Navigator.pop(context);
-                             showSuccessPopup( context);
+                            
                           }
                         : null, // Disable if input is invalid
                     style: ElevatedButton.styleFrom(
@@ -1982,7 +1980,9 @@ _listenForSuspension(walletAddress.toString());
 
       // Print transaction hash with check emoji
       print("Transaction successful! ✅ Hash: $result");
-
+      Navigator.pop(context);
+ showSuccessPopup( context);
+ 
 
 
  
