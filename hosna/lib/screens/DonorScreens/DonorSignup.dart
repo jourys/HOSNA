@@ -96,11 +96,45 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     return hash.toString();
   }
 
+
+Future<void> sendEth(String toAddress) async {
+  final privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c';
+  final rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura endpoint or use Alchemy
+
+  final httpClient = Client();
+  final ethClient = Web3Client(rpcUrl, httpClient);
+
+  final credentials = EthPrivateKey.fromHex(privateKey);
+  final myAddress = await credentials.extractAddress();
+
+  final transaction = web3.Transaction(
+    to: EthereumAddress.fromHex(toAddress),
+    from: myAddress,
+    value: EtherAmount.fromUnitAndValue(EtherUnit.wei, BigInt.from(0.03 * 1e18)),
+    gasPrice: await ethClient.getGasPrice(),
+    maxGas: 21000,
+  );
+
+  try {
+    final txHash = await ethClient.sendTransaction(
+      credentials,
+      transaction,
+      chainId: 11155111, // Sepolia testnet chain ID
+    );
+
+    print('Transaction sent. Hash: $txHash');
+  } catch (e) {
+    print('Transaction failed: $e');
+  } finally {
+    httpClient.close();
+  }
+}
+
   // Register donor function that interacts with the smart contract
   Future<void> _registerDonor() async {
     print("Registering donor...");
     final creatorPrivateKey =
-        "2741b8487256f4eb8769e5195c688f69cb985d89f9aae099d28d022d07428ba6";
+        "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c";
     // Generate a unique private key for the donor
     _privateKey = _generatePrivateKey();
     print("Generated private key: $_privateKey");
@@ -160,13 +194,14 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
     print("Form inputs: $firstName, $lastName, $email, $phone, $password");
 bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
     if (phoneTaken) {
-      print("Charity with this phone number already exists!");
+      print("donor with this phone number already exists!");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Phone number is already registered!')),
       );
       return;
     }
     try {
+       checkBalance();
       // Send the transaction to register the donor using the creator's wallet for gas
       final result = await _web3Client.sendTransaction(
         creatorCredentials, // Use the creator's credentials to sign the transaction
@@ -196,11 +231,14 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
         password: password,
       );
       _storePrivateKey(walletAddress.toString(), _privateKey);
-      print("private key stoooored in shared pref.");
+      print("private key stored .");
       // Store donor details in Firebase
       await _storeDonorInFirebase(walletAddress.toString(), email);
       SuspensionListener(walletAddress.toString());
       reloadPrivateKey(walletAddress.toString());
+       
+
+      // sendEth(walletAddress.toString());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
@@ -307,6 +345,22 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
       return false;
     }
   }
+
+   Future<void> checkBalance() async {
+    
+    final walletAddress = "0x6d910d38827AF569011b4a5AeCC0AC9a15Ff85A3";
+
+    try {
+      EthereumAddress address = EthereumAddress.fromHex(walletAddress);
+      EtherAmount balance = await _web3Client.getBalance(address);
+      print(
+          "💰 Wallet Balance: ${balance.getValueInUnit(EtherUnit.ether)} ETH");
+    } catch (e) {
+      print("❌ Error fetching balance: $e");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,23 +398,23 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
                 ),
                 const SizedBox(height: 50),
                 _buildTextField(
-                    _firstNameController, 'First Name', _firstNameFocus, 30,
+                    _firstNameController, 'First Name *', _firstNameFocus, 30,
                     isName: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _lastNameController, 'Last Name', _lastNameFocus, 30,
+                    _lastNameController, 'Last Name *', _lastNameFocus, 30,
                     isName: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _emailController, 'Email Address', _emailFocus, 250,
+                    _emailController, 'Email Address *', _emailFocus, 250,
                     isEmail: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _phoneController, 'Phone Number', _phoneFocus, 10,
+                    _phoneController, 'Phone Number *', _phoneFocus, 10,
                     isPhone: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _passwordController, 'Password', _passwordFocus, 250,
+                    _passwordController, 'Password *', _passwordFocus, 250,
                     obscureText: !_isPasswordVisible, isPassword: true),
                 const SizedBox(height: 40),
                 CheckboxListTile(
@@ -376,18 +430,21 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
                         const TextSpan(
                             text: 'By creating an account, you agree to our '),
                         TextSpan(
-                          text: 'Terms & Conditions',
+                          text: 'Terms & Conditions ',
                           style: const TextStyle(
                             color: Color.fromRGBO(24, 71, 137, 1),
                             fontWeight: FontWeight.bold,
                             decoration:
-                                TextDecoration.none, // أزلنا التسطير كما طلبت
+                                TextDecoration.none, 
                           ),
                           recognizer: TapGestureRecognizer()
                             ..onTap = () {
                               _showTermsConditionsDialog(context);
                             },
                         ),
+                        const TextSpan(
+                            text: '* '),
+                        
                       ],
                     ),
                   ),

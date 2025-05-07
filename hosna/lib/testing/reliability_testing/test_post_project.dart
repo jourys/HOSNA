@@ -5,7 +5,7 @@ import 'package:http/http.dart';
 class PostProjectTester {
   final String rpcUrl = 'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
   final String contractAddress = '0x1e2140d77C1109f68bFfD126a75f3aa92Ad3bDBA';
-  final String privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'; // Replace with test private key
+  final String privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'; 
 
   late Web3Client _client;
   late EthPrivateKey _credentials;
