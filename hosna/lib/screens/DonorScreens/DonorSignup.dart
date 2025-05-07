@@ -398,23 +398,23 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
                 ),
                 const SizedBox(height: 50),
                 _buildTextField(
-                    _firstNameController, 'First Name *', _firstNameFocus, 30,
+                    _firstNameController, 'First Name', _firstNameFocus, 30,
                     isName: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _lastNameController, 'Last Name *', _lastNameFocus, 30,
+                    _lastNameController, 'Last Name', _lastNameFocus, 30,
                     isName: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _emailController, 'Email Address *', _emailFocus, 250,
+                    _emailController, 'Email Address', _emailFocus, 250,
                     isEmail: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _phoneController, 'Phone Number *', _phoneFocus, 10,
+                    _phoneController, 'Phone Number', _phoneFocus, 10,
                     isPhone: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _passwordController, 'Password *', _passwordFocus, 250,
+                    _passwordController, 'Password', _passwordFocus, 250,
                     obscureText: !_isPasswordVisible, isPassword: true),
                 const SizedBox(height: 40),
                 CheckboxListTile(
@@ -443,7 +443,7 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
                             },
                         ),
                         const TextSpan(
-                            text: '* '),
+                            text: '* ' , style: TextStyle(color: Colors.red),),
                         
                       ],
                     ),
@@ -642,19 +642,38 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
     bool isName = false,
     bool isEmail = false,
     bool isPhone = false,
-    bool isPassword = false, // Add a flag to check if it's a password field
+    bool isPassword = false, 
+  
   }) {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
       obscureText: obscureText,
       decoration: InputDecoration(
-        labelText: label,
+        label: RichText(
+  text: TextSpan(
+    text: label,
+    style: TextStyle(
+      color: focusNode.hasFocus
+          ? const Color.fromRGBO(24, 71, 137, 1)
+          : Colors.grey,
+      fontSize: 16,
+    ),
+    children: const [
+      TextSpan(
+        text: ' *',
+        style: TextStyle(color: Colors.red),
+      ),
+    ],
+  ),
+),
+
         labelStyle: TextStyle(
           color: focusNode.hasFocus
               ? const Color.fromRGBO(24, 71, 137, 1)
               : Colors.grey,
         ),
+
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.grey),
