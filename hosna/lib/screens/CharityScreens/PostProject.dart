@@ -60,7 +60,8 @@ class _PostProjectScreenState extends State<PostProject> {
     if (widget.draft != null) {
       _projectNameController.text = widget.draft!['name'];
       _descriptionController.text = widget.draft!['description'];
-      _startDateController.text = widget.draft!['startDate'];
+      _startDateController.text =
+          DateTime.now().toLocal().toString().split(' ')[0];
       _deadlineController.text = widget.draft!['deadline'];
       _totalAmountController.text = widget.draft!['totalAmount'];
       _selectedProjectType = widget.draft!['projectType'];
