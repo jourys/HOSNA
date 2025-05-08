@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hosna/screens/CharityScreens/DraftsPage.dart';
 import 'dart:convert';
 
+import 'package:web3dart/web3dart.dart';
+
 class PostProject extends StatefulWidget {
   final String? walletAddress;
   final Map<String, dynamic>? draft;
@@ -60,7 +62,7 @@ class _PostProjectScreenState extends State<PostProject> {
     if (widget.draft != null) {
       _projectNameController.text = widget.draft!['name'];
       _descriptionController.text = widget.draft!['description'];
-      _startDateController.text =
+     _startDateController.text =
           DateTime.now().toLocal().toString().split(' ')[0];
       _deadlineController.text = widget.draft!['deadline'];
       _totalAmountController.text = widget.draft!['totalAmount'];
@@ -346,29 +348,35 @@ class _PostProjectScreenState extends State<PostProject> {
                         child: SizedBox(
                           width: 355, // Make button take the full width
                           child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                _postProject();
-                                
-                               
-  Navigator.pop(context);
-showSuccessPopup( context);
+  onPressed: _isLoading
+      ? null // Disable button while loading
+      : () {
+          if (_formKey.currentState!.validate()) {
+            _postProject();
+          }
+        },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+    foregroundColor: Colors.white,
+    minimumSize: Size(double.infinity, 50),
+  ),
+  child: _isLoading
+      ? SizedBox(
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            strokeWidth: 3,
+          ),
+        )
+      : Text(
+          'Post',
+          style: TextStyle(
+            fontSize: 20,
+          ),
+        ),
+),
 
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color.fromRGBO(24, 71, 137, 1),
-                              foregroundColor: Colors.white,
-                              minimumSize: Size(double.infinity,
-                                  50), // Make button bigger (height)
-                            ),
-                            child: Text(
-                              'Post',
-                              style: TextStyle(
-                                fontSize: 20, // Increase text size
-                              ),
-                            ),
-                          ),
                         ),
                       ),
                       SizedBox(
@@ -845,52 +853,56 @@ showSuccessPopup( context);
   }
 
 
-  void _postProject() async {
-    if (_formKey.currentState!.validate()) {
-      print("✅ Form validation passed, proceeding to post project...");
-      final blockchainService = BlockchainService();
+ bool _isLoading = false; // Add a loading flag
 
-      // Parsing start date and deadline
-      int startDate, deadline;
-      try {
-        startDate =
-            DateTime.parse(_startDateController.text).millisecondsSinceEpoch ~/
-                1000;
-        deadline =
-            DateTime.parse(_deadlineController.text).millisecondsSinceEpoch ~/
-                1000;
-      } catch (e) {
-        print("❌ Error parsing dates: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Invalid date format. Please check your input.')),
-        );
-        return;
-      }
+void _postProject() async {
+  if (_formKey.currentState!.validate()) {
+    print("✅ Form validation passed, proceeding to post project...");
+    
+    setState(() {
+      _isLoading = true; // Start loading when posting project
+    });
 
-      // Parsing total amount
-      double? totalAmount = double.tryParse(_totalAmountController.text);
-      if (totalAmount == null) {
-        print("❌ Invalid total amount entered: ${_totalAmountController.text}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid total amount.')),
-        );
-        return;
-      }
+    final blockchainService = BlockchainService();
 
-      // Print values before sending
-      print("📌 Project Details:");
-      print("   - Name: ${_projectNameController.text}");
-      print("   - Description: ${_descriptionController.text}");
-      print("   - Start Date: $startDate (Unix timestamp)");
-      print("   - Deadline: $deadline (Unix timestamp)");
-      print("   - Total Amount: $totalAmount");
-      print("   - Type: ${_selectedProjectType ?? 'Other'}");
-      print("   - Wallet Address: $walletAddress");
+    // Parsing start date and deadline
+    int startDate, deadline;
+    try {
+      startDate = DateTime.parse(_startDateController.text).millisecondsSinceEpoch ~/ 1000;
+      deadline = DateTime.parse(_deadlineController.text).millisecondsSinceEpoch ~/ 1000;
+    } catch (e) {
+      print("❌ Error parsing dates: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid date format. Please check your input.')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
 
-      //try {
+    // Parsing total amount
+    double? totalAmount = double.tryParse(_totalAmountController.text);
+    if (totalAmount == null) {
+      print("❌ Invalid total amount entered: ${_totalAmountController.text}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid total amount.')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // Print values before sending
+    print("📌 Project Details:");
+    print("   - Name: ${_projectNameController.text}");
+    print("   - Description: ${_descriptionController.text}");
+    print("   - Start Date: $startDate (Unix timestamp)");
+    print("   - Deadline: $deadline (Unix timestamp)");
+    print("   - Total Amount: $totalAmount");
+    print("   - Type: ${_selectedProjectType ?? 'Other'}");
+    print("   - Wallet Address: $walletAddress");
+
+    try {
       // Send project to blockchain
-      await blockchainService.addProject(
+      final txHash = await blockchainService.addProject(
         _projectNameController.text,
         _descriptionController.text,
         startDate,
@@ -899,43 +911,34 @@ showSuccessPopup( context);
         _selectedProjectType ?? 'Other',
       );
 
-      // Send notifications to donors
+      // ✅ Wait for transaction receipt
+final receipt = await blockchainService.waitForReceipt(txHash);
 
-      print("✅ Project successfully posted!");
-
-      if (widget.draft == null || widget.walletAddress == null) return;
-
-      final prefs = await SharedPreferences.getInstance();
-      final userDraftsKey = 'drafts_${widget.walletAddress}';
-      final drafts = prefs.getStringList(userDraftsKey) ?? [];
-
-      final updatedDrafts = drafts.where((d) {
-        final decoded = jsonDecode(d);
-        return decoded['id'] != widget.draft!['id'];
-      }).toList();
-
-      await prefs.setStringList(userDraftsKey, updatedDrafts);
-     
-    
-      // Navigate to project details page only after successful posting
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => BrowseProjects(
-      //       walletAddress: walletAddress ?? '',
-      //     ), // Replace with your Browse Project page
-      //   ),
-      // );
-      //} catch (e) {
-      //print("❌ Error posting project: $e");
-      // ScaffoldMessenger.of(context).showSnackBar(
-      // SnackBar(content: Text('Failed to post project. Error: $e')),
-      //);
-      //}
-    } else {
-      print("❌ Form validation failed!");
+      if (receipt != null && receipt.status == true) {
+        print("✅ Project successfully posted!");
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+        showSuccessPopup(context);
+      } else {
+        print("❌ Transaction failed!");
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to post project. Please try again.')),
+        );
+      }
+    } catch (e) {
+      print("❌ Error posting project: $e");
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to post project. Error: $e')),
+      );
     }
+  } else {
+    print("❌ Form validation failed!");
   }
+}
+
+
 }
 
 class FocusableTextField extends StatefulWidget {
@@ -1045,3 +1048,4 @@ maxLines: widget.isDescription ? 3 : 1,
     );
   }
 }
+
