@@ -109,7 +109,7 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x2D2cDD99eff93AC01F825b45eE0844d44345F058");
+        EthereumAddress.fromHex("0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
@@ -150,34 +150,43 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     setState(() => _isLoadingRefundService = false);
   }
 
-  Future<void> _fetchVotingData() async {
-    if (isFetching) return;
-    isFetching = true;
+ Future<void> _fetchVotingData() async {
+  if (isFetching) return;
+  isFetching = true;
 
-    try {
-      final results = await _web3Client.call(
-        contract: _contract,
-        function: _getVotingDetails,
-        params: [BigInt.from(int.parse(widget.votingId))],
-      );
-
-      if (results.isEmpty || results[0].isEmpty) return;
-
-      setState(() {
-        votingDetails = List<String>.from(results[0]);
-        votingPercentages =
-            (results[1] as List).map((e) => (e as BigInt).toInt()).toList();
-        remainingMonths = (results[2] as BigInt).toInt();
-        remainingDays = (results[3] as BigInt).toInt();
-        remainingHours = (results[4] as BigInt).toInt();
-        remainingMinutes = (results[5] as BigInt).toInt();
-      });
-    } catch (e) {
-      print("❌ Error fetching voting data: $e");
-    } finally {
-      isFetching = false;
+  try {
+    // Validate the votingId
+    final votingIdStr = widget.votingId;
+    if (votingIdStr == null || votingIdStr.isEmpty || int.tryParse(votingIdStr) == null) {
+      print("❌ Invalid voting ID: $votingIdStr");
+      return;
     }
+
+    final votingId = BigInt.from(int.parse(votingIdStr));
+
+    final results = await _web3Client.call(
+      contract: _contract,
+      function: _getVotingDetails,
+      params: [votingId],
+    );
+
+    if (results.isEmpty || results[0].isEmpty) return;
+
+    setState(() {
+      votingDetails = List<String>.from(results[0]);
+      votingPercentages =
+          (results[1] as List).map((e) => (e as BigInt).toInt()).toList();
+      remainingMonths = (results[2] as BigInt).toInt();
+      remainingDays = (results[3] as BigInt).toInt();
+      remainingHours = (results[4] as BigInt).toInt();
+      remainingMinutes = (results[5] as BigInt).toInt();
+    });
+  } catch (e) {
+    print("❌ Error fetching voting data: $e");
+  } finally {
+    isFetching = false;
   }
+}
 
   String _formatRemainingTime() {
     return "$remainingDays days, $remainingHours hours, $remainingMinutes minutes";

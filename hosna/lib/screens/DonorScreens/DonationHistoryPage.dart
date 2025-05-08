@@ -356,6 +356,7 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                                                     'Unknown Project',
                                             description:
                                                 donation['description'] ?? '',
+                                                
                                             startDate: DateFormat('yyyy-MM-dd')
                                                 .format(DateTime
                                                     .fromMillisecondsSinceEpoch(

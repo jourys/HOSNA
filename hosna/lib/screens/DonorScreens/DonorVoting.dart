@@ -86,7 +86,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x2D2cDD99eff93AC01F825b45eE0844d44345F058");
+        EthereumAddress.fromHex("0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),
@@ -256,6 +256,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
             getSelectedIndexAsBigInt(),
           ],
           maxGas: 300000,
+           gasPrice: EtherAmount.inWei(BigInt.from(20 * 1e9)), // 50 Gwei
         ),
         chainId: 11155111,
       );
@@ -268,7 +269,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
       if (receipt != null && receipt.status == true) {
         print("🎉 Vote submitted successfully!");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Vote submitted successfully!")),
+          const SnackBar(content: Text("Vote submitted successfully!")),
         );
       } else if (receipt == null) {
         print("⏰ Transaction receipt timed out.");
@@ -326,8 +327,8 @@ class _DonorVotePageState extends State<DonorVotePage> {
   }
 
   Future<TransactionReceipt?> _waitForReceipt(String txHash) async {
-    const int maxTries = 20; // instead of 10
-    const Duration delay = Duration(seconds: 3); // instead of 2
+    const int maxTries = 40; 
+    const Duration delay = Duration(seconds: 3); 
 
     for (int i = 0; i < maxTries; i++) {
       final receipt = await _web3Client.getTransactionReceipt(txHash);
@@ -506,7 +507,7 @@ class _DonorVotePageState extends State<DonorVotePage> {
                                                 .showSnackBar(
                                               const SnackBar(
                                                   content: Text(
-                                                      '✅ Refund requested!')),
+                                                      'Refund requested!')),
                                             );
                                             Navigator.pop(context);
                                           } else if (selectedProjectIndex

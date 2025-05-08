@@ -365,7 +365,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 obscureText: _obscureText),
             const SizedBox(height: 20),
             Align(
-              alignment: Alignment.centerRight,
+              alignment: Alignment.center,
               child: GestureDetector(
                 onTap: () {},
                 child: const Text(

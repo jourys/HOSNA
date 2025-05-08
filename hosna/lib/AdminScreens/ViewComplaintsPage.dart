@@ -9,6 +9,7 @@ import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:hosna/screens/organizations.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:web3dart/web3dart.dart' as web3;
@@ -1498,7 +1499,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                     Icons.contact_phone, "Contact Information"),
                                 _buildStyledInfoRow(Icons.phone, "Phone: ",
                                     organizationData?["phone"]),
-                                _buildStyledInfoRow(Icons.email, "Email: ",
+                                _buildStyledEmailRow(Icons.email, "Email: ",
                                     organizationData?["email"]),
                                 _buildStyledInfoRow(Icons.location_on, "City: ",
                                     organizationData?["city"]),
@@ -1656,6 +1657,39 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     );
   }
 
+Widget _buildStyledEmailRow(IconData icon, String label, String? value) {
+  final Uri emailUri = Uri(
+    scheme: 'mailto',
+    path: value,
+  );
+
+  return Row(
+    children: [
+      Icon(icon),
+      SizedBox(width: 8),
+      Text(label),
+      SizedBox(width: 4),
+      value != null
+          ? GestureDetector(
+              onTap: () async {
+                if (await canLaunchUrl(emailUri)) {
+                  await launchUrl(emailUri);
+                } else {
+                  print('Could not launch email app');
+                }
+              },
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            )
+          : Text('N/A'),
+    ],
+  );
+}
 // Function to show success popup after project cancellation
   void showCancelSuccessPopup(BuildContext context) {
     // Show dialog
@@ -2457,6 +2491,8 @@ class DonorDetailsPage extends StatelessWidget {
       },
     );
   }
+
+  
   Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
     print("🚀 Showing suspend confirmation dialog...");
 

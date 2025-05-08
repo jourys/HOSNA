@@ -186,7 +186,7 @@ class _InitiateVotingState extends State<InitiateVoting> {
 
       // Set the contract address
       _contractAddress =
-          EthereumAddress.fromHex('0x2D2cDD99eff93AC01F825b45eE0844d44345F058');
+          EthereumAddress.fromHex('0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763');
       print('Contract address set to $_contractAddress');
 
       // Load the contract
@@ -472,6 +472,10 @@ class _InitiateVotingState extends State<InitiateVoting> {
           chainId: 11155111,
         );
         print("✅ Transaction sent! Hash: $txHash");
+
+         
+
+
       } catch (e) {
         print("❌ Transaction failed: $e");
         showWarning('❗ Blockchain transaction failed.');
@@ -494,7 +498,9 @@ class _InitiateVotingState extends State<InitiateVoting> {
             _isLoading = false); // Ensure _isLoading is set to false on error
         return;
       }
+ final receipt = await _waitForReceipt(txHash);
 
+      if (receipt != null && receipt.status == true){
       final votingCounter = result[0].toString();
       print('🎉 Voting Counter (ID): $votingCounter');
 
@@ -529,13 +535,30 @@ class _InitiateVotingState extends State<InitiateVoting> {
       // Navigate and show success popup
       Navigator.pop(context, true);
       showVotingSuccessPopup(context);
-      print('✅ Voting initiation process complete.');
+      print('✅ Voting initiation process complete.');}
     } catch (e) {
       print('❌ Error initiating voting: $e');
       showWarning('❗ Failed to initiate voting. Please try again.');
       setState(() =>
           _isLoading = false); // Ensure _isLoading is set to false on failure
     }
+  }
+
+ Future<TransactionReceipt?> _waitForReceipt(String txHash) async {
+    const int maxTries = 20; // instead of 10
+    const Duration delay = Duration(seconds: 3); // instead of 2
+
+    for (int i = 0; i < maxTries; i++) {
+      final receipt = await _web3Client.getTransactionReceipt(txHash);
+      if (receipt != null && receipt.status != null) {
+        print("🧾 Transaction receipt received. Status: ${receipt.status}");
+        return receipt;
+      }
+      print("⏳ Waiting for transaction receipt... (try ${i + 1}/$maxTries)");
+      await Future.delayed(delay);
+    }
+    print("❌ Receipt not found after $maxTries attempts.");
+    return null;
   }
 
   void _initiateVoting() async {
@@ -558,11 +581,14 @@ class _InitiateVotingState extends State<InitiateVoting> {
   }
 
   void _openProjectSelection() async {
+
+
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            ProjectSelectorPage(walletAddress: widget.walletAddress),
+            ProjectSelectorPage(walletAddress: widget.walletAddress , failedProjectId : widget.projectId)
       ),
     );
 
@@ -930,10 +956,10 @@ class _InitiateVotingState extends State<InitiateVoting> {
     );
   }
 }
-
 class ProjectSelectorPage extends StatefulWidget {
   final String walletAddress;
-  const ProjectSelectorPage({super.key, required this.walletAddress});
+  final int failedProjectId;
+  const ProjectSelectorPage({super.key, required this.walletAddress, required this.failedProjectId});
 
   @override
   State<ProjectSelectorPage> createState() => _ProjectSelectorPageState();
@@ -952,34 +978,52 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
   }
 
   Future<void> _fetchProjects() async {
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    try {
-      int count = await _blockchainService.getProjectCount();
-      List<Map<String, dynamic>> tempProjects = [];
+  try {
+    final failedProject = await _blockchainService.getProjectDetails(widget.failedProjectId);
 
-      for (int i = 0; i < count; i++) {
-        final project = await _blockchainService.getProjectDetails(i);
-        if (!project.containsKey('error')) {
-          final status = await _getProjectState(project);
-          if (status == 'active') {
+    if (failedProject.containsKey('error')) {
+      throw Exception('Failed to load the failed project details');
+    }
+
+    double failedProjectDonation = failedProject['donatedAmount'] ?? 0.0;
+
+    int count = await _blockchainService.getProjectCount();
+    List<Map<String, dynamic>> tempProjects = [];
+
+    for (int i = 0; i < count; i++) {
+      if (i == widget.failedProjectId) continue;
+
+      final project = await _blockchainService.getProjectDetails(i);
+
+      if (!project.containsKey('error')) {
+        final status = await _getProjectState(project);
+        if (status == 'active') {
+          double total = project['totalAmount'] ?? 0.0;
+          double donated = project['donatedAmount'] ?? 0.0;
+          double remaining = total - donated;
+
+          if (remaining >= failedProjectDonation) {
             project['status'] = status;
+            project['remainingAmount'] = remaining;
             tempProjects.add(project);
           }
         }
       }
-
-      setState(() {
-        _projects = tempProjects;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error fetching filtered projects: $e');
-      setState(() => _isLoading = false);
     }
+
+    setState(() {
+      _projects = tempProjects;
+      _isLoading = false;
+    });
+  } catch (e) {
+    print('Error fetching filtered projects: $e');
+    setState(() => _isLoading = false);
   }
+}
 
   Future<String> _getProjectState(Map<String, dynamic> project) async {
     DateTime now = DateTime.now();
@@ -1045,7 +1089,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
     final selectedProjects =
         _selectedProjectIndices.map((i) => _projects[i]).toList();
 
-    // Pass the selected projects back to the previous page
     Navigator.pop(context, selectedProjects);
   }
 
@@ -1053,7 +1096,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
     switch (status) {
       case 'active':
         return Colors.green;
-
       default:
         return Colors.grey;
     }
@@ -1064,50 +1106,24 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
     return Scaffold(
       appBar: AppBar(
         title: Align(
-          alignment: Alignment.center, // Align the text to the right
+          alignment: Alignment.center,
           child: Text(
             'Select Voting Options    ',
             style: TextStyle(
-              fontSize: 22, // Make text bigger
-              fontWeight: FontWeight.bold, // Make text bold
-              color: Color.fromRGBO(24, 71, 137, 1), // Text color
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color.fromRGBO(24, 71, 137, 1),
             ),
           ),
         ),
         backgroundColor: Colors.white,
-        elevation: 0, // Optional, to remove the shadow
+        elevation: 0,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🌈 Intro Banner
-                // Container(
-                //   width: double.infinity,
-                //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                //   decoration: BoxDecoration(
-                //     gradient: LinearGradient(
-                //       colors: [Color(0xFF184789), Color(0xFF2B69C4)],
-                //       begin: Alignment.topLeft,
-                //       end: Alignment.bottomRight,
-                //     ),
-                //   ),
-                //   child: Row(
-                //     children: [
-                //       Icon(Icons.info_outline, color: Colors.white),
-                //       SizedBox(width: 10),
-                //       Expanded(
-                //         child: Text(
-                //           'Select 3 projects you’d like to include in this voting round.',
-                //           style: TextStyle(color: Colors.white, fontSize: 15),
-                //         ),
-                //       ),
-                //     ],
-                //   ),
-                // ),
-
-                // 📌 Section Header
                 SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -1120,7 +1136,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                   ),
                 ),
                 SizedBox(height: 2),
-                // 📋 Project List
                 Expanded(
                   child: ListView.builder(
                     itemCount: _projects.length,
@@ -1134,14 +1149,12 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                         child: GestureDetector(
                           onTap: () => _toggleSelection(index),
                           child: Card(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
                             elevation: selected ? 8 : 4,
-                            color:
-                                selected ? Colors.blue.shade50 : Colors.white,
+                            color: selected ? Colors.blue.shade50 : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
@@ -1149,15 +1162,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                                 children: [
                                   Row(
                                     children: [
-//                                   // 👤 Avatar Icon
-//                                   CircleAvatar(
-//   backgroundColor: Colors.grey, // A fresh green to show activity
-//   child: Icon(Icons.rocket_launch, color: Colors.white),
-// ),
-
-//                                   SizedBox(width: 12),
-
-                                      // 📛 Project Name
                                       Expanded(
                                         child: Text(
                                           project['name'],
@@ -1167,8 +1171,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                                           ),
                                         ),
                                       ),
-
-                                      // ✅ Selection Icon
                                       Icon(
                                         selected
                                             ? Icons.check_circle
@@ -1180,8 +1182,6 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                                     ],
                                   ),
                                   SizedBox(height: 10),
-
-                                  // 📝 Project Description
                                   Text(
                                     project['description'],
                                     style: TextStyle(
@@ -1189,23 +1189,28 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  SizedBox(height: 10),
-
+                                  SizedBox(height: 15),
+                                  Text(
+                                    'Remaining: ${project['remainingAmount'].toStringAsFixed(6)} ETH',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.blueGrey,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  
                                   Align(
                                     alignment: Alignment.bottomRight,
                                     child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 6),
+                                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: _getStateColor(project['status'])
-                                            .withOpacity(0.15),
+                                        color: _getStateColor(project['status']).withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
                                         project['status'],
                                         style: TextStyle(
-                                          color:
-                                              _getStateColor(project['status']),
+                                          color: _getStateColor(project['status']),
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13,
                                           letterSpacing: 0.3,
@@ -1222,44 +1227,35 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
                     },
                   ),
                 ),
-
-                // 🚀 Voting Button
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Column(
                     children: [
-                      // 📊 Selection Summary
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             '${_selectedProjectIndices.length}/3 selected',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey[700]),
+                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                           ),
-                          // Icon(Icons.how_to_vote, color: Color(0xFF184789)),
                         ],
                       ),
                       SizedBox(height: 10),
-
                       ElevatedButton.icon(
                         onPressed: _initiateVotingProcess,
-                        // icon: Icon(Icons.check_circle_outline),
                         label: Text(
                           'Confirm Projects Selection',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF184789),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 36, vertical: 12),
+                          padding: EdgeInsets.symmetric(horizontal: 36, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
                         ),
+                        icon: SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -1270,6 +1266,7 @@ class _ProjectSelectorPageState extends State<ProjectSelectorPage> {
   }
 }
 
+
 class VoteListener {
   final int projectId; // <-- Add this line
 
@@ -1277,7 +1274,7 @@ class VoteListener {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x2D2cDD99eff93AC01F825b45eE0844d44345F058';
+  final String contractAddress = '0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763';
 
   late Web3Client _client;
   late Credentials _credentials;

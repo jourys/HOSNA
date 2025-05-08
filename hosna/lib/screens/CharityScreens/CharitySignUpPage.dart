@@ -72,7 +72,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
     _web3Client = Web3Client(rpcUrl, Client());
     _contractAddress =
-        EthereumAddress.fromHex("0x583472AFc3f8655FF4B22bf5253c884081e3a794");
+        EthereumAddress.fromHex("0x25ef93ac312D387fdDeFD62CD852a29328c4B122");
     print("Web3 initialized with contract address: $_contractAddress");
   }
 
@@ -81,6 +81,40 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     EthPrivateKey key = EthPrivateKey.createRandom(rng);
     return bytesToHex(key.privateKey);
   }
+
+
+Future<void> sendEth(String toAddress) async {
+  final privateKey = '06b2ed09a6d49d8f823b962f041df1fa191d13927a6af1605c3a38aa4f998091';
+  final rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura endpoint or use Alchemy
+
+  final httpClient = Client();
+  final ethClient = Web3Client(rpcUrl, httpClient);
+
+  final credentials = EthPrivateKey.fromHex(privateKey);
+  final myAddress = await credentials.extractAddress();
+
+  final transaction = web3.Transaction(
+    to: EthereumAddress.fromHex(toAddress),
+    from: myAddress,
+    value: EtherAmount.fromUnitAndValue(EtherUnit.wei, BigInt.from(0.08 * 1e18)),
+    gasPrice: await ethClient.getGasPrice(),
+    maxGas: 21000,
+  );
+
+  try {
+    final txHash = await ethClient.sendTransaction(
+      credentials,
+      transaction,
+      chainId: 11155111, // Sepolia testnet chain ID
+    );
+
+    print('Transaction sent. Hash: $txHash');
+  } catch (e) {
+    print('Transaction failed: $e');
+  } finally {
+    httpClient.close();
+  }
+}
 
   Future<void> saveCharityCredentials(
       String walletAddress, String privateKey) async {
@@ -229,7 +263,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       );
       _storePrivateKey(charityWallet.toString(), charityPrivateKey);
       print("private key stoooored in shared pref.");
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

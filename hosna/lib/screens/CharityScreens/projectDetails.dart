@@ -889,8 +889,8 @@ _listenForSuspension(walletAddress.toString());
                       ),
                       SizedBox(height: 15),
                       SizedBox(height: 30),
-                      // if (userType == 1 &&
-                      //     widget.projectCreatorWallet == globalWalletAddress)
+                      if (userType == 1 &&
+                          widget.projectCreatorWallet == globalWalletAddress)
                         GestureDetector(
                           onTap: () {
                             print("View all donors");
@@ -961,33 +961,161 @@ _listenForSuspension(walletAddress.toString());
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 100),
-                            if (projectState == "active" && userType == 0 && globalPrivateKey != null)
+                            
+
+
+
+                      if (userType == 0 && projectState == "canceled")
+  Center(
+    child:Center(
+  child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.info_outline,
+          size: 40,
+          color: const Color.fromARGB(255, 193, 38, 38),
+        ),
+        const SizedBox(height: 10),
+        Text(
+      'This project has been canceled. If you donated to this project, we will notify you when voting begins so that you may either vote to transfer the total donated amount to the winning project or request a refund.',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: const Color.fromARGB(255, 193, 38, 38),
+      ),
+        ),
+      ],
+    ),
+  ),
+),
+  ), 
+
+   if (userType == 0 && projectState == "failed")
+  Center(
+  child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.info_outline,
+          size: 40,
+          color: const Color.fromARGB(255, 193, 38, 38),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'This project failed to raise the required amount by the deadline. If you donated to this project, we will notify you when voting begins so that you may either vote to transfer the total donated amount to the winning project or request a refund.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: const Color.fromARGB(255, 193, 38, 38),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+ if (userType == 1 && widget.projectCreatorWallet ==
+                                    globalWalletAddress  && projectState == "canceled")
+  Center(
+    child:Center(
+  child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.info_outline,
+          size: 40,
+          color: const Color.fromARGB(255, 193, 38, 38),
+        ),
+        const SizedBox(height: 10),
+        Text(
+      'This project has been canceled. Please initiate the voting process as soon as possible and provide voting options for the donor to choose between transferring the donated amount to one of the selected projects or requesting a refund.',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: const Color.fromARGB(255, 193, 38, 38),
+      ),
+        ),
+      ],
+    ),
+  ),
+),
+  ), 
+
+   if (userType == 1 && widget.projectCreatorWallet ==
+                                    globalWalletAddress  &&  projectState == "failed")
+  Center(
+  child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.info_outline,
+          size: 40,
+          color: const Color.fromARGB(255, 193, 38, 38),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'This project failed to raise the required amount by the deadline. Please initiate the voting process as soon as possible and provide voting options for the donor to choose between transferring the donated amount to one of the selected projects or requesting a refund. ',
+           textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: const Color.fromARGB(255, 193, 38, 38),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+
+                            
+
+if (projectState == "active" && userType == 0 && globalPrivateKey != null)
+
                               Center(
-                                child: ElevatedButton(
-                                  onPressed: () => _showDonationPopup(context,
-                                      widget.donatedAmount, totalAmount),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        Color.fromRGBO(24, 71, 137, 1),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 100, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(15)),
-                                  ),
-                                  child: const Text('Donate',
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white)),
-                                ),
-                              ),
+  child: Padding(
+    padding: const EdgeInsets.only(top: 100.0), // Adjust the value as needed
+    child: ElevatedButton(
+      onPressed: () => _showDonationPopup(context, widget.donatedAmount, totalAmount),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color.fromRGBO(24, 71, 137, 1),
+        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+      child: const Text(
+        'Donate',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    ),
+  ),
+),
+
+ const SizedBox(height: 10),
                             if (userType == 1 &&
                                 (projectState == "failed" ||
                                     projectState == "canceled") &&
                                 widget.projectCreatorWallet ==
-                                    globalWalletAddress)
+                                    globalWalletAddress 
+                                    // && widget.donatedAmount >0
+                                    )
                               Center(
                                 child: ElevatedButton(
                                   onPressed: () async {
@@ -1204,6 +1332,7 @@ _listenForSuspension(walletAddress.toString());
                                   ),
                                 ),
                               ),
+                               const SizedBox(height: 20),
                             if (userType == 1 &&
                                 projectState == "in-progress" &&
                                 widget.projectCreatorWallet ==
@@ -1226,14 +1355,14 @@ _listenForSuspension(walletAddress.toString());
                                         backgroundColor: const Color.fromRGBO(
                                             24, 71, 137, 1),
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 100, vertical: 12),
+                                            horizontal: 106, vertical: 12),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(15),
                                         ),
                                       ),
                                       child: const Text(
-                                        'Post Update',
+                                        ' Post Update ',
                                         style: TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
@@ -1244,40 +1373,10 @@ _listenForSuspension(walletAddress.toString());
                                   ),
                                   const SizedBox(height: 15),
                                   // Mark as Completed button
-                                  if (!isCompleted &&
-                                      widget.projectCreatorWallet ==
-                                          globalWalletAddress)
-                                    Center(
-                                      child: ElevatedButton(
-                                        onPressed: () async {
-                                          await _markProjectAsCompleted();
-                                          setState(() {
-                                            isCompleted = true;
-                                            projectState = "completed";
-                                          });
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blueGrey,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 80, vertical: 12),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(15),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Mark as Completed',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                  
                                 ],
                               ),
-                            if (userType == 0 &&
+                            if (
                                 (projectState == "in-progress" ||
                                     projectState == "completed"))
                               Center(
@@ -1295,7 +1394,7 @@ _listenForSuspension(walletAddress.toString());
                                     backgroundColor:
                                         const Color.fromRGBO(24, 71, 137, 1),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 100,
+                                      horizontal: 102,
                                       vertical: 12,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -1312,6 +1411,49 @@ _listenForSuspension(walletAddress.toString());
                                   ),
                                 ),
                               ),
+                               const SizedBox(height: 15),
+
+
+
+                             if (userType == 1 &&
+                                projectState == "in-progress" &&
+                                widget.projectCreatorWallet ==
+                                    globalWalletAddress)
+                                          
+                                    Center(
+  child: ElevatedButton(
+    onPressed: () async {
+      await _markProjectAsCompleted();
+      setState(() {
+        isCompleted = true;
+        projectState = "completed";
+      });
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.blueGrey,
+      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+    ),
+    child: const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Mark as Completed ',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        SizedBox(width: 10),
+        Icon(Icons.check_circle, color: Colors.white , size: 30,),
+      ],
+    ),
+  ),
+),
+
                             if ((userType == 1 &&
                                     projectState == "active" &&
                                     widget.projectCreatorWallet ==
@@ -1377,6 +1519,12 @@ _listenForSuspension(walletAddress.toString());
                                           color: Colors.white)),
                                 ),
                               ),
+
+                        
+
+
+
+
                           ],
                         ),
                       ),
@@ -1885,7 +2033,7 @@ _listenForSuspension(walletAddress.toString());
                                 stopwatch.stop();
                                 print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
 
-                            Navigator.pop(context);
+                            // Navigator.pop(context);
                             
                           }
                         : null, // Disable if input is invalid

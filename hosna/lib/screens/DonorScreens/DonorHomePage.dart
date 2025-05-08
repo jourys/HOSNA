@@ -479,29 +479,38 @@ class _HomePageState extends State<HomePage> {
           )
         else
           ...votingProjects.take(2).map((project) {
-            final votingDeadline = project['votingDeadline'] ?? 'Unknown';
+            // final votingDeadline = project['votingDeadline'] ?? 'Unknown';
             final projectType = project['projectType'] ?? 'Unknown';
 
             return Card(
               margin:
                   const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: ListTile(
-                title: Text(
-                  project['name'] ?? 'Unnamed Project',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
+                title: Row(
+  children: [
+    Text(
+      project['name'] ?? 'Unnamed Project',
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 18,
+      ),
+    ),
+    const SizedBox(width: 8), // spacing between text and icon
+    const Icon(
+      Icons.hourglass_bottom, // hourglass icon
+      size: 20,
+      color: Color.fromARGB(255, 46, 78, 239),
+    ),
+  ],
+),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 18),
                     Text(
-                      'Voting Deadline: $votingDeadline',
-                      style: TextStyle(color: Colors.red[700]),
+                       project['description']
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 12),
                     Text(
                       'Project Type: $projectType',
                       style: TextStyle(color: Colors.grey[600]),

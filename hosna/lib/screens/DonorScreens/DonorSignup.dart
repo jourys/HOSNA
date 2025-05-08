@@ -98,7 +98,7 @@ class _DonorSignUpPageState extends State<DonorSignUpPage> {
 
 
 Future<void> sendEth(String toAddress) async {
-  final privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c';
+  final privateKey = '06b2ed09a6d49d8f823b962f041df1fa191d13927a6af1605c3a38aa4f998091';
   final rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura endpoint or use Alchemy
 
   final httpClient = Client();
@@ -110,7 +110,7 @@ Future<void> sendEth(String toAddress) async {
   final transaction = web3.Transaction(
     to: EthereumAddress.fromHex(toAddress),
     from: myAddress,
-    value: EtherAmount.fromUnitAndValue(EtherUnit.wei, BigInt.from(0.03 * 1e18)),
+    value: EtherAmount.fromUnitAndValue(EtherUnit.wei, BigInt.from(0.08 * 1e18)),
     gasPrice: await ethClient.getGasPrice(),
     maxGas: 21000,
   );
@@ -238,7 +238,6 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
       reloadPrivateKey(walletAddress.toString());
        
 
-      // sendEth(walletAddress.toString());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),

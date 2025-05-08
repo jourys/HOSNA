@@ -819,6 +819,23 @@ Future<void> sendEth(String toAddress) async {
     }
   }
 
+Future<TransactionReceipt?> waitForReceipt(String txHash) async {
+  const int maxTries = 20;
+  const Duration delay = Duration(seconds: 3);
+
+  for (int i = 0; i < maxTries; i++) {
+    final receipt = await _web3Client.getTransactionReceipt(txHash);
+    if (receipt != null && receipt.status != null) {
+      print("🧾 Transaction receipt received. Status: ${receipt.status}");
+      return receipt;
+    }
+    print("⏳ Waiting for transaction receipt... (try ${i + 1}/$maxTries)");
+    await Future.delayed(delay);
+  }
+  print("❌ Receipt not found after $maxTries attempts.");
+  return null;
+}
+
   /// **Fetch voting results**
   Future<Map<String, int>> getVotingResults(int projectId) async {
     try {
@@ -992,67 +1009,68 @@ Future<void> sendEth(String toAddress) async {
     }
   }
 
-  Future<void> addProject(
-    String name,
-    String description,
-    int startDate,
-    int endDate,
-    double totalAmount, // Pass ETH value
-    String projectType,
-  ) async {
-    try {
-      // Ensure the charity employee is connected
-      await connect();
+ Future<String> addProject(
+  String name,
+  String description,
+  int startDate,
+  int endDate,
+  double totalAmount, // Pass ETH value
+  String projectType,
+) async {
+  try {
+    // Ensure the charity employee is connected
+    await connect();
 
-      BigInt totalAmountInWei = BigInt.from(totalAmount * 1e18);
+    BigInt totalAmountInWei = BigInt.from(totalAmount * 1e18);
 
-      final contract = await _getContract();
-      final function = contract.function('addProject');
-      checkBalance();
-      final estimatedGas = await _web3Client.estimateGas(
-        sender: _ownAddress,
-        to: EthereumAddress.fromHex(contractAddress), // ✅ Corrected
-        data: function.encodeCall([
+    final contract = await _getContract();
+    final function = contract.function('addProject');
+
+    checkBalance();
+
+    final estimatedGas = await _web3Client.estimateGas(
+      sender: _ownAddress,
+      to: EthereumAddress.fromHex(contractAddress),
+      data: function.encodeCall([
+        name,
+        description,
+        BigInt.from(startDate),
+        BigInt.from(endDate),
+        totalAmountInWei,
+        projectType,
+      ]),
+    );
+
+    final transactionHash = await _web3Client.sendTransaction(
+      _credentials,
+      Transaction.callContract(
+        contract: contract,
+        function: function,
+        parameters: [
           name,
           description,
           BigInt.from(startDate),
           BigInt.from(endDate),
           totalAmountInWei,
           projectType,
-        ]),
-      );
+        ],
+        gasPrice: await _web3Client.getGasPrice(),
+        maxGas: estimatedGas.toInt(),
+      ),
+      chainId: 11155111,
+    );
 
-      final transactionHash = await _web3Client.sendTransaction(
-        _credentials,
-        Transaction.callContract(
-          contract: contract,
-          function: function,
-          parameters: [
-            name,
-            description,
-            BigInt.from(startDate),
-            BigInt.from(endDate),
-            totalAmountInWei,
-            projectType,
-          ],
-          gasPrice: await _web3Client.getGasPrice(),
-          maxGas: estimatedGas.toInt(), // ✅ Safer and adaptive
-        ),
-        chainId: 11155111,
-      );
+    print("✅ Transaction sent. Hash: $transactionHash");
 
-      print("✅ Transaction sent. Hash: $transactionHash");
-      final receipt = await _web3Client.getTransactionReceipt(transactionHash);
-      //if (receipt == null || !receipt.status!) {
-      //throw Exception("Transaction failed");
-      //}
+    // Optional: wait for receipt here, or let the UI handle it
+    // final receipt = await _web3Client.getTransactionReceipt(transactionHash);
 
-      print("✅ Project added successfully!");
-    } catch (e) {
-      print("❌ Error posting project: $e");
-      throw e;
-    }
+    return transactionHash; // ✅ Return the hash
+  } catch (e) {
+    print("❌ Error posting project: $e");
+    throw e;
   }
+}
 
   Future<double> getProjectDonations(int projectId) async {
     try {

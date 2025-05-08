@@ -5,7 +5,7 @@ import 'dart:async';
 
 void main() async {
   final String rpcUrl = "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
-  final EthereumAddress contractAddress = EthereumAddress.fromHex("0x2D2cDD99eff93AC01F825b45eE0844d44345F058");
+  final EthereumAddress contractAddress = EthereumAddress.fromHex("0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763");
 
   final List<String> privateKeys = [
     "9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c",

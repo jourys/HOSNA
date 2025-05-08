@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hosna/screens/organizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class ViewDonorsPage extends StatefulWidget {
   final int projectId;
@@ -867,49 +871,78 @@ class DonorDetailsPage extends StatelessWidget {
     );
   }
 }
+
 class ProfileItem extends StatelessWidget {
   final String title;
   final String value;
 
-  const ProfileItem({super.key, required this.title, required this.value});
+  const ProfileItem({
+    super.key,
+    required this.title,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bool isEmail = title.toLowerCase() == 'email';
+    final Uri emailUri = Uri(scheme: 'mailto', path: value);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, 
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 30, 
+            width: 30,
             child: Icon(
               _getIconForTitle(title),
-              color: Color.fromRGBO(24, 71, 137, 1),
+              color: const Color.fromRGBO(24, 71, 137, 1),
             ),
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 250, 
+            width: 250,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, 
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Color.fromRGBO(24, 71, 137, 1),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                isEmail
+                    ? GestureDetector(
+                        onTap: () async {
+                          if (await canLaunchUrl(emailUri)) {
+                            await launchUrl(emailUri);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Could not open email app')),
+                            );
+                          }
+                        },
+                        child: Text(
+                          value,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
               ],
             ),
           ),
