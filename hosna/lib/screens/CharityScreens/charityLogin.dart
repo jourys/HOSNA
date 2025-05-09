@@ -639,6 +639,8 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                   ),
                   border: OutlineInputBorder(),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), // SAME RADIUS
+
                     borderSide: BorderSide(
                       color: Color.fromRGBO(24, 71, 137, 1),
                       width: 2,
@@ -675,6 +677,8 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                   ),
                   border: OutlineInputBorder(),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), // SAME RADIUS
+
                     borderSide: BorderSide(
                       color: Color.fromRGBO(24, 71, 137, 1),
                       width: 2,
