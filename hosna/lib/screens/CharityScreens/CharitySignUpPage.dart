@@ -630,10 +630,15 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                   controller: _establishmentDateController,
                   decoration: InputDecoration(
                     label: RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         text: 'Establishment Date',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                        children: [
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _establishmentDateController.text.isNotEmpty
+                              ? const Color.fromRGBO(24, 71, 137, 1)
+                              : Colors.grey[700],
+                        ),
+                        children: const [
                           TextSpan(
                             text: ' *',
                             style: TextStyle(color: Colors.red),
@@ -796,6 +801,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       String? hintText}) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: (isPassword && !_isPasswordVisible) ||
           (isConfirmPassword && !_isConfirmPasswordVisible),
       keyboardType: isPhone ? TextInputType.number : TextInputType.text,
@@ -810,25 +816,12 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ],
       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
-        // ✅ Custom label using RichText to show required '*' and change color when focused
-        label: RichText(
-          text: TextSpan(
-            text: label,
-            style: TextStyle(
-              fontSize: 16,
-              color: focusNode.hasFocus
-                  ? const Color.fromRGBO(24, 71, 137, 1) //  Blue on focus
-                  : Colors.grey[700], //  Grey by default
-            ),
-            children: isRequired
-                ? const [
-                    TextSpan(
-                      text: ' *',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ]
-                : [],
-          ),
+        labelText: isRequired ? '$label *' : label,
+        labelStyle: TextStyle(
+          fontSize: 16,
+          color: focusNode.hasFocus
+              ? const Color.fromRGBO(24, 71, 137, 1)
+              : Colors.grey[700],
         ),
         hintText: hintText,
         border: OutlineInputBorder(

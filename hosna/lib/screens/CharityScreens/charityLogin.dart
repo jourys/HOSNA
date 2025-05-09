@@ -27,13 +27,16 @@ class CharityLogInPage extends StatefulWidget {
 }
 
 class _CharityLogInPageState extends State<CharityLogInPage> {
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   late Web3Client _web3Client;
   final String _rpcUrl =
-      "https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1";
+      "https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac";
   final String _contractAddress = "0xFa8d16A4FF659c9c2E22C6f937eEcB4AC015A7a1";
   final String _lookupContractAddress =
       "0x2068dEC57b32b387f38daB251D06206b8d33481D";
@@ -46,14 +49,18 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
   @override
   void initState() {
     super.initState();
-    _web3Client = Web3Client(_rpcUrl, Client() );
-    print('✅ Web3Client initialized');
+    _web3Client = Web3Client(_rpcUrl, Client());
+    _emailFocus.addListener(() => setState(() {}));
+    _passwordFocus.addListener(() => setState(() {}));
+    print(' Web3Client initialized');
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -621,23 +628,25 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               SizedBox(height: 80),
               TextFormField(
                 controller: _emailController,
+                focusNode: _emailFocus,
                 decoration: InputDecoration(
-                  label: RichText(
-                    text: const TextSpan(
-                      text: 'Email Address',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                      children: [
-                        TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
+                  labelText: 'Email Address',
+                  labelStyle: TextStyle(
+                    color: _emailFocus.hasFocus
+                        ? const Color.fromRGBO(24, 71, 137, 1)
+                        : Colors.grey[700],
+                    fontSize: 16,
                   ),
                   border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 2,
+                    ),
+                  ),
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  FilteringTextInputFormatter.deny(RegExp(r'\s'))
                 ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -654,27 +663,31 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
               SizedBox(height: 30),
               TextFormField(
                 controller: _passwordController,
+                focusNode: _passwordFocus,
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
-                  label: RichText(
-                    text: const TextSpan(
-                      text: 'Password',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                      children: [
-                        TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
+                  labelText: 'Password',
+                  labelStyle: TextStyle(
+                    color: _passwordFocus.hasFocus
+                        ? const Color.fromRGBO(24, 71, 137, 1)
+                        : Colors.grey[700],
+                    fontSize: 16,
                   ),
                   border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Color.fromRGBO(24, 71, 137, 1),
+                      width: 2,
+                    ),
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isPasswordVisible
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      color: Colors.grey,
+                      color: _passwordFocus.hasFocus
+                          ? const Color.fromRGBO(24, 71, 137, 1)
+                          : Colors.grey,
                     ),
                     onPressed: () {
                       setState(() {
@@ -684,7 +697,7 @@ class _CharityLogInPageState extends State<CharityLogInPage> {
                   ),
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  FilteringTextInputFormatter.deny(RegExp(r'\s'))
                 ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
