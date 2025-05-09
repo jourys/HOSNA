@@ -34,6 +34,16 @@ class CharitySignUpPage extends StatefulWidget {
 }
 
 class _CharitySignUpPageState extends State<CharitySignUpPage> {
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmPasswordFocus = FocusNode();
+  final FocusNode _licenseFocus = FocusNode();
+  final FocusNode _cityFocus = FocusNode();
+  final FocusNode _descriptionFocus = FocusNode();
+  final FocusNode _websiteFocus = FocusNode();
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _organizationNameController =
       TextEditingController();
@@ -65,6 +75,29 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
   void initState() {
     super.initState();
     _initializeWeb3();
+    _nameFocus.addListener(() => setState(() {}));
+    _emailFocus.addListener(() => setState(() {}));
+    _phoneFocus.addListener(() => setState(() {}));
+    _passwordFocus.addListener(() => setState(() {}));
+    _confirmPasswordFocus.addListener(() => setState(() {}));
+    _licenseFocus.addListener(() => setState(() {}));
+    _cityFocus.addListener(() => setState(() {}));
+    _descriptionFocus.addListener(() => setState(() {}));
+    _websiteFocus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmPasswordFocus.dispose();
+    _licenseFocus.dispose();
+    _cityFocus.dispose();
+    _descriptionFocus.dispose();
+    _websiteFocus.dispose();
+    super.dispose();
   }
 
   void _initializeWeb3() {
@@ -81,40 +114,6 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     EthPrivateKey key = EthPrivateKey.createRandom(rng);
     return bytesToHex(key.privateKey);
   }
-
-
-Future<void> sendEth(String toAddress) async {
-  final privateKey = '06b2ed09a6d49d8f823b962f041df1fa191d13927a6af1605c3a38aa4f998091';
-  final rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Replace with your Infura endpoint or use Alchemy
-
-  final httpClient = Client();
-  final ethClient = Web3Client(rpcUrl, httpClient);
-
-  final credentials = EthPrivateKey.fromHex(privateKey);
-  final myAddress = await credentials.extractAddress();
-
-  final transaction = web3.Transaction(
-    to: EthereumAddress.fromHex(toAddress),
-    from: myAddress,
-    value: EtherAmount.fromUnitAndValue(EtherUnit.wei, BigInt.from(0.08 * 1e18)),
-    gasPrice: await ethClient.getGasPrice(),
-    maxGas: 21000,
-  );
-
-  try {
-    final txHash = await ethClient.sendTransaction(
-      credentials,
-      transaction,
-      chainId: 11155111, // Sepolia testnet chain ID
-    );
-
-    print('Transaction sent. Hash: $txHash');
-  } catch (e) {
-    print('Transaction failed: $e');
-  } finally {
-    httpClient.close();
-  }
-}
 
   Future<void> saveCharityCredentials(
       String walletAddress, String privateKey) async {
@@ -263,6 +262,7 @@ Future<void> sendEth(String toAddress) async {
       );
       _storePrivateKey(charityWallet.toString(), charityPrivateKey);
       print("private key stoooored in shared pref.");
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -574,39 +574,57 @@ Future<void> sendEth(String toAddress) async {
                   ),
                 ),
                 const SizedBox(height: 50),
-                _buildTextField(
-                    _organizationNameController, 'Organization Name',
+                _buildTextField(_organizationNameController,
+                    'Organization Name', _nameFocus,
                     isRequired: true),
                 const SizedBox(height: 30),
-                _buildTextField(_organizationEmailController, 'Email',
-                    isEmail: true, isRequired: true),
+                _buildTextField(
+                    _organizationEmailController,
+                    'Email',
+                    isEmail: true,
+                    _emailFocus,
+                    isRequired: true),
                 const SizedBox(height: 30),
-                _buildTextField(_phoneController, 'Phone',
+                _buildTextField(
+                    _phoneController,
+                    'Phone',
                     isPhone: true,
+                    _phoneFocus,
                     isRequired: true,
                     hintText: 'Must start with 05'),
                 const SizedBox(height: 30),
-                _buildTextField(_passwordController, 'Password',
-                    obscureText: true, isRequired: true, isPassword: true),
-                const SizedBox(height: 30),
-                _buildTextField(_confirmPasswordController, 'Confirm Password',
+                _buildTextField(
+                    _passwordController,
+                    'Password',
                     obscureText: true,
+                    _passwordFocus,
+                    isRequired: true,
+                    isPassword: true),
+                const SizedBox(height: 30),
+                _buildTextField(
+                    _confirmPasswordController,
+                    'Confirm Password',
+                    obscureText: true,
+                    _confirmPasswordFocus,
                     isRequired: true,
                     isConfirmPassword: true),
                 const SizedBox(height: 30),
-                _buildTextField(_licenseNumberController, 'License Number',
+                _buildTextField(
+                    _licenseNumberController, 'License Number', _licenseFocus,
                     isRequired: true),
                 const SizedBox(height: 30),
-                _buildTextField(_organizationCityController, 'City',
+                _buildTextField(_organizationCityController, 'City', _cityFocus,
                     isRequired: true, isCity: true),
                 const SizedBox(height: 30),
                 _buildTextField(
                   _organizationDescriptionController,
                   'Description',
+                  _descriptionFocus,
                   isDescription: true,
                 ),
                 const SizedBox(height: 30),
-                _buildTextField(_organizationURLController, 'Website'),
+                _buildTextField(
+                    _organizationURLController, 'Website', _websiteFocus),
                 const SizedBox(height: 30),
                 TextFormField(
                   controller: _establishmentDateController,
@@ -671,8 +689,7 @@ Future<void> sendEth(String toAddress) async {
                           style: const TextStyle(
                             color: Color.fromRGBO(24, 71, 137, 1),
                             fontWeight: FontWeight.bold,
-                            decoration:
-                                TextDecoration.none, // أزلنا التسطير كما طلبت
+                            decoration: TextDecoration.none,
                           ),
                           recognizer: TapGestureRecognizer()
                             ..onTap = () {
@@ -766,7 +783,8 @@ Future<void> sendEth(String toAddress) async {
   bool _isConfirmPasswordVisible = false;
 
   bool _isPasswordVisible = false;
-  Widget _buildTextField(TextEditingController controller, String label,
+  Widget _buildTextField(
+      TextEditingController controller, String label, FocusNode focusNode,
       {bool obscureText = false,
       bool isEmail = false,
       bool isPhone = false,
@@ -792,31 +810,51 @@ Future<void> sendEth(String toAddress) async {
       ],
       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
-        label: isRequired
-            ? RichText(
-                text: TextSpan(
-                  text: label,
-                  style: TextStyle(color: Colors.grey[700], fontSize: 16),
-                  children: const [
+        // ✅ Custom label using RichText to show required '*' and change color when focused
+        label: RichText(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              fontSize: 16,
+              color: focusNode.hasFocus
+                  ? const Color.fromRGBO(24, 71, 137, 1) //  Blue on focus
+                  : Colors.grey[700], //  Grey by default
+            ),
+            children: isRequired
+                ? const [
                     TextSpan(
                       text: ' *',
                       style: TextStyle(color: Colors.red),
                     ),
-                  ],
-                ),
-              )
-            : Text(label),
+                  ]
+                : [],
+          ),
+        ),
         hintText: hintText,
-        border: OutlineInputBorder(),
-        suffixIcon: (isPassword ||
-                isConfirmPassword) // Show icon for both fields
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: Color.fromRGBO(24, 71, 137, 1),
+            width: 2,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        suffixIcon: (isPassword || isConfirmPassword)
             ? IconButton(
                 icon: Icon(
                   (isPassword && _isPasswordVisible) ||
                           (isConfirmPassword && _isConfirmPasswordVisible)
                       ? Icons.visibility
                       : Icons.visibility_off,
-                  color: Colors.grey,
+                  color: focusNode.hasFocus
+                      ? const Color.fromRGBO(24, 71, 137, 1)
+                      : Colors.grey,
                 ),
                 onPressed: () {
                   setState(() {
