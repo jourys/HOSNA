@@ -209,12 +209,22 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
     } catch (e) {
       print("No existing charity found, proceeding with registration.");
     }
-// 🔵 Check if phone is already used
+//  Check if phone is already used
     bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
     if (phoneTaken) {
       print("Charity with this phone number already exists!");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Phone number is already registered!')),
+      );
+      return;
+    }
+    //  Check if license number is already used
+    bool licenseTaken =
+        await isLicenseNumberTaken(_licenseNumberController.text);
+    if (licenseTaken) {
+      print("Charity with this license number already exists!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('License number is already registered!')),
       );
       return;
     }
@@ -274,6 +284,20 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(' Registration failed: $e')),
       );
+    }
+  }
+
+  Future<bool> isLicenseNumberTaken(String licenseNumber) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('licenseNumber', isEqualTo: licenseNumber)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking license number duplication: $e');
+      return false;
     }
   }
 
@@ -445,6 +469,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         'walletAddress': walletAddress,
         'email': email,
         'phone': _phoneController.text,
+        'licenseNumber': _licenseNumberController.text,
 
         'userType': 1, // 1 means charity
         'isSuspend': false,
@@ -610,8 +635,12 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                     isConfirmPassword: true),
                 const SizedBox(height: 30),
                 _buildTextField(
-                    _licenseNumberController, 'License Number', _licenseFocus,
-                    isRequired: true),
+                  _licenseNumberController,
+                  'License Number',
+                  _licenseFocus,
+                  isRequired: true,
+                  hintText: 'e.g. 123456',
+                ),
                 const SizedBox(height: 30),
                 _buildTextField(_organizationCityController, 'City', _cityFocus,
                     isRequired: true, isCity: true),
@@ -664,7 +693,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Required';
+                      return 'this field is required';
                     }
                     try {
                       DateTime selectedDate = DateTime.parse(value);
@@ -804,7 +833,11 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       focusNode: focusNode,
       obscureText: (isPassword && !_isPasswordVisible) ||
           (isConfirmPassword && !_isConfirmPasswordVisible),
-      keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+      // keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+      keyboardType: label == 'License Number'
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : (isPhone ? TextInputType.number : TextInputType.text),
+
       inputFormatters: [
         NoLeadingSpaceFormatter(),
         if (isPhone) ...[
@@ -813,6 +846,10 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
         ],
         if (isEmail || isPassword || label == 'Website')
           FilteringTextInputFormatter.deny(RegExp(r'\s')),
+        if (label == 'License Number') ...[
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(6),
+        ],
       ],
       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
@@ -852,6 +889,7 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
               : Colors.grey[700],
         ),
         hintText: hintText,
+        errorMaxLines: 3,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
