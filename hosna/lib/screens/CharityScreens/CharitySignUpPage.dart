@@ -816,7 +816,35 @@ class _CharitySignUpPageState extends State<CharitySignUpPage> {
       ],
       maxLines: isDescription ? 2 : 1,
       decoration: InputDecoration(
-        labelText: isRequired ? '$label *' : label,
+        // labelText: isRequired ? '$label *' : label,
+        label: isRequired
+            ? RichText(
+                text: TextSpan(
+                  text: label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: focusNode.hasFocus
+                        ? const Color.fromRGBO(24, 71, 137, 1)
+                        : Colors.grey[700],
+                  ),
+                  children: const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ],
+                ),
+              )
+            : Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: focusNode.hasFocus
+                      ? const Color.fromRGBO(24, 71, 137, 1)
+                      : Colors.grey[700],
+                ),
+              ),
+
         labelStyle: TextStyle(
           fontSize: 16,
           color: focusNode.hasFocus
