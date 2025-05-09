@@ -1055,7 +1055,7 @@ _listenForSuspension(walletAddress.toString());
                                     globalWalletAddress  &&  projectState == "failed")
   Center(
   child: Padding(
-    padding: const EdgeInsets.all(16.0),
+    padding: const EdgeInsets.all(10.0),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1064,12 +1064,12 @@ _listenForSuspension(walletAddress.toString());
           size: 40,
           color: const Color.fromARGB(255, 193, 38, 38),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           'This project failed to raise the required amount by the deadline. Please initiate the voting process as soon as possible and provide voting options for the donor to choose between transferring the donated amount to one of the selected projects or requesting a refund. ',
            textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
             color: const Color.fromARGB(255, 193, 38, 38),
           ),
@@ -1080,7 +1080,6 @@ _listenForSuspension(walletAddress.toString());
 ),
 
 
-                            
 
 if (projectState == "active" && userType == 0 && globalPrivateKey != null)
 
@@ -2033,7 +2032,7 @@ if (projectState == "active" && userType == 0 && globalPrivateKey != null)
                                 stopwatch.stop();
                                 print('Response time: ${stopwatch.elapsedMicroseconds} microseconds');
 
-                            // Navigator.pop(context);
+                            Navigator.pop(context);
                             
                           }
                         : null, // Disable if input is invalid
@@ -2126,7 +2125,7 @@ if (projectState == "active" && userType == 0 && globalPrivateKey != null)
 
       // Print transaction hash with check emoji
       print("Transaction successful! ✅ Hash: $result");
-      Navigator.pop(context);
+     
  showSuccessPopup( context);
  
 
