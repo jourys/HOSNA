@@ -1123,70 +1123,85 @@ Future<TransactionReceipt?> waitForReceipt(String txHash) async {
   }
 
   /// Get the total number of projects
-  Future<int> getProjectCount() async {
-    try {
-      final contract = await _getContract();
-      final function = contract.function('getProjectCount');
-      final result = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [],
-      );
-      return result[0].toInt(); // Ensure this returns a valid integer
-    } catch (e) {
-      print("Error fetching project count: $e");
-      throw Exception("Failed to fetch project count: $e");
+Future<int> getProjectCount() async {
+  try {
+    final contract = await _getContract();
+    final function = contract.function('getProjectCount');
+    final result = await _web3Client.call(
+      contract: contract,
+      function: function,
+      params: [],
+    );
+
+    if (result.isEmpty || result[0] == null) {
+      throw Exception("getProjectCount returned null or empty result.");
     }
+
+    final count = result[0] as BigInt;
+    return count.toInt();
+  } catch (e) {
+    print("Error fetching project count: $e");
+    throw Exception("Failed to fetch project count: $e");
   }
+}
+
 
   static double weiToEth(BigInt wei) {
     //Use BigInt for precise division
     return wei / BigInt.from(10).pow(18);
   }
 
-  /// Get project details by ID
-  Future<Map<String, dynamic>> getProjectDetails(int projectId) async {
-    try {
-      final contract = await _getContract();
-      final function = contract.function('getProject');
+ /// Get project details by ID
+Future<Map<String, dynamic>> getProjectDetails(int projectId) async {
+  try {
+    final contract = await _getContract();
+    final function = contract.function('getProject');
 
-      var result = await _web3Client.call(
-        contract: contract,
-        function: function,
-        params: [BigInt.from(projectId)],
-      );
+    var result = await _web3Client.call(
+      contract: contract,
+      function: function,
+      params: [BigInt.from(projectId)],
+    );
 
-      // Ensure the result is valid
-      if (result.isEmpty) {
-        throw Exception("No project found for ID: $projectId");
-      }
-
-      // Convert Wei to ETH
-      double totalAmountInEth = weiToEth(result[4]);
-      double donatedAmountInEth = weiToEth(result[5]);
-
-      // Print to verify ETH values
-      print("Total Amount in ETH: $totalAmountInEth");
-      print("Donated Amount in ETH: $donatedAmountInEth");
-
-      return {
-        "id": projectId,
-        "name": result[0].toString(),
-        "description": result[1].toString(),
-        "startDate": DateTime.fromMillisecondsSinceEpoch(
-            int.parse(result[2].toString()) * 1000),
-        "endDate": DateTime.fromMillisecondsSinceEpoch(
-            int.parse(result[3].toString()) * 1000),
-        "totalAmount": totalAmountInEth.toDouble(), // Display in ETH
-        "donatedAmount": donatedAmountInEth.toDouble(), // Display in ETH
-        "organization": result[6].toString(),
-        "projectType": result[7].toString(), // New field
-      };
-    } catch (e) {
-      print("Error fetching project details for ID $projectId: $e");
-      return {"error": "Error fetching project details: $e"};
+    // Ensure the result is valid
+    if (result.isEmpty) {
+      throw Exception("No project found for ID: $projectId");
     }
+
+    // Extract and verify organization address
+    final organization = result[6].toString();
+    if (organization.isEmpty || !organization.startsWith('0x')) {
+      throw Exception("Invalid organization wallet address: $organization");
+    }
+
+    // Convert Wei to ETH
+    double totalAmountInEth = weiToEth(result[4]);
+    double donatedAmountInEth = weiToEth(result[5]);
+
+    // Debug prints
+    print("Total Amount in ETH: $totalAmountInEth");
+    print("Donated Amount in ETH: $donatedAmountInEth");
+    print("Organization wallet: $organization");
+
+    return {
+      "id": projectId,
+      "name": result[0].toString(),
+      "description": result[1].toString(),
+      "startDate": DateTime.fromMillisecondsSinceEpoch(
+          int.parse(result[2].toString()) * 1000),
+      "endDate": DateTime.fromMillisecondsSinceEpoch(
+          int.parse(result[3].toString()) * 1000),
+      "totalAmount": totalAmountInEth,
+      "donatedAmount": donatedAmountInEth,
+      "organization": organization,
+      "projectType": result[7].toString(),
+    };
+  } catch (e) {
+    print("Error fetching project details for ID $projectId: $e");
+    return {"error": "Error fetching project details: $e"};
   }
+}
+
 
   /// Fetch all projects for a given organization address
  Future<List<Map<String, dynamic>>> fetchOrganizationProjects(
