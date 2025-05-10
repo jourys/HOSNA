@@ -34,7 +34,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0x25ef93ac312D387fdDeFD62CD852a29328c4B122';
+  final String contractAddress = '0x583472AFc3f8655FF4B22bf5253c884081e3a794';
 
   @override
   void initState() {
@@ -351,7 +351,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                 textAlign: TextAlign.center,
               ),
               content: const Text(
-                'Are you sure you want to delete your account?',
+                'Are you sure you want to delete your account?\nThis action cannot be undone.',
                 style: TextStyle(
                   fontSize: 18,
                 ),
@@ -623,7 +623,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                         SizedBox(height: 20),
                         Center(
                           child: SizedBox(
-                              height: MediaQuery.of(context).size.height * .055,
+                              height: MediaQuery.of(context).size.height * .066,
                               width: MediaQuery.of(context).size.width * .8,
                               child: ElevatedButton(
                                 onPressed: () async {
@@ -684,7 +684,7 @@ class _ProfileScreenCharityState extends State<ProfileScreenCharity> {
                         SizedBox(height: 12),
                         Center(
                           child: SizedBox(
-                              height: MediaQuery.of(context).size.height * .055,
+                              height: MediaQuery.of(context).size.height * .066,
                               width: MediaQuery.of(context).size.width * .8,
                               child: ElevatedButton(
                                 onPressed: () async {

@@ -287,79 +287,78 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
   }
 
   Future<bool> _showLogoutConfirmation(BuildContext context) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
-            title: const Text(
-              'Confirm Logout',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text(
+                'Confirm Logout',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            content: const Text(
-              'Are you sure you want to log out?',
-              style: TextStyle(
-                fontSize: 18,
+              content: const Text(
+                'Are you sure you want to log out?',
+                style: TextStyle(
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            actions: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color.fromRGBO(24, 71, 137, 1),
-                        width: 3,
+              actions: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Colors.white,
                       ),
-                      backgroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Color.fromRGBO(24, 71, 137, 1),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context, true);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color.fromRGBO(212, 63, 63, 1),
-                        width: 3,
-                      ),
-                      backgroundColor: Color.fromRGBO(212, 63, 63, 1),
-                    ),
-                    child: const Text(
-                      '   Yes   ',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Color.fromRGBO(24, 71, 137, 1),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-            actionsPadding: const EdgeInsets.symmetric(vertical: 10),
-          );
-        },
-      ) ??
-      false;
-}
-
+                    const SizedBox(width: 20),
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color.fromRGBO(212, 63, 63, 1),
+                          width: 3,
+                        ),
+                        backgroundColor: Color.fromRGBO(212, 63, 63, 1),
+                      ),
+                      child: const Text(
+                        '   Yes   ',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              actionsPadding: const EdgeInsets.symmetric(vertical: 10),
+            );
+          },
+        ) ??
+        false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -442,37 +441,44 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                             height: MediaQuery.of(context).size.height * .055,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
-                             onPressed: () async {
-  final confirm = await _showLogoutConfirmation(context);
-  if (!confirm) return;
+                              onPressed: () async {
+                                final confirm =
+                                    await _showLogoutConfirmation(context);
+                                if (!confirm) return;
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+                                SharedPreferences prefs =
+                                    await SharedPreferences.getInstance();
 
-  // Retrieve private key and wallet address before clearing session data
-  String? privateKey = prefs.getString('privateKey');
-  String? walletAddress = prefs.getString('walletAddress');
+                                // Retrieve private key and wallet address before clearing session data
+                                String? privateKey =
+                                    prefs.getString('privateKey');
+                                String? walletAddress =
+                                    prefs.getString('walletAddress');
 
-  // Clear session-related data
-  await prefs.remove('userSession');
+                                // Clear session-related data
+                                await prefs.remove('userSession');
 
-  // Restore private key and wallet address
-  if (privateKey != null) {
-    await prefs.setString('privateKey', privateKey);
-  }
-  if (walletAddress != null) {
-    await prefs.setString('walletAddress', walletAddress);
-  }
+                                // Restore private key and wallet address
+                                if (privateKey != null) {
+                                  await prefs.setString(
+                                      'privateKey', privateKey);
+                                }
+                                if (walletAddress != null) {
+                                  await prefs.setString(
+                                      'walletAddress', walletAddress);
+                                }
 
-  print('User logged out. Session cleared but private key and wallet address retained.');
+                                print(
+                                    'User logged out. Session cleared but private key and wallet address retained.');
 
-  // Navigate to UsersPage
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => UsersPage()),
-    (route) => false,
-  );
-},
-
+                                // Navigate to UsersPage
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => UsersPage()),
+                                  (route) => false,
+                                );
+                              },
                               child: const Text(
                                 'Log out',
                                 style: TextStyle(
@@ -501,19 +507,71 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                                 final confirm = await showDialog<bool>(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    title: const Text("Confirm Deletion"),
+                                    backgroundColor: Colors.white,
+                                    title: const Text(
+                                      'Confirm Deletion',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 22,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
                                     content: const Text(
-                                        "Are you sure you want to permanently delete your account?"),
+                                      'Are you sure you want to permanently delete your account?',
+                                      style: TextStyle(fontSize: 18),
+                                      textAlign: TextAlign.center,
+                                    ),
                                     actions: [
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text("Cancel")),
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          child: const Text("Delete")),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          OutlinedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(
+                                                color: Color.fromRGBO(
+                                                    24, 71, 137, 1),
+                                                width: 3,
+                                              ),
+                                              backgroundColor: Colors.white,
+                                            ),
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                color: Color.fromRGBO(
+                                                    24, 71, 137, 1),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 20),
+                                          OutlinedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(
+                                                color: Color.fromRGBO(
+                                                    212, 63, 63, 1),
+                                                width: 3,
+                                              ),
+                                              backgroundColor: Color.fromRGBO(
+                                                  212, 63, 63, 1),
+                                            ),
+                                            child: const Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ],
+                                    actionsPadding: const EdgeInsets.symmetric(
+                                        vertical: 10),
                                   ),
                                 );
 
