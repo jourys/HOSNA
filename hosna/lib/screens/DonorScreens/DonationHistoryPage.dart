@@ -79,7 +79,12 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                     data['projectType'] ?? donation['projectType'] ?? 'Unknown';
                 totalAmount =
                     data['totalAmount'] ?? donation['totalAmount'] ?? 0.0;
-                description = data['description'] ?? '';
+                description = data['description'] ??
+                    donation['description'] ??
+                    donation['description'] ??
+                    donation['name'] ?? // as an extreme fallback
+                    'No description available';
+                donation['description'] = description;
 
                 // Calculate status based on dates and amounts
                 if (data['isCanceled'] == true) {
@@ -355,8 +360,9 @@ class _DonationHistoryPageState extends State<DonationHistoryPage> {
                                                 donation['projectName'] ??
                                                     'Unknown Project',
                                             description:
-                                                donation['description'] ?? '',
-                                                
+                                                donation['description'] ??
+                                                    data?['description'] ??
+                                                    'No description available',
                                             startDate: DateFormat('yyyy-MM-dd')
                                                 .format(DateTime
                                                     .fromMillisecondsSinceEpoch(
