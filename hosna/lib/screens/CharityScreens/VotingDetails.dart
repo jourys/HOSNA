@@ -109,7 +109,7 @@ class _VotingDetailsPageState extends State<VotingDetailsPage> {
     );
 
     _contractAddressEth =
-        EthereumAddress.fromHex("0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763");
+        EthereumAddress.fromHex("0xE6bdFC7b16AB6B303C04f389B4F3B57BbAD62a15");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abi, "CharityVoting"),

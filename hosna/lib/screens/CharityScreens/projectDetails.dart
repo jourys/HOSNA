@@ -2141,7 +2141,7 @@ Future<String?> getEmailByWalletAddress(String complainantAddress) async {
       // Load contract
       final donationContract = DeployedContract(
         ContractAbi.fromJson(_contractAbi, 'DonationContract'),
-        EthereumAddress.fromHex('0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626'),
+        EthereumAddress.fromHex('0x618B4955CC7496b1E16201b32142f7d5649d9dff'),
       );
 
       final function = donationContract.function('donate');
@@ -2474,7 +2474,7 @@ class DonorServices {
   static const String _rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1'; // Sepolia RPC URL
   static const String _contractAddress =
-      '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626'; // Contract address on Sepolia
+      '0x618B4955CC7496b1E16201b32142f7d5649d9dff'; // Contract address on Sepolia
 
   // Constructor for initializing Web3 client and contract
   DonorServices()

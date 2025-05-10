@@ -186,7 +186,7 @@ class _InitiateVotingState extends State<InitiateVoting> {
 
       // Set the contract address
       _contractAddress =
-          EthereumAddress.fromHex('0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763');
+          EthereumAddress.fromHex('0xE6bdFC7b16AB6B303C04f389B4F3B57BbAD62a15');
       print('Contract address set to $_contractAddress');
 
       // Load the contract
@@ -1274,7 +1274,7 @@ class VoteListener {
 
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763';
+  final String contractAddress = '0xE6bdFC7b16AB6B303C04f389B4F3B57BbAD62a15';
 
   late Web3Client _client;
   late Credentials _credentials;
@@ -1813,7 +1813,7 @@ await FirebaseFirestore.instance
 class DonationService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626';
+  final String contractAddress = '0x618B4955CC7496b1E16201b32142f7d5649d9dff';
 
   final String senderAddress;
   final String receiverAddress;

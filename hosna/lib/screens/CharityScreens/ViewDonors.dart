@@ -22,7 +22,7 @@ class _ViewDonorsPageState extends State<ViewDonorsPage> {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
   final String donationContractAddress =
-      '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626';
+      '0x618B4955CC7496b1E16201b32142f7d5649d9dff';
   final String donorContractAddress =
       '0xF565D5C3907aBA80e1e613030C250c6addea6443';
 

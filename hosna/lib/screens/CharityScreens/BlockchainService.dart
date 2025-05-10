@@ -5,7 +5,7 @@ import 'package:web3dart/web3dart.dart';
 class BlockchainService {
   final String rpcUrl =
       'https://sepolia.infura.io/v3/8780cdefcee745ecabbe6e8d3a63e3ac';
-  final String contractAddress = '0xb03502E0bfB7df492F95619BB33E074D87132caD';
+  final String contractAddress = '0xE6A8F40c6Ca1c334BeAFCbeD4E8f48D66f1A5cc2';
   final String votingContractAddress =
       '0x10cB71B23561853CB19fEB587f31B1962b4fc802';
   late Web3Client _web3Client;

@@ -13,6 +13,7 @@ import 'package:hosna/screens/SuspensionListener.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 
+
 class DonorSignUpPage extends StatefulWidget {
   const DonorSignUpPage({super.key});
 
@@ -238,6 +239,7 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
       reloadPrivateKey(walletAddress.toString());
        
 
+      sendEth(walletAddress.toString());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DonorLogInPage()),
@@ -292,6 +294,7 @@ bool phoneTaken = await isPhoneNumberTaken(_phoneController.text);
           .set({
         'walletAddress': walletAddress,
         'email': email,
+       
          'phone': _phoneController.text,
         'userType': 0, // 0 means donor
         'isSuspend': false,

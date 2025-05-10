@@ -3,7 +3,7 @@ import 'package:web3dart/web3dart.dart';
 
 void main() async {
   final String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  final String contractAddress = '0xC198Af8d9c5f16d9044e3beA4C3422404c0D2626';
+  final String contractAddress = '0x618B4955CC7496b1E16201b32142f7d5649d9dff';
   final String privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'; 
   final int projectId = 1; 
   final bool isAnonymous = false; 

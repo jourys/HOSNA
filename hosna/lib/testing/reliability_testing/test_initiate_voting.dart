@@ -5,7 +5,7 @@ import 'dart:math';
 
 void main() {
   const String rpcUrl = 'https://sepolia.infura.io/v3/2b1a8905cb674dd3b2c0294a957355a1';
-  const String contractAddress = '0x341AB50492Ed7b479685c0DC0A2bf8b89B3eB763';
+  const String contractAddress = '0xE6bdFC7b16AB6B303C04f389B4F3B57BbAD62a15';
   const String privateKey = '9181d712c0e799db4d98d248877b048ec4045461b639ee56941d1067de83868c'; 
 
   final String contractABI = ''' 
