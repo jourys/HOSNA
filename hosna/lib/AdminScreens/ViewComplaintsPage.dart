@@ -1,5 +1,5 @@
 // flutter run -d chrome --target=lib/AdminScreens/ViewComplaintsPage.dart --debug
-
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +9,8 @@ import 'package:hosna/screens/CharityScreens/ViewDonors.dart';
 import 'package:hosna/screens/CharityScreens/projectDetails.dart';
 import 'package:hosna/screens/organizations.dart';
 import 'package:intl/intl.dart';
+import 'package:mailer/mailer.dart' show Address, Message;
+import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +18,8 @@ import 'package:web3dart/web3dart.dart' as web3;
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'AdminSidebar.dart';
-
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server.dart';
 import 'package:hosna/screens/NotificationManager.dart';
 
 
@@ -63,10 +66,10 @@ const String abi = '''[
 
 void main() {
   WidgetsFlutterBinding
-      .ensureInitialized(); // ✅ التأكد من تهيئة الـ Widgets قبل Firebase
+      .ensureInitialized(); 
   try {
     Firebase.initializeApp(
-      // 🚀 تهيئة Firebase عند بدء التطبيق
+      
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print("✅ Firebase initialized successfully 🎉");
@@ -644,6 +647,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
   }
 
   void _showComplaintDetails(Map<String, dynamic> complaint) {
+     String complainantAddress =
+                                    complaint['complainant'];
     showDialog(
       context: context,
       builder: (context) {
@@ -688,8 +693,8 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                             SizedBox(height: 30),
                             GestureDetector(
                               onTap: () async {
-                                String complainantAddress =
-                                    complaint['complainant'];
+                                // String complainantAddress =
+                                //     complaint['complainant'];
 
                                 // Fetch user type for the complainant address
                                 String userType =
@@ -935,11 +940,12 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
                             textStyle: TextStyle(fontSize: 18),
                           ),
                           onPressed: () async {
+                            String? email = await getEmailByWalletAddress(complainantAddress);
                             final result =
                                 await _showDeleteConfirmationDialog(context);
                             if (result != null && result['confirmed'] == true) {
                               await _deleteComplaint(
-                                  complaint['id'], result['justification']);
+                                  complaint['id'], result['justification'] , email);
                               Navigator.pop(
                                   context); // Go back to the previous page
                               showSuccessPopup(context);
@@ -961,6 +967,27 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
     );
   }
 
+Future<String?> getEmailByWalletAddress(String complainantAddress) async {
+  try {
+    final usersCollection = FirebaseFirestore.instance.collection('users');
+    
+    final querySnapshot = await usersCollection
+        .where('walletAddress', isEqualTo: complainantAddress)
+        .get();
+    
+    if (querySnapshot.docs.isNotEmpty) {
+      final email = querySnapshot.docs.first['email'];
+      return email;
+    } else {
+      print('No user found with the provided wallet address.');
+      return null;
+    }
+  } catch (e) {
+    print('Error retrieving email: $e');
+    return null;
+  }
+}
+
   String _formatDate(dynamic timestamp) {
     if (timestamp is DateTime) {
       return timestamp.toLocal().toString().split(' ')[0];
@@ -971,7 +998,7 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
   }
 
   Future<void> _deleteComplaint(
-      String complaintDocId, String justification) async {
+      String complaintDocId, String justification , String?  Email) async {
     if (!mounted) return;
 
     try {
@@ -999,6 +1026,24 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
             'Your complaint "${complaintData['title'] ?? 'Untitled'}" has been reviewed and deleted by an admin. Reason: $justification';
 
         // notificationService.showNotification(title: title, body: body);
+
+if (Email != null) {
+  print("📧 Sending justification to $Email...");
+  print("📄 Justification: $justification");
+
+await sendJustification(
+  email: Email,
+  justificationContent: justification ,
+);
+
+
+
+} else {
+  print("⚠️ Email is null");
+}
+
+
+
 
         // Store in Firestore
         final userDocRef = FirebaseFirestore.instance
@@ -1029,6 +1074,36 @@ class _ViewComplaintsPageState extends State<ViewComplaintsPage> {
       );
     }
   }
+
+
+Future<void> sendJustification({
+  required String email,
+  required String justificationContent,
+}) async {
+  final url = Uri.parse('https://us-central1-hosna2.cloudfunctions.net/Justifications');  // تأكد من أن الاسم مطابق هنا
+
+  try {
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'justificationContent': justificationContent,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    print('Justification sent successfully');
+  } else {
+    print('Failed to send justification: ${response.body}');
+  }
+} catch (e) {
+  print('Error sending justification: $e');
+  print('Stack trace: ${e.toString()}');   
+}
+
+}
+
 
   Future<Map<String, dynamic>?> _showDeleteConfirmationDialog(
       BuildContext context) async {
@@ -1573,7 +1648,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                           onPressed: () async {
                             // Show the confirmation dialog
                             bool isConfirmed =
-                                await _showSuspendConfirmationDialog(context);
+                                await _showSuspendConfirmationDialog(context ,  organizationData?["email"]);
 
                             if (isConfirmed) {
                               // The suspension logic is now handled in _showSuspendConfirmationDialog
@@ -1613,7 +1688,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                         ElevatedButton(
                           onPressed: () async {
                             bool confirmed =
-                                await _showcancelConfirmationDialog(context);
+                                await _showcancelConfirmationDialog(context , organizationData?["email"] );
 
                             if (confirmed) {
                               // final helper = CancelAllProjectsHelper();
@@ -1739,9 +1814,39 @@ Widget _buildStyledEmailRow(IconData icon, String label, String? value) {
       });
     });
   }
+  
+Future<void> sendJustification({
+  required String email,
+  required String justificationContent,
+}) async {
+  final url = Uri.parse('https://us-central1-hosna2.cloudfunctions.net/Justifications');  // تأكد من أن الاسم مطابق هنا
+
+  try {
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'justificationContent': justificationContent,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    print('Justification sent successfully');
+  } else {
+    print('Failed to send justification: ${response.body}');
+  }
+} catch (e) {
+  print('Error sending justification: $e');
+  print('Stack trace: ${e.toString()}');   
+}
+
+}
+
+
 
 // Function to show confirmation dialog before cancellation
-  Future<bool> _showcancelConfirmationDialog(BuildContext context) async {
+  Future<bool> _showcancelConfirmationDialog(BuildContext context , String Email ) async {
     // Create a TextEditingController for the justification field
 
     final justificationController = TextEditingController();
@@ -1848,6 +1953,15 @@ Widget _buildStyledEmailRow(IconData icon, String label, String? value) {
 
                       justification = justificationController.text.trim();
 
+if (Email != null) {
+  print("📧 Sending justification to $Email...");
+  print("📄 Justification: $justification");
+
+ sendJustification(
+  email: Email,
+  justificationContent: justification ,
+);
+}
                       Navigator.pop(
                           context, true); // Return true with justification
                     }
@@ -1892,7 +2006,7 @@ Widget _buildStyledEmailRow(IconData icon, String label, String? value) {
     });
   }
 
-  Future<bool> _showSuspendConfirmationDialog(BuildContext context) async {
+  Future<bool> _showSuspendConfirmationDialog(BuildContext context , String Email) async {
     print("🚀 Showing suspend confirmation dialog...");
 
     // Create a TextEditingController for the justification field
@@ -2000,6 +2114,21 @@ Widget _buildStyledEmailRow(IconData icon, String label, String? value) {
 } else {
                       // Store the justification
                       justification = justificationController.text.trim();
+   
+ 
+
+  if (Email != null && justification.isNotEmpty) {
+    print("📧 Sending justification to $Email...");
+    print("📄 Justification: $justification");
+
+     sendJustification(
+      email: Email,
+      justificationContent: justification,
+    );
+  } else {
+    print('empty ');
+  }
+
                       Navigator.pop(context, true);
                     }
                   },

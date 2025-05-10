@@ -439,7 +439,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                       SizedBox(height: 200),
                       Center(
                         child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
+                            height: MediaQuery.of(context).size.height * .055,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
                              onPressed: () async {
@@ -494,7 +494,7 @@ class _ProfileScreenTwoState extends State<ProfileScreenTwo> {
                       SizedBox(height: 20),
                       Center(
                         child: SizedBox(
-                            height: MediaQuery.of(context).size.height * .066,
+                            height: MediaQuery.of(context).size.height * .055,
                             width: MediaQuery.of(context).size.width * .8,
                             child: ElevatedButton(
                               onPressed: () async {

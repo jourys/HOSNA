@@ -1910,12 +1910,51 @@ if (projectState == "active" && userType == 0 && globalPrivateKey != null)
        
       });
 
+      
+  String? email = await getEmailByWalletAddress(creatorAddress);
+
+  if (email != null && justification.isNotEmpty) {
+    print("📧 Sending justification to $email...");
+    print("📄 Justification: $justification");
+
+    await sendJustification(
+      email: email,
+      justificationContent: justification,
+    );
+  } else {
+    print('❌ لا يوجد بريد أو المحتوى فارغ');
+  }
+
       print(
           "✅ Cancellation notification sent to project creator: $creatorAddress");
     } catch (e) {
       print("❌ Error sending cancellation notification: $e");
     }
   }
+
+
+Future<String?> getEmailByWalletAddress(String complainantAddress) async {
+  try {
+    final usersCollection = FirebaseFirestore.instance.collection('users');
+    
+    final querySnapshot = await usersCollection
+        .where('walletAddress', isEqualTo: complainantAddress)
+        .get();
+    
+    if (querySnapshot.docs.isNotEmpty) {
+      final email = querySnapshot.docs.first['email'];
+      return email;
+    } else {
+      print('No user found with the provided wallet address.');
+      return null;
+    }
+  } catch (e) {
+    print('Error retrieving email: $e');
+    return null;
+  }
+}
+
+
 
   Widget _buildDetailItem(String title, String value) {
     return Padding(
@@ -2206,6 +2245,35 @@ if (projectState == "active" && userType == 0 && globalPrivateKey != null)
       );
     }
   }
+
+Future<void> sendJustification({
+  required String email,
+  required String justificationContent,
+}) async {
+  final url = Uri.parse('https://us-central1-hosna2.cloudfunctions.net/Justifications');  // تأكد من أن الاسم مطابق هنا
+
+  try {
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'justificationContent': justificationContent,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    print('Justification sent successfully');
+  } else {
+    print('Failed to send justification: ${response.body}');
+  }
+} catch (e) {
+  print('Error sending justification: $e');
+  print('Stack trace: ${e.toString()}');   
+}
+
+}
+
 
   Future<void> _storeDonationInfo(
       Map<String, dynamic> projectDetails, double donatedAmount) async {
