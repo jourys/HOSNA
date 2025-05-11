@@ -354,12 +354,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         print("✅ Profile updated with new data: $updatedData");
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully!')),
-      );
-      Future.delayed(Duration(seconds: 2), () {
-        Navigator.pop(context, true);
-      });
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Profile updated successfully!')),
+      // );
+      // Future.delayed(Duration(seconds: 2), () {
+      //   Navigator.pop(context, true);
+      // });
+      showSuccessPopup(context);
     } catch (e) {
       showError('Failed to update profile: $e');
     }
@@ -688,5 +689,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             return null;
           }),
     );
+  }
+
+  void showSuccessPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding: EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          content: SizedBox(
+            width: 250,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Profile updated successfully!',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Auto-close and return to previous screen
+    Future.delayed(const Duration(seconds: 3), () {
+      if (context.mounted) {
+        Navigator.pop(context); // ✅ just closes the dialog
+        Navigator.pop(context, true); // Return to previous screen
+      }
+    });
   }
 }

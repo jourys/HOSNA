@@ -112,8 +112,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
     }
   }
 
-
- Future<bool> isPhoneNumberTaken(String phone) async {
+  Future<bool> isPhoneNumberTaken(String phone) async {
     try {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -130,7 +129,6 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       return false;
     }
   }
-
 
   Future<void> _uploadImageToFirebase() async {
     if (_imageFile == null || _donorAddress.isEmpty) {
@@ -309,12 +307,14 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       return;
     }
 
-      bool taken = await isPhoneNumberTaken( phoneController.text);
+    bool taken = await isPhoneNumberTaken(phoneController.text);
     if (taken) {
-       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(" This phone number is already registered with another account.")),
-        );
-     
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                " This phone number is already registered with another account.")),
+      );
+
       return;
     }
 
@@ -358,12 +358,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
 
       print("✅ Profile update confirmed, navigating back!");
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile updated successfully!')),
-        );
-        Navigator.pop(context, true);
-      }
+      if (mounted) _showSuccessDialog();
     } catch (e) {
       print("❌ Error updating profile: $e");
       if (mounted) {
@@ -542,5 +537,52 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
         },
       ),
     );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          contentPadding: EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          content: SizedBox(
+            width: 250,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Color.fromARGB(255, 54, 142, 57),
+                  size: 50,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Profile updated successfully!',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 54, 142, 57),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Auto close dialog and go back
+    Future.delayed(Duration(seconds: 3), () {
+      if (!mounted) return;
+      Navigator.pop(context); // close dialog
+      Navigator.pop(context, true); // return to previous screen
+    });
   }
 }
